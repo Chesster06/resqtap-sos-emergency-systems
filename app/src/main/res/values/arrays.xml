@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="relationship_options">
+        <item>Family</item>
+        <item>Friend</item>
+        <item>Guardian</item>
+    </string-array>
+
+    <string-array name="religion_options">
+        <item>Islam</item>
+        <item>Christian</item>
+        <item>Buddhist</item>
+        <item>Hindu</item>
+        <item>Other</item>
+    </string-array>
+
+    <string-array name="ethnicity_options">
+        <item>Malay</item>
+        <item>Chinese</item>
+        <item>Indian</item>
+        <item>Other</item>
+    </string-array>
+
+    <string-array name="tts_language_options">
+        <item>Bahasa Melayu</item>
+        <item>English</item>
+        <item>Chinese</item>
+        <item>Tamil</item>
+    </string-array>
+
+    <string-array name="gender_options">
+        <item>Male</item>
+        <item>Female</item>
+        <item>Other</item>
+    </string-array>
+
+    <string-array name="organ_donor_options">
+        <item>No</item>
+        <item>Yes</item>
+    </string-array>
+
+    <string-array name="allergy_options">
+        <item>None</item>
+        <item>Peanuts / Nuts</item>
+        <item>Seafood / Shellfish</item>
+        <item>Dairy / Lactose</item>
+        <item>Eggs</item>
+        <item>Wheat / Gluten</item>
+        <item>Penicillin / Antibiotics</item>
+        <item>Aspirin / NSAIDs</item>
+        <item>Latex</item>
+        <item>Dust / Pollen</item>
+        <item>Others</item>
+    </string-array>
+
+    <string-array name="medication_options">
+        <item>None</item>
+        <item>Painkillers (Paracetamol / Panadol)</item>
+        <item>Antibiotics</item>
+        <item>Antihistamines (Allergy)</item>
+        <item>Inhaler (Asthma)</item>
+        <item>Insulin / Diabetes Meds</item>
+        <item>Blood Pressure Meds (Hypertension)</item>
+        <item>Heart / Cholesterol Meds</item>
+        <item>Gastric / Antacid Meds</item>
+        <item>Others</item>
+    </string-array>
+</resources>

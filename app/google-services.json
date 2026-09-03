@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "799083639090",
+    "firebase_url": "https://resqtap-b9ff5-default-rtdb.firebaseio.com",
+    "project_id": "resqtap-b9ff5",
+    "storage_bucket": "resqtap-b9ff5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:799083639090:android:760ce5948d0078c0cda72b",
+        "android_client_info": {
+          "package_name": "com.example.resqtap"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZ8X0sDpjbaMLt20DVA4ocNOzw9rqy-Xw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
