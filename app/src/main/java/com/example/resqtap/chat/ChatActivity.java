@@ -24,8 +24,17 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.FrameLayout;
 import android.widget.Toast;
+import android.net.Uri;
+import android.database.Cursor;
+import android.provider.OpenableColumns;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -33,6 +42,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.graphics.Typeface;
 import android.widget.Button;
 import android.widget.ProgressBar;
@@ -56,6 +66,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -63,6 +74,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Date;
@@ -89,6 +101,41 @@ public class ChatActivity extends BaseActivity {
     private static final String CHAT_PREF_EXPIRES_AT = "expires_at";
     private static final String CHAT_PREF_SAVED_SESSIONS = "ai_chat_saved_sessions";
     private static final boolean USE_DATABASE_CHAT_STORE = false;
+
+    public enum ChatMode { AI, LIVE }
+    private ChatMode currentMode = ChatMode.AI;
+
+    private TextView headerTitle;
+    private View badgeBeta;
+    private View badgeLiveStatus;
+    private View bannerLiveMsgAlert;
+    private TextView tvBannerLiveText;
+    private TextView tvChatDisclaimer;
+    private View composerAttachmentStrip;
+    private TextView composerAttachmentLabel;
+    private View btnClearAttachment;
+    private ImageButton btnCamera;
+    private View bottomSuggestionsScroll;
+
+    private ActivityResultLauncher<String[]> pickAttachmentLauncher;
+    private ActivityResultLauncher<Void> takeCameraLauncher;
+    private Uri selectedAttachmentUri;
+    private byte[] selectedAttachmentBytes;
+    private String selectedAttachmentName = "";
+    private String selectedAttachmentMime = "";
+    private long selectedAttachmentSize = 0L;
+
+    // Livechat system variables
+    private DatabaseReference liveChatRef;
+    private Query liveMessagesQuery;
+    private ValueEventListener liveMessagesListener;
+    private ValueEventListener liveMetaListener;
+    private final ArrayList<LiveMessageItem> liveMessages = new ArrayList<>();
+    private boolean adminTypingActive = false;
+    private View liveTypingIndicatorView;
+    private TextView liveTypingDotsView;
+    private int liveTypingDotsStep = 0;
+    private Runnable liveTypingDotsRunnable;
 
     private final ArrayList<ChatMessage> messages = new ArrayList<>();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -125,6 +172,7 @@ public class ChatActivity extends BaseActivity {
     private int invalidInputCount = 0;
     private boolean awaitingLiveChatChoice = false;
     private boolean isShowingInitialWelcome = false;
+    private long activityStartedAt = System.currentTimeMillis();
 
     // =========================================================================
     // SEKSYEN: ONCREATE
@@ -144,30 +192,61 @@ public class ChatActivity extends BaseActivity {
             return insets;
         });
 
+        setupAttachmentLaunchers();
+
         ImageButton back = findViewById(R.id.btn_back);
         ImageButton btnNewChat = findViewById(R.id.btn_new_chat);
         ImageButton btnHistory = findViewById(R.id.btn_chat_history);
-        ImageButton btnCamera = findViewById(R.id.btn_attach_camera);
+        btnCamera = findViewById(R.id.btn_attach_camera);
+        headerTitle = findViewById(R.id.title);
+        badgeBeta = findViewById(R.id.badge_beta);
         heroGreetingLayout = findViewById(R.id.hero_greeting_layout);
         messagesContainer = findViewById(R.id.chat_messages);
         messagesScroll = findViewById(R.id.chat_scroll);
         inputView = findViewById(R.id.chat_input);
         sendButton = findViewById(R.id.chat_send);
 
+        badgeLiveStatus = findViewById(R.id.badge_live_status);
+        bannerLiveMsgAlert = findViewById(R.id.banner_live_msg_alert);
+        tvBannerLiveText = findViewById(R.id.tv_banner_live_text);
+        tvChatDisclaimer = findViewById(R.id.tv_chat_disclaimer);
+        composerAttachmentStrip = findViewById(R.id.composer_attachment_strip);
+        composerAttachmentLabel = findViewById(R.id.composer_attachment_label);
+        btnClearAttachment = findViewById(R.id.btn_clear_attachment);
+        bottomSuggestionsScroll = findViewById(R.id.bottom_suggestions_scroll);
+
         if (back != null) back.setOnClickListener(v -> finish());
-        if (btnNewChat != null) btnNewChat.setOnClickListener(v -> startNewChatSession());
-        if (btnHistory != null) btnHistory.setOnClickListener(v -> showRecentChatHistoryBottomSheet());
-        if (btnCamera != null) btnCamera.setOnClickListener(v -> {
-            Toast.makeText(this, "Attachment feature ready", Toast.LENGTH_SHORT).show();
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                finish();
+            }
         });
+
+        if (btnNewChat != null) btnNewChat.setOnClickListener(v -> {
+            if (currentMode == ChatMode.LIVE) {
+                switchChatMode(ChatMode.AI);
+            }
+            startNewChatSession();
+        });
+        if (btnHistory != null) btnHistory.setOnClickListener(v -> {
+            if (currentMode == ChatMode.LIVE) {
+                switchChatMode(ChatMode.AI);
+            }
+            showRecentChatHistoryBottomSheet();
+        });
+        if (btnCamera != null) btnCamera.setOnClickListener(v -> showAttachmentOptionsBottomSheet());
+        if (bannerLiveMsgAlert != null) bannerLiveMsgAlert.setOnClickListener(v -> startLiveChatSession(true));
+        if (btnClearAttachment != null) btnClearAttachment.setOnClickListener(v -> clearAttachmentSelection());
 
         setupSuggestionCards();
 
-        if (sendButton != null) sendButton.setOnClickListener(v -> sendMessage());
+        if (sendButton != null) sendButton.setOnClickListener(v -> onSendClicked());
         if (inputView != null) {
             inputView.setOnEditorActionListener((v, actionId, event) -> {
                 if (actionId == EditorInfo.IME_ACTION_SEND) {
-                    sendMessage();
+                    onSendClicked();
                     return true;
                 }
                 return false;
@@ -181,6 +260,12 @@ public class ChatActivity extends BaseActivity {
         messages.clear();
         renderMessages();
         setupAiChatStore();
+        setupLiveChatSystem();
+
+        String modeExtra = getIntent() != null ? getIntent().getStringExtra("mode") : null;
+        if ("live_support".equalsIgnoreCase(modeExtra) || "livechat".equalsIgnoreCase(modeExtra)) {
+            startLiveChatSession(true);
+        }
     }
 
     /** Setup klik kad cadangan soalan (Suggestion Prompt Cards). */
@@ -191,10 +276,13 @@ public class ChatActivity extends BaseActivity {
         View btn2 = findViewById(R.id.btn_prompt_2);
         View card3 = findViewById(R.id.card_prompt_3);
         View btn3 = findViewById(R.id.btn_prompt_3);
+        View cardLivechat = findViewById(R.id.card_prompt_livechat);
+        View btnLivechat = findViewById(R.id.btn_prompt_livechat);
 
         View.OnClickListener listener1 = v -> sendPresetPrompt("What to do in an emergency?");
         View.OnClickListener listener2 = v -> sendPresetPrompt("How does SOS beacon work?");
         View.OnClickListener listener3 = v -> sendPresetPrompt("How to add emergency contacts?");
+        View.OnClickListener listenerLivechat = v -> startLiveChatSession(true);
 
         if (card1 != null) card1.setOnClickListener(listener1);
         if (btn1 != null) btn1.setOnClickListener(listener1);
@@ -202,6 +290,8 @@ public class ChatActivity extends BaseActivity {
         if (btn2 != null) btn2.setOnClickListener(listener2);
         if (card3 != null) card3.setOnClickListener(listener3);
         if (btn3 != null) btn3.setOnClickListener(listener3);
+        if (cardLivechat != null) cardLivechat.setOnClickListener(listenerLivechat);
+        if (btnLivechat != null) btnLivechat.setOnClickListener(listenerLivechat);
 
         View chipBeacon = findViewById(R.id.chip_prompt_beacon);
         View chipGeofence = findViewById(R.id.chip_prompt_geofence);
@@ -226,6 +316,16 @@ public class ChatActivity extends BaseActivity {
 
     /** Mulakan sesi perbualan baharu (Wipe Firebase and local storage). */
     public void startNewChatSession() {
+        activityStartedAt = System.currentTimeMillis();
+        currentMode = ChatMode.AI;
+        if (headerTitle != null) headerTitle.setText("AI Assistant");
+        if (badgeBeta != null) badgeBeta.setVisibility(View.VISIBLE);
+        if (badgeLiveStatus != null) badgeLiveStatus.setVisibility(View.GONE);
+        if (bottomSuggestionsScroll != null) bottomSuggestionsScroll.setVisibility(View.VISIBLE);
+        if (inputView != null) inputView.setHint(R.string.chat_input_hint_ai);
+        if (tvChatDisclaimer != null) tvChatDisclaimer.setText(R.string.chat_disclaimer_ai);
+        clearAttachmentSelection();
+        if (composerAttachmentStrip != null) composerAttachmentStrip.setVisibility(View.GONE);
         saveCurrentSessionToHistory();
         if (aiChatRef != null) {
             aiChatRef.removeValue();
@@ -236,6 +336,7 @@ public class ChatActivity extends BaseActivity {
         messages.clear();
         setSending(false);
         removeTypingIndicator();
+        removeLiveTypingIndicator();
         if (typewriterRunnable != null) {
             mainHandler.removeCallbacks(typewriterRunnable);
             typewriterRunnable = null;
@@ -251,7 +352,12 @@ public class ChatActivity extends BaseActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        startNewChatSession();
+        String modeExtra = intent != null ? intent.getStringExtra("mode") : null;
+        if ("live_support".equalsIgnoreCase(modeExtra) || "livechat".equalsIgnoreCase(modeExtra)) {
+            switchChatMode(ChatMode.LIVE);
+        } else {
+            startNewChatSession();
+        }
     }
 
     @Override
@@ -266,7 +372,9 @@ public class ChatActivity extends BaseActivity {
             currentSessionId = "";
             currentSessionTopic = "";
             messages.clear();
-            renderMessages();
+            if (currentMode == ChatMode.AI) {
+                renderMessages();
+            }
         }
     }
 
@@ -283,8 +391,724 @@ public class ChatActivity extends BaseActivity {
         }
         clearLocalChat();
         detachAiChatStore();
+        detachLiveChatSystem();
         mainHandler.removeCallbacksAndMessages(null);
         executor.shutdownNow();
+    }
+
+    // =========================================================================
+    // SEKSYEN: LIVECHAT & MODE SWITCHER SYSTEM
+    // =========================================================================
+    private void setupAttachmentLaunchers() {
+        pickAttachmentLauncher = registerForActivityResult(
+                new ActivityResultContracts.OpenDocument(),
+                uri -> {
+                    if (uri == null) return;
+                    try {
+                        getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    } catch (Exception ignored) {}
+                    setSelectedAttachment(uri);
+                }
+        );
+        takeCameraLauncher = registerForActivityResult(
+                new ActivityResultContracts.TakePicturePreview(),
+                bitmap -> {
+                    if (bitmap == null) return;
+                    setSelectedCameraAttachment(bitmap);
+                }
+        );
+    }
+
+    private void onSendClicked() {
+        if (currentMode == ChatMode.AI) {
+            sendMessage();
+        } else {
+            sendLiveSupportMessage();
+        }
+    }
+
+    private void switchChatMode(ChatMode mode) {
+        if (mode == currentMode) return;
+        if (mode == ChatMode.LIVE) {
+            startLiveChatSession(true);
+        } else {
+            currentMode = ChatMode.AI;
+            if (headerTitle != null) headerTitle.setText("AI Assistant");
+            if (badgeBeta != null) badgeBeta.setVisibility(View.VISIBLE);
+            if (badgeLiveStatus != null) badgeLiveStatus.setVisibility(View.GONE);
+            if (bottomSuggestionsScroll != null) bottomSuggestionsScroll.setVisibility(View.VISIBLE);
+            if (inputView != null) inputView.setHint(R.string.chat_input_hint_ai);
+            if (tvChatDisclaimer != null) tvChatDisclaimer.setText(R.string.chat_disclaimer_ai);
+            clearAttachmentSelection();
+            if (composerAttachmentStrip != null) composerAttachmentStrip.setVisibility(View.GONE);
+            renderMessages();
+        }
+    }
+
+    private void startLiveChatSession(boolean showUserPrompt) {
+        currentMode = ChatMode.LIVE;
+
+        if (headerTitle != null) {
+            headerTitle.setText("AI Assistant");
+        }
+        if (badgeBeta != null) {
+            badgeBeta.setVisibility(View.GONE);
+        }
+        if (badgeLiveStatus != null) {
+            badgeLiveStatus.setVisibility(View.VISIBLE);
+        }
+        if (bottomSuggestionsScroll != null) {
+            bottomSuggestionsScroll.setVisibility(View.GONE);
+        }
+        if (heroGreetingLayout != null) {
+            heroGreetingLayout.setVisibility(View.GONE);
+        }
+        if (inputView != null) {
+            inputView.setHint(R.string.chat_input_hint_live);
+        }
+        if (tvChatDisclaimer != null) {
+            tvChatDisclaimer.setText(R.string.chat_disclaimer_live);
+        }
+        if (bannerLiveMsgAlert != null) {
+            bannerLiveMsgAlert.setVisibility(View.GONE);
+        }
+
+        if (showUserPrompt) {
+            ChatMessage userPrompt = new ChatMessage("user", "Livechat", System.currentTimeMillis());
+            messages.add(userPrompt);
+            addMessageBubble(userPrompt);
+
+            ChatMessage notice = new ChatMessage("system",
+                    "Connected to ResQTap Live Support. You are now chatting directly with our admin support desk. AI bot responses are paused.",
+                    System.currentTimeMillis()
+            );
+            messages.add(notice);
+            addMessageBubble(notice);
+
+            notifyLiveChatSessionStarted();
+            scrollToBottom();
+        }
+
+        markLiveChatRead();
+    }
+
+    private void notifyLiveChatSessionStarted() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+        if (liveChatRef == null) {
+            setupLiveChatSystem();
+            if (liveChatRef == null) return;
+        }
+        String uid = user.getUid();
+        String name = UserPrefs.getName(this);
+        if (name == null || name.trim().isEmpty()) name = user.getDisplayName();
+        if (name == null || name.trim().isEmpty()) name = "User";
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("meta/status", "open");
+        updates.put("meta/lastMessage", "Livechat session connected");
+        updates.put("meta/lastSender", "user");
+        updates.put("meta/userUid", uid);
+        updates.put("meta/userName", name);
+        updates.put("meta/userEmail", safe(UserPrefs.getEmail(this)));
+        updates.put("meta/updatedAt", ServerValue.TIMESTAMP);
+        updates.put("meta/unreadByUser", false);
+        updates.put("meta/userLastReadAt", ServerValue.TIMESTAMP);
+
+        DatabaseReference newMsgRef = liveChatRef.child("messages").push();
+        String messageId = newMsgRef.getKey();
+        if (messageId != null) {
+            Map<String, Object> msg = new HashMap<>();
+            msg.put("text", "User connected to Livechat");
+            msg.put("sender", "user");
+            msg.put("senderUid", uid);
+            msg.put("senderName", name);
+            msg.put("createdAt", ServerValue.TIMESTAMP);
+            msg.put("source", "app");
+            updates.put("messages/" + messageId, msg);
+        }
+
+        liveChatRef.updateChildren(updates);
+    }
+
+    private void setupLiveChatSystem() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+        currentUid = user.getUid();
+
+        liveChatRef = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                .getReference("supportChats")
+                .child(currentUid);
+
+        liveMetaListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                if (snapshot == null) return;
+                long adminTypingAt = snapshotLong(snapshot.child("adminTypingAt"));
+                Boolean typingVal = snapshot.child("adminTyping").getValue(Boolean.class);
+                boolean adminTyping = Boolean.TRUE.equals(typingVal) && (System.currentTimeMillis() - adminTypingAt < 10000L);
+                setAdminTypingActive(adminTyping);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {}
+        };
+        liveChatRef.child("meta").addValueEventListener(liveMetaListener);
+
+        liveMessagesQuery = liveChatRef.child("messages").orderByChild("createdAt").limitToLast(100);
+        liveMessagesListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                if (snapshot == null) return;
+                boolean hasNewAdmin = false;
+
+                for (DataSnapshot child : snapshot.getChildren()) {
+                    String text = safe(child.child("text").getValue(String.class)).trim();
+                    DataSnapshot attSnap = child.child("attachment");
+                    String attUrl = safe(attSnap.child("downloadUrl").getValue(String.class));
+                    String attName = safe(attSnap.child("name").getValue(String.class));
+                    String attMime = safe(attSnap.child("mimeType").getValue(String.class));
+                    if (text.isEmpty() && attUrl.isEmpty()) continue;
+
+                    String sender = safe(child.child("sender").getValue(String.class));
+                    String senderUid = safe(child.child("senderUid").getValue(String.class));
+                    String senderName = safe(child.child("senderName").getValue(String.class));
+                    long createdAt = snapshotLong(child.child("createdAt"));
+                    String key = child.getKey();
+
+                    if ("admin".equalsIgnoreCase(sender)) {
+                        boolean exists = false;
+                        for (ChatMessage m : messages) {
+                            if (key != null && key.equals(m.messageId)) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists) {
+                            if (currentMode == ChatMode.LIVE || createdAt > activityStartedAt) {
+                                hasNewAdmin = true;
+                                if (currentMode != ChatMode.LIVE) {
+                                    startLiveChatSession(false);
+                                }
+                                ChatMessage adminMsg = new ChatMessage("admin", text, createdAt, senderName, attName, attUrl, attMime, key);
+                                messages.add(adminMsg);
+                                addMessageBubble(adminMsg);
+                            }
+                        }
+                    }
+                }
+
+                if (hasNewAdmin) {
+                    markLiveChatRead();
+                    scrollToBottom();
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {}
+        };
+        liveMessagesQuery.addValueEventListener(liveMessagesListener);
+    }
+
+    private void detachLiveChatSystem() {
+        if (liveMessagesQuery != null && liveMessagesListener != null) {
+            liveMessagesQuery.removeEventListener(liveMessagesListener);
+        }
+        if (liveChatRef != null && liveMetaListener != null) {
+            liveChatRef.child("meta").removeEventListener(liveMetaListener);
+        }
+        removeLiveTypingIndicator();
+        liveMessagesQuery = null;
+        liveMessagesListener = null;
+        liveMetaListener = null;
+        liveChatRef = null;
+    }
+
+    private void markLiveChatRead() {
+        if (liveChatRef != null) {
+            liveChatRef.child("meta").child("userLastReadAt").setValue(ServerValue.TIMESTAMP);
+            liveChatRef.child("meta").child("unreadByUser").setValue(false);
+        }
+    }
+
+    private void sendLiveSupportMessage() {
+        String text = safe(inputView != null ? inputView.getText() : "").trim();
+        boolean hasAttachment = (selectedAttachmentUri != null || selectedAttachmentBytes != null);
+        if (text.isEmpty() && !hasAttachment) {
+            Toast.makeText(this, R.string.support_livechat_message_required, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            Toast.makeText(this, R.string.support_livechat_login_required, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (liveChatRef == null) {
+            setupLiveChatSystem();
+            if (liveChatRef == null) return;
+        }
+
+        String uid = user.getUid();
+        String name = UserPrefs.getName(this);
+        if (name == null || name.trim().isEmpty()) name = user.getDisplayName();
+        if (name == null || name.trim().isEmpty()) name = "User";
+
+        DatabaseReference newMsgRef = liveChatRef.child("messages").push();
+        String messageId = newMsgRef.getKey();
+        if (messageId == null) return;
+
+        Map<String, Object> msg = new HashMap<>();
+        msg.put("text", text);
+        msg.put("sender", "user");
+        msg.put("senderUid", uid);
+        msg.put("senderName", name);
+        msg.put("createdAt", ServerValue.TIMESTAMP);
+        msg.put("source", "app");
+
+        String lastMsgSummary = text.isEmpty() ? (selectedAttachmentName.isEmpty() ? "Attachment" : selectedAttachmentName) : text;
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("meta/updatedAt", ServerValue.TIMESTAMP);
+        updates.put("meta/lastMessage", lastMsgSummary);
+        updates.put("meta/lastSender", "user");
+        updates.put("meta/status", "open");
+        updates.put("meta/userUid", uid);
+        updates.put("meta/userName", name);
+        updates.put("meta/userEmail", safe(UserPrefs.getEmail(this)));
+        updates.put("meta/unreadByUser", false);
+        updates.put("meta/userLastReadAt", ServerValue.TIMESTAMP);
+        updates.put("messages/" + messageId, msg);
+
+        String dataUrl = "";
+        String attName = selectedAttachmentName;
+        String attMime = selectedAttachmentMime;
+        if (hasAttachment) {
+            byte[] bytes = selectedAttachmentBytes;
+            if (bytes == null && selectedAttachmentUri != null) {
+                bytes = readUriBytes(selectedAttachmentUri);
+            }
+            if (bytes != null && bytes.length > 0) {
+                try {
+                    Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                    if (bmp != null) {
+                        int maxDim = 1080;
+                        int w = bmp.getWidth();
+                        int h = bmp.getHeight();
+                        if (w > maxDim || h > maxDim) {
+                            float ratio = Math.min((float) maxDim / w, (float) maxDim / h);
+                            bmp = Bitmap.createScaledBitmap(bmp, Math.round(w * ratio), Math.round(h * ratio), true);
+                        }
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        bmp.compress(Bitmap.CompressFormat.JPEG, 75, baos);
+                        bytes = baos.toByteArray();
+                    }
+                } catch (Throwable ignored) {}
+
+                String b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
+                attMime = selectedAttachmentMime.isEmpty() ? "image/jpeg" : selectedAttachmentMime;
+                dataUrl = "data:" + attMime + ";base64," + b64;
+                Map<String, Object> attMap = new HashMap<>();
+                attMap.put("name", selectedAttachmentName.isEmpty() ? "image.jpg" : selectedAttachmentName);
+                attMap.put("mimeType", attMime);
+                attMap.put("downloadUrl", dataUrl);
+                attMap.put("storageType", "inline_base64");
+                attMap.put("size", bytes.length);
+                msg.put("attachment", attMap);
+            }
+        }
+
+        // Add to local messages and render immediately in the AI Assistant chat thread!
+        ChatMessage userMsg = new ChatMessage("user", text, System.currentTimeMillis(), name, attName, dataUrl, attMime, messageId);
+        messages.add(userMsg);
+        addMessageBubble(userMsg);
+        scrollToBottom();
+
+        if (inputView != null) inputView.setText("");
+        clearAttachmentSelection();
+        setSending(true);
+
+        liveChatRef.updateChildren(updates).addOnCompleteListener(task -> {
+            setSending(false);
+            if (task.isSuccessful()) {
+                scrollToBottom();
+            } else {
+                Toast.makeText(this, R.string.support_livechat_failed, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void renderLiveMessages() {
+        if (heroGreetingLayout != null) {
+            heroGreetingLayout.setVisibility(View.GONE);
+        }
+        if (messagesContainer == null) return;
+        messagesContainer.removeAllViews();
+
+        if (liveMessages.isEmpty()) {
+            renderLiveEmptyState();
+            return;
+        }
+
+        for (LiveMessageItem item : liveMessages) {
+            addLiveMessageBubble(item);
+        }
+
+        if (adminTypingActive) {
+            showLiveAdminTypingIndicator();
+        }
+        scrollToBottom();
+    }
+
+    private void renderLiveEmptyState() {
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        wrap.setGravity(Gravity.CENTER);
+        wrap.setPadding(dp(24), dp(40), dp(24), dp(40));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.drawable.ic_livechat_accent_24);
+        icon.setColorFilter(ContextCompat.getColor(this, R.color.brand_primary));
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(54), dp(54));
+        iconParams.gravity = Gravity.CENTER_HORIZONTAL;
+        wrap.addView(icon, iconParams);
+
+        TextView title = new TextView(this);
+        title.setText(R.string.tab_live_support);
+        title.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+        title.setTextSize(17);
+        title.setTypeface(null, Typeface.BOLD);
+        title.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        titleParams.topMargin = dp(14);
+        titleParams.gravity = Gravity.CENTER_HORIZONTAL;
+        wrap.addView(title, titleParams);
+
+        TextView desc = new TextView(this);
+        desc.setText(R.string.live_support_empty_desc);
+        desc.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+        desc.setTextSize(13);
+        desc.setGravity(Gravity.CENTER);
+        desc.setLineSpacing(0, 1.2f);
+        LinearLayout.LayoutParams descParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        descParams.topMargin = dp(6);
+        descParams.gravity = Gravity.CENTER_HORIZONTAL;
+        wrap.addView(desc, descParams);
+
+        messagesContainer.addView(wrap, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+    }
+
+    private void addLiveMessageBubble(LiveMessageItem message) {
+        boolean mine = "user".equalsIgnoreCase(message.sender) || (currentUid.equals(message.senderUid) && !"admin".equalsIgnoreCase(message.sender));
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setGravity(mine ? Gravity.END : Gravity.START);
+        row.setPadding(0, 0, 0, dp(12));
+
+        TextView label = new TextView(this);
+        label.setText(mine ? getString(R.string.ai_chat_you) : (message.senderName.isEmpty() ? getString(R.string.live_support_admin_name) : message.senderName));
+        label.setTextColor(ContextCompat.getColor(this, mine ? R.color.brand_primary : R.color.text_secondary));
+        label.setTextSize(11);
+        label.setGravity(mine ? Gravity.END : Gravity.START);
+        row.addView(label);
+
+        LinearLayout bubble = new LinearLayout(this);
+        bubble.setOrientation(LinearLayout.VERTICAL);
+        bubble.setBackgroundResource(mine ? R.drawable.bg_livechat_bubble_user : R.drawable.bg_livechat_bubble_admin);
+        bubble.setPadding(dp(14), dp(10), dp(14), dp(10));
+        int bubbleMaxWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.78f);
+
+        if (!message.text.isEmpty()) {
+            TextView messageView = new TextView(this);
+            messageView.setText(message.text);
+            messageView.setTextSize(14);
+            messageView.setLineSpacing(0, 1.15f);
+            messageView.setMaxWidth(bubbleMaxWidth);
+            messageView.setTextColor(ContextCompat.getColor(this, mine ? R.color.white : R.color.text_primary));
+            bubble.addView(messageView);
+        }
+
+        if (!message.attachmentUrl.isEmpty()) {
+            if (message.attachmentUrl.startsWith("data:image/")) {
+                Bitmap img = bitmapFromDataUrl(message.attachmentUrl);
+                if (img != null) {
+                    ImageView preview = new ImageView(this);
+                    preview.setAdjustViewBounds(true);
+                    preview.setMaxWidth(bubbleMaxWidth);
+                    preview.setMaxHeight(dp(220));
+                    preview.setImageBitmap(img);
+                    preview.setPadding(0, message.text.isEmpty() ? 0 : dp(8), 0, 0);
+                    bubble.addView(preview, new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                    ));
+                }
+            } else {
+                Button attBtn = new Button(this);
+                attBtn.setAllCaps(false);
+                attBtn.setText(message.attachmentName.isEmpty() ? getString(R.string.support_livechat_open_attachment) : message.attachmentName);
+                attBtn.setTextSize(12);
+                attBtn.setTextColor(ContextCompat.getColor(this, mine ? R.color.white : R.color.brand_primary));
+                attBtn.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+                attBtn.setMaxWidth(bubbleMaxWidth);
+                attBtn.setBackgroundColor(ContextCompat.getColor(this, android.R.color.transparent));
+                attBtn.setPadding(0, message.text.isEmpty() ? 0 : dp(6), 0, 0);
+                attBtn.setOnClickListener(v -> openAttachment(message.attachmentUrl, message.attachmentMime));
+                bubble.addView(attBtn, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                ));
+            }
+        }
+
+        LinearLayout.LayoutParams bubbleParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        bubbleParams.topMargin = dp(4);
+        row.addView(bubble, bubbleParams);
+
+        String timeStr = formatTime(message.createdAt);
+        if (!timeStr.isEmpty()) {
+            TextView time = new TextView(this);
+            time.setText(timeStr);
+            time.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+            time.setTextSize(11);
+            time.setGravity(mine ? Gravity.END : Gravity.START);
+            LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            timeParams.topMargin = dp(4);
+            row.addView(time, timeParams);
+        }
+
+        messagesContainer.addView(row, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+    }
+
+    private void setAdminTypingActive(boolean active) {
+        if (adminTypingActive == active) return;
+        adminTypingActive = active;
+        if (currentMode == ChatMode.LIVE) {
+            if (adminTypingActive) {
+                showLiveAdminTypingIndicator();
+            } else {
+                removeLiveTypingIndicator();
+            }
+        }
+    }
+
+    private void showLiveAdminTypingIndicator() {
+        removeLiveTypingIndicator();
+        if (messagesContainer == null) return;
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setGravity(Gravity.START);
+        row.setPadding(0, 0, 0, dp(10));
+
+        TextView label = new TextView(this);
+        label.setText(R.string.live_support_admin_name);
+        label.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+        label.setTextSize(11);
+        label.setGravity(Gravity.START);
+        row.addView(label);
+
+        LinearLayout bubble = new LinearLayout(this);
+        bubble.setOrientation(LinearLayout.HORIZONTAL);
+        bubble.setGravity(Gravity.CENTER_VERTICAL);
+        bubble.setBackgroundResource(R.drawable.bg_livechat_bubble_admin);
+        bubble.setPadding(dp(14), dp(10), dp(14), dp(10));
+
+        TextView typing = new TextView(this);
+        liveTypingDotsView = typing;
+        typing.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+        typing.setTextSize(14);
+        bubble.addView(typing);
+
+        LinearLayout.LayoutParams bubbleParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        bubbleParams.topMargin = dp(4);
+        row.addView(bubble, bubbleParams);
+
+        liveTypingIndicatorView = row;
+        messagesContainer.addView(row, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+        startLiveTypingAnimation();
+        scrollToBottom();
+    }
+
+    private void removeLiveTypingIndicator() {
+        if (liveTypingDotsRunnable != null) {
+            mainHandler.removeCallbacks(liveTypingDotsRunnable);
+            liveTypingDotsRunnable = null;
+        }
+        if (liveTypingIndicatorView != null && messagesContainer != null) {
+            messagesContainer.removeView(liveTypingIndicatorView);
+            liveTypingIndicatorView = null;
+        }
+        liveTypingDotsView = null;
+    }
+
+    private void startLiveTypingAnimation() {
+        liveTypingDotsStep = 0;
+        liveTypingDotsRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (liveTypingDotsView == null) return;
+                int dots = liveTypingDotsStep % 4;
+                StringBuilder text = new StringBuilder(getString(R.string.live_support_admin_typing));
+                for (int i = 0; i < dots; i++) text.append('.');
+                liveTypingDotsView.setText(text.toString());
+                liveTypingDotsStep++;
+                mainHandler.postDelayed(this, 450L);
+            }
+        };
+        mainHandler.post(liveTypingDotsRunnable);
+    }
+
+    private void showAttachmentOptionsBottomSheet() {
+        if (currentMode != ChatMode.LIVE) {
+            switchChatMode(ChatMode.LIVE);
+        }
+
+        BottomSheetDialog dialog = new BottomSheetDialog(this, R.style.Theme_ResQTap_BottomSheetDialog);
+        View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_chat_attachment, null);
+        dialog.setContentView(sheetView);
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setWindowAnimations(R.style.Animation_ResQTap_BottomSheetDialog);
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        View btnTake = sheetView.findViewById(R.id.btn_option_take_camera);
+        if (btnTake != null) {
+            btnTake.setOnClickListener(v -> {
+                dialog.dismiss();
+                if (takeCameraLauncher != null) takeCameraLauncher.launch(null);
+            });
+        }
+
+        View btnSelect = sheetView.findViewById(R.id.btn_option_select_file);
+        if (btnSelect != null) {
+            btnSelect.setOnClickListener(v -> {
+                dialog.dismiss();
+                if (pickAttachmentLauncher != null) {
+                    pickAttachmentLauncher.launch(new String[]{"image/*", "application/pdf", "*/*"});
+                }
+            });
+        }
+
+        dialog.show();
+    }
+
+    private void setSelectedAttachment(Uri uri) {
+        selectedAttachmentUri = uri;
+        selectedAttachmentBytes = null;
+        selectedAttachmentName = queryDisplayName(uri);
+        selectedAttachmentMime = safe(getContentResolver().getType(uri));
+        selectedAttachmentSize = querySize(uri);
+        if (selectedAttachmentName.isEmpty()) selectedAttachmentName = "attachment";
+        updateAttachmentLabels();
+    }
+
+    private void setSelectedCameraAttachment(Bitmap bitmap) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out);
+        selectedAttachmentBytes = out.toByteArray();
+        selectedAttachmentUri = null;
+        selectedAttachmentMime = "image/jpeg";
+        selectedAttachmentSize = selectedAttachmentBytes.length;
+        selectedAttachmentName = "camera_" + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date()) + ".jpg";
+        updateAttachmentLabels();
+    }
+
+    private void clearAttachmentSelection() {
+        selectedAttachmentUri = null;
+        selectedAttachmentBytes = null;
+        selectedAttachmentName = "";
+        selectedAttachmentMime = "";
+        selectedAttachmentSize = 0L;
+        if (composerAttachmentStrip != null) {
+            composerAttachmentStrip.setVisibility(View.GONE);
+        }
+    }
+
+    private void updateAttachmentLabels() {
+        boolean hasAtt = (selectedAttachmentUri != null || selectedAttachmentBytes != null);
+        if (composerAttachmentStrip != null) {
+            composerAttachmentStrip.setVisibility(hasAtt ? View.VISIBLE : View.GONE);
+        }
+        if (composerAttachmentLabel != null) {
+            composerAttachmentLabel.setText(selectedAttachmentName.isEmpty() ? "Attachment Selected" : selectedAttachmentName);
+        }
+    }
+
+    private byte[] readUriBytes(Uri uri) {
+        try (InputStream in = getContentResolver().openInputStream(uri);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            if (in == null) return null;
+            byte[] buf = new byte[8192];
+            int len;
+            while ((len = in.read(buf)) != -1) {
+                out.write(buf, 0, len);
+            }
+            return out.toByteArray();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String queryDisplayName(Uri uri) {
+        try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (index >= 0) return safe(cursor.getString(index));
+            }
+        } catch (Exception ignored) {}
+        return safe(uri.getLastPathSegment());
+    }
+
+    private long querySize(Uri uri) {
+        try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int index = cursor.getColumnIndex(OpenableColumns.SIZE);
+                if (index >= 0) return cursor.getLong(index);
+            }
+        } catch (Exception ignored) {}
+        return 0L;
+    }
+
+    private Bitmap bitmapFromDataUrl(String dataUrl) {
+        try {
+            int comma = dataUrl.indexOf(',');
+            if (comma < 0 || comma >= dataUrl.length() - 1) return null;
+            byte[] bytes = Base64.decode(dataUrl.substring(comma + 1), Base64.DEFAULT);
+            return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private void openAttachment(String url, String mimeType) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            if (!safe(mimeType).isEmpty()) intent.setDataAndType(Uri.parse(url), mimeType);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception error) {
+            Toast.makeText(this, R.string.support_livechat_open_failed, Toast.LENGTH_SHORT).show();
+        }
     }
 
     /** Setup dan konfigurasi AiChatStore (Sentiasa bermula dengan sesi perbualan baharu). */
@@ -550,6 +1374,13 @@ public class ChatActivity extends BaseActivity {
             Toast.makeText(this, R.string.ai_chat_empty_message, Toast.LENGTH_SHORT).show();
             return;
         }
+
+        String lower = message.toLowerCase(Locale.ROOT);
+        if (lower.equals("livechat") || lower.equals("live chat") || lower.equals("live support") || lower.equals("admin")) {
+            inputView.setText("");
+            startLiveChatSession(true);
+            return;
+        }
         if (sending) return;
 
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
@@ -786,7 +1617,7 @@ public class ChatActivity extends BaseActivity {
         if (awaitingLiveChatChoice) {
             if (lower.equals("y") || lower.equals("yes")) {
                 awaitingLiveChatChoice = false;
-                startActivity(new Intent(this, LivechatActivity.class));
+                switchChatMode(ChatMode.LIVE);
                 return "__NAVIGATE_LIVECHAT__";
             } else if (lower.equals("n") || lower.equals("no")) {
                 awaitingLiveChatChoice = false;
@@ -1111,6 +1942,14 @@ public class ChatActivity extends BaseActivity {
 
     /** Fungsi untuk addMessageBubble. */
     private TextView addMessageBubble(ChatMessage message) {
+        if ("system".equalsIgnoreCase(message.role)) {
+            addSystemNoticeBubble(message.content);
+            return null;
+        }
+        if ("admin".equalsIgnoreCase(message.role)) {
+            return addAdminMessageBubble(message);
+        }
+
         boolean mine = "user".equals(message.role);
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.VERTICAL);
@@ -1124,20 +1963,61 @@ public class ChatActivity extends BaseActivity {
         label.setGravity(mine ? Gravity.END : Gravity.START);
         row.addView(label);
 
+        LinearLayout bubbleWrap = new LinearLayout(this);
+        bubbleWrap.setOrientation(LinearLayout.VERTICAL);
+        bubbleWrap.setBackgroundResource(mine ? R.drawable.bg_livechat_bubble_user : R.drawable.bg_ai_chat_bubble_assistant_light);
+        bubbleWrap.setPadding(dp(14), dp(10), dp(14), dp(10));
+        int bubbleMaxWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.78f);
+
         TextView bubble = new TextView(this);
         bubble.setText(message.content);
         bubble.setTextSize(14);
         bubble.setLineSpacing(0, 1.15f);
-        bubble.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.78f));
+        bubble.setMaxWidth(bubbleMaxWidth);
         bubble.setTextColor(ContextCompat.getColor(this, mine ? R.color.white : R.color.text_primary));
-        bubble.setBackgroundResource(mine ? R.drawable.bg_livechat_bubble_user : R.drawable.bg_ai_chat_bubble_assistant_light);
-        bubble.setPadding(dp(14), dp(10), dp(14), dp(10));
+        if (!message.content.isEmpty()) {
+            bubbleWrap.addView(bubble);
+        }
+
+        if (!safe(message.attachmentUrl).isEmpty()) {
+            if (message.attachmentUrl.startsWith("data:image/")) {
+                Bitmap img = bitmapFromDataUrl(message.attachmentUrl);
+                if (img != null) {
+                    ImageView preview = new ImageView(this);
+                    preview.setAdjustViewBounds(true);
+                    preview.setMaxWidth(bubbleMaxWidth);
+                    preview.setMaxHeight(dp(220));
+                    preview.setImageBitmap(img);
+                    preview.setPadding(0, message.content.isEmpty() ? 0 : dp(8), 0, 0);
+                    bubbleWrap.addView(preview, new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                    ));
+                }
+            } else {
+                Button attBtn = new Button(this);
+                attBtn.setAllCaps(false);
+                attBtn.setText(message.attachmentName.isEmpty() ? getString(R.string.support_livechat_open_attachment) : message.attachmentName);
+                attBtn.setTextSize(12);
+                attBtn.setTextColor(ContextCompat.getColor(this, mine ? R.color.white : R.color.brand_primary));
+                attBtn.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+                attBtn.setMaxWidth(bubbleMaxWidth);
+                attBtn.setBackgroundColor(ContextCompat.getColor(this, android.R.color.transparent));
+                attBtn.setPadding(0, message.content.isEmpty() ? 0 : dp(6), 0, 0);
+                attBtn.setOnClickListener(v -> openAttachment(message.attachmentUrl, message.attachmentMime));
+                bubbleWrap.addView(attBtn, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                ));
+            }
+        }
+
         LinearLayout.LayoutParams bubbleParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
         bubbleParams.topMargin = dp(4);
-        row.addView(bubble, bubbleParams);
+        row.addView(bubbleWrap, bubbleParams);
 
         TextView time = new TextView(this);
         time.setText(formatTime(message.createdAt));
@@ -1225,6 +2105,144 @@ public class ChatActivity extends BaseActivity {
                 ViewGroup.LayoutParams.WRAP_CONTENT
         ));
         return bubble;
+    }
+
+    private TextView addAdminMessageBubble(ChatMessage message) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setGravity(Gravity.START);
+        row.setPadding(0, 0, 0, dp(12));
+
+        LinearLayout headerRow = new LinearLayout(this);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView label = new TextView(this);
+        String name = safe(message.senderName);
+        label.setText(name.isEmpty() ? getString(R.string.live_support_admin_name) : name);
+        label.setTextColor(ContextCompat.getColor(this, R.color.brand_primary));
+        label.setTextSize(11);
+        label.setTypeface(null, Typeface.BOLD);
+        headerRow.addView(label);
+
+        TextView adminBadge = new TextView(this);
+        adminBadge.setText("Admin");
+        adminBadge.setTextSize(9);
+        adminBadge.setTextColor(ContextCompat.getColor(this, R.color.brand_primary));
+        adminBadge.setBackgroundResource(R.drawable.bg_ai_card_btn_light);
+        adminBadge.setPadding(dp(6), dp(1), dp(6), dp(1));
+        LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        badgeParams.setMarginStart(dp(6));
+        headerRow.addView(adminBadge, badgeParams);
+
+        row.addView(headerRow);
+
+        LinearLayout bubbleWrap = new LinearLayout(this);
+        bubbleWrap.setOrientation(LinearLayout.VERTICAL);
+        bubbleWrap.setBackgroundResource(R.drawable.bg_livechat_bubble_admin);
+        bubbleWrap.setPadding(dp(14), dp(10), dp(14), dp(10));
+        int bubbleMaxWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.78f);
+
+        TextView messageView = new TextView(this);
+        messageView.setText(message.content);
+        messageView.setTextSize(14);
+        messageView.setLineSpacing(0, 1.15f);
+        messageView.setMaxWidth(bubbleMaxWidth);
+        messageView.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+        if (!message.content.isEmpty()) {
+            bubbleWrap.addView(messageView);
+        }
+
+        if (!safe(message.attachmentUrl).isEmpty()) {
+            if (message.attachmentUrl.startsWith("data:image/")) {
+                Bitmap img = bitmapFromDataUrl(message.attachmentUrl);
+                if (img != null) {
+                    ImageView preview = new ImageView(this);
+                    preview.setAdjustViewBounds(true);
+                    preview.setMaxWidth(bubbleMaxWidth);
+                    preview.setMaxHeight(dp(220));
+                    preview.setImageBitmap(img);
+                    preview.setPadding(0, message.content.isEmpty() ? 0 : dp(8), 0, 0);
+                    bubbleWrap.addView(preview, new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                    ));
+                }
+            } else {
+                Button attBtn = new Button(this);
+                attBtn.setAllCaps(false);
+                attBtn.setText(message.attachmentName.isEmpty() ? getString(R.string.support_livechat_open_attachment) : message.attachmentName);
+                attBtn.setTextSize(12);
+                attBtn.setTextColor(ContextCompat.getColor(this, R.color.brand_primary));
+                attBtn.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+                attBtn.setMaxWidth(bubbleMaxWidth);
+                attBtn.setBackgroundColor(ContextCompat.getColor(this, android.R.color.transparent));
+                attBtn.setPadding(0, message.content.isEmpty() ? 0 : dp(6), 0, 0);
+                attBtn.setOnClickListener(v -> openAttachment(message.attachmentUrl, message.attachmentMime));
+                bubbleWrap.addView(attBtn, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                ));
+            }
+        }
+
+        LinearLayout.LayoutParams bubbleParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        bubbleParams.topMargin = dp(4);
+        row.addView(bubbleWrap, bubbleParams);
+
+        String timeStr = formatTime(message.createdAt);
+        if (!timeStr.isEmpty()) {
+            TextView time = new TextView(this);
+            time.setText(timeStr);
+            time.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+            time.setTextSize(11);
+            time.setGravity(Gravity.START);
+            LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            timeParams.topMargin = dp(4);
+            row.addView(time, timeParams);
+        }
+
+        messagesContainer.addView(row, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+        return messageView;
+    }
+
+    private void addSystemNoticeBubble(String text) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
+        row.setPadding(dp(16), dp(8), dp(16), dp(8));
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setBackgroundResource(R.drawable.bg_ai_card_btn_light);
+        card.setPadding(dp(14), dp(8), dp(14), dp(8));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.drawable.ic_livechat_accent_24);
+        icon.setColorFilter(ContextCompat.getColor(this, R.color.brand_primary));
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(16), dp(16));
+        iconParams.setMarginEnd(dp(8));
+        card.addView(icon, iconParams);
+
+        TextView tv = new TextView(this);
+        tv.setText(text);
+        tv.setTextSize(12);
+        tv.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+        tv.setGravity(Gravity.CENTER);
+        card.addView(tv);
+
+        row.addView(card, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        messagesContainer.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
     /** Paparkan proses berfikir & penyelesaian masalah AI (Thinking & Troubleshooting Process). */
@@ -1708,11 +2726,49 @@ public class ChatActivity extends BaseActivity {
         final String role;
         String content;
         final long createdAt;
+        String senderName;
+        String attachmentName;
+        String attachmentUrl;
+        String attachmentMime;
+        String messageId;
 
         ChatMessage(String role, String content, long createdAt) {
+            this(role, content, createdAt, "", "", "", "", "");
+        }
+
+        ChatMessage(String role, String content, long createdAt, String senderName, String attachmentName, String attachmentUrl, String attachmentMime, String messageId) {
             this.role = role == null ? "assistant" : role.toLowerCase(Locale.ROOT);
             this.content = content == null ? "" : content;
             this.createdAt = createdAt;
+            this.senderName = senderName == null ? "" : senderName;
+            this.attachmentName = attachmentName == null ? "" : attachmentName;
+            this.attachmentUrl = attachmentUrl == null ? "" : attachmentUrl;
+            this.attachmentMime = attachmentMime == null ? "" : attachmentMime;
+            this.messageId = messageId == null ? "" : messageId;
+        }
+    }
+
+    public static final class LiveMessageItem {
+        public final String id;
+        public final String text;
+        public final String sender;
+        public final String senderUid;
+        public final String senderName;
+        public final long createdAt;
+        public final String attachmentName;
+        public final String attachmentUrl;
+        public final String attachmentMime;
+
+        public LiveMessageItem(String id, String text, String sender, String senderUid, String senderName, long createdAt, String attachmentName, String attachmentUrl, String attachmentMime) {
+            this.id = id == null ? "" : id;
+            this.text = text == null ? "" : text;
+            this.sender = sender == null ? "user" : sender;
+            this.senderUid = senderUid == null ? "" : senderUid;
+            this.senderName = senderName == null ? "" : senderName;
+            this.createdAt = createdAt;
+            this.attachmentName = attachmentName == null ? "" : attachmentName;
+            this.attachmentUrl = attachmentUrl == null ? "" : attachmentUrl;
+            this.attachmentMime = attachmentMime == null ? "" : attachmentMime;
         }
     }
 }

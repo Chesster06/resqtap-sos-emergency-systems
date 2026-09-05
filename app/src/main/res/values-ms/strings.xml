@@ -635,5 +635,29 @@
     <string name="go_to_login">Log Masuk</string>
     <string name="reset_password">Tetapkan Kata Laluan</string>
     <string name="ok">OK</string>
+
+    <string name="pfp_sheet_title">Gambar Profil</string>
+    <string name="pfp_sheet_desc">Kemas kini atau padam gambar profil anda</string>
+    <string name="pfp_option_take_photo">Ambil Gambar</string>
+    <string name="pfp_option_take_photo_desc">Gunakan kamera untuk tangkap gambar baharu</string>
+    <string name="pfp_option_gallery">Pilih dari Galeri</string>
+    <string name="pfp_option_gallery_desc">Pilih gambar daripada peranti anda</string>
+    <string name="pfp_option_remove">Buang Gambar Profil</string>
+    <string name="pfp_option_remove_desc">Padam gambar dan kembali ke avatar asal</string>
+
+    <string name="tab_ai_assistant">Pembantu AI</string>
+    <string name="tab_live_support">Sokongan Langsung</string>
+    <string name="chat_input_hint_ai">Tanya apa-apa sahaja...</string>
+    <string name="chat_input_hint_live">Mesej pasukan sokongan...</string>
+    <string name="chat_disclaimer_ai">AI boleh membuat kesilapan. Sentiasa semak maklumat penting.</string>
+    <string name="chat_disclaimer_live">Livechat bersama Meja Bantuan ResQTap</string>
+    <string name="live_support_admin_name">Sokongan Admin</string>
+    <string name="live_support_online_status">Dalam Talian • Sokongan 1-ke-1 Masa Nyata</string>
+    <string name="live_support_admin_typing">Admin sedang menaip...</string>
+    <string name="live_support_banner_new_msg">Mesej baharu daripada Sokongan</string>
+    <string name="live_support_empty_desc">Mulakan perbualan bersama pegawai sokongan kami. Kami sedia membantu anda!</string>
+    <string name="chip_switch_to_livechat">Bercakap dengan Pegawai 💬</string>
+    <string name="prompt_card_livechat_title">Livechat dengan bantuan sebenar?</string>
+    <string name="prompt_card_livechat_btn">Livechat</string>
 </resources>
 

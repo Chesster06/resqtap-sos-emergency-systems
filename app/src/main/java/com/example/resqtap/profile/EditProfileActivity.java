@@ -31,6 +31,13 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import androidx.core.content.ContextCompat;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.imageview.ShapeableImageView;
 
@@ -51,6 +58,8 @@ public class EditProfileActivity extends BaseActivity {
     private static final String TAG = "EditProfileActivity";
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private ActivityResultLauncher<String[]> pickImage;
+    private ActivityResultLauncher<Void> takeCameraPhoto;
+    private ActivityResultLauncher<String> requestCameraPermission;
 
     private ShapeableImageView profilePhoto;
     private TextView tvValueName;
@@ -148,11 +157,11 @@ public class EditProfileActivity extends BaseActivity {
         // Back
         findViewById(R.id.btn_back).setOnClickListener(v -> finish());
 
-        // Avatar Pick & Preview
-        View.OnClickListener photoClickListener = v -> showPhotoOptionsDialog();
+        // Avatar Pick & Camera BottomSheet
+        View.OnClickListener photoClickListener = v -> showPhotoBottomSheet();
         if (profilePhoto != null) profilePhoto.setOnClickListener(photoClickListener);
         View btnPick = findViewById(R.id.btn_pick_photo);
-        if (btnPick != null) btnPick.setOnClickListener(v -> launchImagePicker());
+        if (btnPick != null) btnPick.setOnClickListener(photoClickListener);
 
         // Card 1
         findViewById(R.id.row_name).setOnClickListener(v -> showEditNameDialog());
@@ -191,6 +200,41 @@ public class EditProfileActivity extends BaseActivity {
                     uploadPhotoToStorage(DeviceIdUtils.getStableUid(this), uri);
                 }
         );
+
+        takeCameraPhoto = registerForActivityResult(
+                new ActivityResultContracts.TakePicturePreview(),
+                bitmap -> {
+                    if (bitmap == null) return;
+                    if (profilePhoto != null) {
+                        profilePhoto.setImageBitmap(bitmap);
+                    }
+                    uploadBitmapPhoto(bitmap);
+                }
+        );
+
+        requestCameraPermission = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                isGranted -> {
+                    if (Boolean.TRUE.equals(isGranted)) {
+                        launchCamera();
+                    } else {
+                        Toast.makeText(this, "Camera permission is required to take a picture", Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+    }
+
+    private void launchCamera() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            try {
+                takeCameraPhoto.launch(null);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to launch camera", e);
+                Toast.makeText(this, "Could not open camera", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            requestCameraPermission.launch(Manifest.permission.CAMERA);
+        }
     }
 
     private void launchImagePicker() {
@@ -201,32 +245,56 @@ public class EditProfileActivity extends BaseActivity {
         }
     }
 
-    private void showPhotoOptionsDialog() {
-        String photoB64 = UserPrefs.getPhotoB64(this);
-        String photoUri = UserPrefs.getPhotoUri(this);
-        boolean hasPhoto = isNotEmpty(photoB64) || isNotEmpty(photoUri);
+    private void showPhotoBottomSheet() {
+        BottomSheetDialog dialog = new BottomSheetDialog(this, R.style.Theme_ResQTap_BottomSheetDialog);
+        View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_pfp_picker, null);
+        dialog.setContentView(sheetView);
 
-        String[] options;
-        if (hasPhoto) {
-            options = new String[]{"Choose New Photo", "View Full Photo", "Remove Photo"};
-        } else {
-            options = new String[]{"Choose Photo"};
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setWindowAnimations(R.style.Animation_ResQTap_BottomSheetDialog);
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         }
 
-        new MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_ResQTap_AlertDialog)
-                .setTitle("Profile Photo")
-                .setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_dialog_rounded))
-                .setItems(options, (dialog, which) -> {
-                    if (which == 0) {
-                        launchImagePicker();
-                    } else if (which == 1) {
-                        showPhotoPreviewDialog();
-                    } else if (which == 2) {
-                        clearProfilePhoto();
-                    }
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+        dialog.setOnShowListener(d -> {
+            try {
+                BottomSheetBehavior<?> behavior = dialog.getBehavior();
+                behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                behavior.setSkipCollapsed(true);
+            } catch (Exception ignored) {}
+        });
+
+        // 1. Take Picture
+        View btnTake = sheetView.findViewById(R.id.btn_option_take_photo);
+        if (btnTake != null) {
+            btnTake.setOnClickListener(v -> {
+                dialog.dismiss();
+                launchCamera();
+            });
+        }
+
+        // 2. Select from Gallery
+        View btnGallery = sheetView.findViewById(R.id.btn_option_gallery);
+        if (btnGallery != null) {
+            btnGallery.setOnClickListener(v -> {
+                dialog.dismiss();
+                launchImagePicker();
+            });
+        }
+
+        // 3. Remove PFP
+        View btnRemove = sheetView.findViewById(R.id.btn_option_remove_photo);
+        if (btnRemove != null) {
+            btnRemove.setOnClickListener(v -> {
+                dialog.dismiss();
+                clearProfilePhoto();
+            });
+        }
+
+        dialog.show();
+    }
+
+    private void showPhotoOptionsDialog() {
+        showPhotoBottomSheet();
     }
 
     private void showPhotoPreviewDialog() {
@@ -649,6 +717,48 @@ public class EditProfileActivity extends BaseActivity {
                 runOnUiThread(() -> Toast.makeText(EditProfileActivity.this, R.string.toast_photo_uploaded, Toast.LENGTH_SHORT).show());
             } catch (Exception e) {
                 Log.e(TAG, "Upload photo failed", e);
+                runOnUiThread(() -> Toast.makeText(
+                        EditProfileActivity.this,
+                        getString(R.string.toast_upload_failed, safeErr(e)),
+                        Toast.LENGTH_LONG
+                ).show());
+            }
+        });
+    }
+
+    private void uploadBitmapPhoto(Bitmap bitmap) {
+        if (bitmap == null) return;
+        String uid = DeviceIdUtils.getStableUid(this);
+        if (!isNotEmpty(uid)) return;
+
+        executor.execute(() -> {
+            try {
+                int bw = bitmap.getWidth();
+                int bh = bitmap.getHeight();
+                int mm = Math.max(bw, bh);
+                Bitmap scaled = bitmap;
+                if (mm > 256) {
+                    float s = 256f / (float) mm;
+                    int nw = Math.max(1, Math.round(bw * s));
+                    int nh = Math.max(1, Math.round(bh * s));
+                    scaled = Bitmap.createScaledBitmap(bitmap, nw, nh, true);
+                }
+
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                scaled.compress(Bitmap.CompressFormat.JPEG, 72, baos);
+                if (scaled != bitmap) {
+                    scaled.recycle();
+                }
+                byte[] bytes = baos.toByteArray();
+                String b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
+                if (b64.isEmpty()) throw new RuntimeException("encode_failed");
+
+                UserPrefs.setPhotoB64(EditProfileActivity.this, b64);
+                UserPrefs.setPendingPhotoUri(EditProfileActivity.this, "");
+                FirebaseRoomClient.updateUserPhotoB64Queued(uid, b64);
+                runOnUiThread(() -> Toast.makeText(EditProfileActivity.this, R.string.toast_photo_uploaded, Toast.LENGTH_SHORT).show());
+            } catch (Exception e) {
+                Log.e(TAG, "Upload camera photo failed", e);
                 runOnUiThread(() -> Toast.makeText(
                         EditProfileActivity.this,
                         getString(R.string.toast_upload_failed, safeErr(e)),

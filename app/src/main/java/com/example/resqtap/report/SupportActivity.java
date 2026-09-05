@@ -41,7 +41,11 @@ public class SupportActivity extends BaseActivity {
 
         View livechat = findViewById(R.id.card_livechat_entry);
         if (livechat != null) {
-            livechat.setOnClickListener(v -> startActivity(new Intent(this, LivechatActivity.class)));
+            livechat.setOnClickListener(v -> {
+                Intent intent = new Intent(this, com.example.resqtap.chat.ChatActivity.class);
+                intent.putExtra("mode", "live_support");
+                startActivity(intent);
+            });
         }
     }
 }

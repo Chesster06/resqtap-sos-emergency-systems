@@ -14,6 +14,7 @@ public final class AvatarUtils {
     /** Fungsi untuk applyAvatar. */
     public static void applyAvatar(ImageView view, String photoB64, String photoUri, int fallbackRes) {
         if (view == null) return;
+        view.setImageTintList(null);
         String b64 = String.valueOf(photoB64 == null ? "" : photoB64).trim();
         if (!b64.isEmpty()) {
             try {

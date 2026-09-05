@@ -56,6 +56,7 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/badge_beta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
@@ -65,6 +66,38 @@
                 android:textColor="@color/brand_primary"
                 android:textSize="11sp"
                 android:textStyle="bold" />
+
+            <!-- Livechat Status Indicator -->
+            <LinearLayout
+                android:id="@+id/badge_live_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_ai_card_btn_light"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:paddingTop="3dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="3dp"
+                android:visibility="gone">
+
+                <View
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:background="@drawable/bg_badge_red_dot"
+                    android:backgroundTint="#10B981" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp"
+                    android:fontFamily="sans-serif-bold"
+                    android:text="Live Support"
+                    android:textColor="@color/brand_primary"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
 
         <ImageButton
@@ -96,6 +129,53 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <!-- Notification Banner when Admin sends message while in AI mode -->
+    <LinearLayout
+        android:id="@+id/banner_live_msg_alert"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="18dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/bg_notification_banner_accent"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="8dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/top_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_livechat_accent_24"
+            app:tint="@color/brand_primary" />
+
+        <TextView
+            android:id="@+id/tv_banner_live_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1"
+            android:text="@string/live_support_banner_new_msg"
+            android:textColor="@color/brand_primary"
+            android:textSize="12sp" />
+
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:src="@drawable/ic_chevron_right"
+            app:tint="@color/brand_primary" />
+    </LinearLayout>
+
     <!-- Scrollable Conversation & Hero Area -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/chat_scroll"
@@ -105,13 +185,13 @@
         android:fillViewport="true"
         android:overScrollMode="never"
         android:paddingStart="18dp"
-        android:paddingTop="10dp"
+        android:paddingTop="6dp"
         android:paddingEnd="18dp"
         android:paddingBottom="16dp"
         app:layout_constraintBottom_toTopOf="@id/bottom_composer_container"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/top_bar">
+        app:layout_constraintTop_toBottomOf="@id/banner_live_msg_alert">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -352,6 +432,68 @@
                                 android:src="@drawable/img_ai_card_friends" />
                         </FrameLayout>
 
+                        <!-- Item 4 (3D Livechat Support Card) -->
+                        <FrameLayout
+                            android:layout_width="168dp"
+                            android:layout_height="215dp"
+                            android:layout_marginEnd="14dp"
+                            android:clipChildren="false"
+                            android:clipToPadding="false">
+
+                            <!-- Base Card -->
+                            <LinearLayout
+                                android:id="@+id/card_prompt_livechat"
+                                android:layout_width="match_parent"
+                                android:layout_height="172dp"
+                                android:layout_gravity="bottom"
+                                android:background="@drawable/bg_ai_card_light"
+                                android:elevation="3dp"
+                                android:gravity="center_horizontal"
+                                android:orientation="vertical"
+                                android:paddingStart="12dp"
+                                android:paddingTop="38dp"
+                                android:paddingEnd="12dp"
+                                android:paddingBottom="12dp">
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="0dp"
+                                    android:layout_weight="1"
+                                    android:ellipsize="end"
+                                    android:fontFamily="sans-serif-bold"
+                                    android:gravity="center"
+                                    android:maxLines="2"
+                                    android:text="@string/prompt_card_livechat_title"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="13sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/btn_prompt_livechat"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="34dp"
+                                    android:layout_marginTop="6dp"
+                                    android:background="@drawable/bg_ai_card_btn_light"
+                                    android:fontFamily="sans-serif-bold"
+                                    android:gravity="center"
+                                    android:text="@string/prompt_card_livechat_btn"
+                                    android:textColor="@color/brand_primary"
+                                    android:textSize="12sp"
+                                    android:textStyle="bold" />
+                            </LinearLayout>
+
+                            <!-- Protruding 3D Mascot Character -->
+                            <ImageView
+                                android:layout_width="96dp"
+                                android:layout_height="96dp"
+                                android:layout_gravity="top|center_horizontal"
+                                android:adjustViewBounds="true"
+                                android:contentDescription="ResQTap Live Support Agent"
+                                android:elevation="8dp"
+                                android:scaleType="fitCenter"
+                                android:src="@drawable/img_ai_card_livechat" />
+                        </FrameLayout>
+
                     </LinearLayout>
                 </HorizontalScrollView>
             </LinearLayout>
@@ -466,6 +608,7 @@
                     android:id="@+id/chip_prompt_watch"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
                     android:background="@drawable/bg_bottom_chip_suggestion"
                     android:fontFamily="sans-serif-medium"
                     android:paddingStart="14dp"
@@ -476,8 +619,66 @@
                     android:textColor="@color/text_primary"
                     android:textSize="12sp" />
 
+                <!-- Suggestion 6: Talk to Human Agent -->
+                <TextView
+                    android:id="@+id/chip_switch_to_livechat"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/bg_bottom_chip_suggestion"
+                    android:fontFamily="sans-serif-medium"
+                    android:paddingStart="14dp"
+                    android:paddingTop="7dp"
+                    android:paddingEnd="14dp"
+                    android:paddingBottom="7dp"
+                    android:text="@string/chip_switch_to_livechat"
+                    android:textColor="@color/brand_primary"
+                    android:textSize="12sp" />
+
             </LinearLayout>
         </HorizontalScrollView>
+
+        <!-- Attachment Selected Strip (When sending photo/file in livechat) -->
+        <LinearLayout
+            android:id="@+id/composer_attachment_strip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/bg_notification_banner_accent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_livechat_photo"
+                app:tint="@color/brand_primary" />
+
+            <TextView
+                android:id="@+id/composer_attachment_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:ellipsize="middle"
+                android:fontFamily="sans-serif-medium"
+                android:maxLines="1"
+                android:text="image.jpg"
+                android:textColor="@color/brand_primary"
+                android:textSize="12sp" />
+
+            <ImageButton
+                android:id="@+id/btn_clear_attachment"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="4dp"
+                android:src="@drawable/ic_close_24"
+                app:tint="@color/brand_primary" />
+        </LinearLayout>
 
         <!-- Input Capsule (Smooth Material Shadow) -->
         <com.google.android.material.card.MaterialCardView
@@ -511,7 +712,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:background="@android:color/transparent"
-                    android:hint="Ask anything..."
+                    android:hint="@string/chat_input_hint_ai"
                     android:imeOptions="actionSend"
                     android:inputType="textCapSentences|textMultiLine"
                     android:maxLength="1000"
@@ -548,11 +749,12 @@
 
         <!-- Disclaimer Caption -->
         <TextView
+            android:id="@+id/tv_chat_disclaimer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:fontFamily="sans-serif"
-            android:text="AI can make mistakes. Always double-check info."
+            android:text="@string/chat_disclaimer_ai"
             android:textColor="@color/text_secondary"
             android:textSize="11sp" />
 

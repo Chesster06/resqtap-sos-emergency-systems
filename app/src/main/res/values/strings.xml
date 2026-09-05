@@ -842,5 +842,29 @@ Terms Version: 1.0</string>
     <string name="hint_weight">Weight</string>
     <string name="hint_height">Height</string>
     <string name="hint_birthdate">Birthdate</string>
+
+    <string name="pfp_sheet_title">Profile Photo</string>
+    <string name="pfp_sheet_desc">Update or remove your profile photo</string>
+    <string name="pfp_option_take_photo">Take Picture</string>
+    <string name="pfp_option_take_photo_desc">Use camera to capture a new photo</string>
+    <string name="pfp_option_gallery">Select from Gallery</string>
+    <string name="pfp_option_gallery_desc">Choose an image from your library</string>
+    <string name="pfp_option_remove">Remove Photo</string>
+    <string name="pfp_option_remove_desc">Delete current photo and reset to default</string>
+
+    <string name="tab_ai_assistant">AI Assistant</string>
+    <string name="tab_live_support">Live Support</string>
+    <string name="chat_input_hint_ai">Ask anything...</string>
+    <string name="chat_input_hint_live">Message support team...</string>
+    <string name="chat_disclaimer_ai">AI can make mistakes. Always double-check info.</string>
+    <string name="chat_disclaimer_live">Livechat with ResQTap Support Desk</string>
+    <string name="live_support_admin_name">Admin Support</string>
+    <string name="live_support_online_status">Online • 1-on-1 Realtime Support</string>
+    <string name="live_support_admin_typing">Admin is typing...</string>
+    <string name="live_support_banner_new_msg">New message from Support</string>
+    <string name="live_support_empty_desc">Start chatting with our support agents. We are here to assist you!</string>
+    <string name="chip_switch_to_livechat">Talk to Human Agent 💬</string>
+    <string name="prompt_card_livechat_title">Livechat with support team?</string>
+    <string name="prompt_card_livechat_btn">Livechat</string>
 </resources>
 

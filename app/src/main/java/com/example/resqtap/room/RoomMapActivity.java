@@ -1911,36 +1911,41 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                 h.batteryPct.setText("--%");
             }
 
-            if (m.uid != null && m.uid.trim().equals(myUid) && !myPhotoUri.isEmpty()) {
+            h.avatar.setImageTintList(null);
+            String photoUri = isSelf ? myPhotoUri : "";
+            String b64 = isSelf
+                    ? myPhotoB64
+                    : String.valueOf(m.photoB64 == null ? "" : m.photoB64).trim();
+            if (b64.isEmpty() && m.uid != null) {
+                String cachedB64 = resolvedPhotoB64ByUid.get(m.uid.trim());
+                if (cachedB64 != null && !cachedB64.trim().isEmpty()) b64 = cachedB64.trim();
+            }
+            String url = isSelf ? myPhotoUrl : String.valueOf(m.photoUrl == null ? "" : m.photoUrl).trim();
+            if (url.isEmpty() && m.uid != null) {
+                String cached = resolvedPhotoUrlsByUid.get(m.uid.trim());
+                if (cached != null && !cached.trim().isEmpty()) url = cached;
+                else maybeLookupPhotoUrlForMember(m.uid);
+            }
+            if (m.uid != null && !m.uid.trim().isEmpty()) maybeLookupPhotoB64ForMember(m.uid);
+
+            boolean loaded = false;
+            if (!photoUri.isEmpty()) {
                 try {
-                    h.avatar.setImageTintList(null);
-                    h.avatar.setImageURI(Uri.parse(myPhotoUri));
-                } catch (Exception e) {
-                    h.avatar.setImageTintList(android.content.res.ColorStateList.valueOf(androidx.core.content.ContextCompat.getColor(h.itemView.getContext(), R.color.white)));
-                    h.avatar.setImageResource(R.drawable.ic_avatar);
+                    h.avatar.setImageURI(Uri.parse(photoUri));
+                    if (h.avatar.getDrawable() != null) loaded = true;
+                } catch (Exception ignored) {
                 }
-            } else {
-                h.avatar.setImageTintList(android.content.res.ColorStateList.valueOf(androidx.core.content.ContextCompat.getColor(h.itemView.getContext(), R.color.white)));
-                h.avatar.setImageResource(R.drawable.ic_avatar);
-                String b64 = (m.uid != null && m.uid.trim().equals(myUid))
-                        ? myPhotoB64
-                        : String.valueOf(m.photoB64 == null ? "" : m.photoB64).trim();
-                if (b64.isEmpty() && m.uid != null) {
-                    String cachedB64 = resolvedPhotoB64ByUid.get(m.uid.trim());
-                    if (cachedB64 != null && !cachedB64.trim().isEmpty()) b64 = cachedB64.trim();
-                }
+            }
+            if (!loaded && !b64.isEmpty()) {
                 Bitmap b = decodeBase64Avatar(b64);
                 if (b != null) {
-                    h.avatar.setImageTintList(null);
                     h.avatar.setImageBitmap(b);
-                } else {
-                    String url = (m.uid != null && m.uid.trim().equals(myUid)) ? myPhotoUrl : m.photoUrl;
-                    if ((url == null || url.trim().isEmpty()) && m.uid != null) {
-                        String cached = resolvedPhotoUrlsByUid.get(m.uid.trim());
-                        if (cached != null && !cached.trim().isEmpty()) url = cached;
-                        else maybeLookupPhotoUrlForMember(m.uid);
-                    }
-                    if (m.uid != null && !m.uid.trim().isEmpty()) maybeLookupPhotoB64ForMember(m.uid);
+                    loaded = true;
+                }
+            }
+            if (!loaded) {
+                h.avatar.setImageResource(R.drawable.ic_avatar);
+                if (!url.isEmpty()) {
                     maybeLoadRemoteAvatarInto(h.avatar, url);
                 }
             }
@@ -2436,6 +2441,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
             if (bmp == null) return;
             Object tag = view.getTag();
             if (tag == null || !url.equals(tag.toString())) return;
+            view.setImageTintList(null);
             view.setImageBitmap(bmp);
         });
     }
@@ -2700,14 +2706,6 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                 .setCancelable(true)
                 .create();
 
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-            dialog.getWindow().setLayout(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            );
-        }
-
         btnCancel.setOnClickListener(v -> dialog.dismiss());
 
         progress.setVisibility(View.VISIBLE);
@@ -2792,6 +2790,16 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
         });
 
         dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+            int width = Math.min((int) (screenWidth * 0.88f), dp(this, 380));
+            dialog.getWindow().setLayout(
+                width,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            dialog.getWindow().setGravity(android.view.Gravity.CENTER);
+        }
     }
 }
 

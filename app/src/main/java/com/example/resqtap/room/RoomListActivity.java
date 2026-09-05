@@ -233,14 +233,6 @@ public class RoomListActivity extends BaseActivity {
                 .setCancelable(true)
                 .create();
 
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-            dialog.getWindow().setLayout(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            );
-        }
-
         btnCancel.setOnClickListener(v -> dialog.dismiss());
 
         progress.setVisibility(View.VISIBLE);
@@ -320,6 +312,17 @@ public class RoomListActivity extends BaseActivity {
         });
 
         dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+            int maxPx = Math.round(380 * getResources().getDisplayMetrics().density);
+            int width = Math.min((int) (screenWidth * 0.88f), maxPx);
+            dialog.getWindow().setLayout(
+                width,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            dialog.getWindow().setGravity(android.view.Gravity.CENTER);
+        }
     }
 
     /** Aktiviti aktif dan sedia untuk interaksi pengguna. */

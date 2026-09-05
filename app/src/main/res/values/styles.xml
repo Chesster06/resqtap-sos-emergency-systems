@@ -70,9 +70,16 @@
         <item name="strokeWidth">0dp</item>
     </style>
 
+    <style name="ShapeAppearanceOverlay.ResQTap.Dialog" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>
+    </style>
+
     <style name="ThemeOverlay.ResQTap.AlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
-        <item name="android:background">@color/panel</item>
-        <item name="android:windowBackground">@color/panel</item>
+        <item name="android:background">@android:color/transparent</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="shapeAppearance">@style/ShapeAppearanceOverlay.ResQTap.Dialog</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearanceOverlay.ResQTap.Dialog</item>
         <item name="colorSurface">@color/panel</item>
         <item name="colorSurfaceContainer">@color/panel</item>
         <item name="colorSurfaceContainerHigh">@color/panel</item>
