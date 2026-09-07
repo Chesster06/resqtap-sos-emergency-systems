@@ -324,39 +324,7 @@ public abstract class BaseActivity extends AppCompatActivity {
 
     /** Fungsi untuk startSupportClaimListener. */
     private void startSupportClaimListener(FirebaseUser user) {
-        if (supportClaimListener != null || user == null) return;
-
-        supportClaimBaselineLoaded = false;
-        lastSupportClaimedAt = 0L;
-        supportClaimRef = FirebaseDatabase
-                .getInstance(FirebaseRoomClient.DATABASE_URL)
-                .getReference()
-                .child("supportChats")
-                .child(user.getUid())
-                .child("meta")
-                .child("claimedAt");
-        supportClaimListener = new ValueEventListener() {
-            /** Callback apabila data Firebase Realtime Database berubah. */
-    @Override
-            public void onDataChange(DataSnapshot snapshot) {
-                long claimedAt = asLong(snapshot == null ? null : snapshot.getValue());
-                if (!supportClaimBaselineLoaded) {
-                    supportClaimBaselineLoaded = true;
-                    lastSupportClaimedAt = claimedAt;
-                    return;
-                }
-                if (claimedAt > 0L && claimedAt > lastSupportClaimedAt) {
-                    lastSupportClaimedAt = claimedAt;
-                    android.widget.Toast.makeText(BaseActivity.this, R.string.support_livechat_ticket_claimed, android.widget.Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            /** Callback sekiranya operasi Firebase dibatalkan atau gagal. */
-    @Override
-            public void onCancelled(DatabaseError error) {
-            }
-        };
-        supportClaimRef.addValueEventListener(supportClaimListener);
+        // Pop-up "Agent has been claimed your ticket" dimatikan atas permintaan LO
     }
 
     /** Fungsi untuk stopSupportClaimListener. */

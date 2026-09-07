@@ -1870,8 +1870,14 @@ code {
   justify-content: flex-end;
 }
 
-.livechat-message.from-user {
+.livechat-message.from-user,
+.livechat-message.from-ai {
   justify-content: flex-start;
+}
+
+.livechat-message.from-system {
+  justify-content: center;
+  margin: 10px 0;
 }
 
 .livechat-bubble {
@@ -1887,6 +1893,45 @@ code {
 .livechat-message.from-admin .livechat-bubble {
   border-color: #d7d1ff;
   background: #f0edff;
+}
+
+.livechat-message.from-ai .livechat-bubble {
+  border-color: #38bdf8;
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
+.livechat-message.from-system .livechat-bubble {
+  border-color: rgba(230, 0, 103, 0.25);
+  background: #fff1f6;
+  color: #be185d;
+  font-size: 0.88rem;
+  text-align: center;
+  max-width: min(560px, 85%);
+}
+
+.badge-ai-pill {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-radius: 999px;
+  background: #0ea5e9;
+  color: #ffffff;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.badge-system-pill {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-radius: 999px;
+  background: #ec4899;
+  color: #ffffff;
+  margin-left: 4px;
+  vertical-align: middle;
 }
 
 .livechat-sender,
@@ -2686,8 +2731,8 @@ body.detail-resizing {
 }
 
 .highlight-creator-box {
-  background: #F8FAFC;
-  border: 1px solid #EEF0F4;
+  background: var(--panel-soft, #F8FAFC);
+  border: 1px solid var(--line, #EEF0F4);
   border-radius: 16px;
   padding: 20px 22px;
   display: flex;
@@ -2699,7 +2744,7 @@ body.detail-resizing {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #1C1E21;
+  color: var(--ink, #1C1E21);
   font-size: 0.95rem;
 }
 
@@ -2804,8 +2849,8 @@ body.detail-resizing {
 }
 
 .highlight-item-card {
-  background: #FFFFFF;
-  border: 1px solid #EEF0F4;
+  background: var(--panel, #FFFFFF);
+  border: 1px solid var(--line, #EEF0F4);
   border-radius: 16px;
   overflow: hidden;
   display: flex;
@@ -3003,9 +3048,9 @@ body.detail-resizing {
   grid-column: 1 / -1;
   padding: 48px 24px;
   text-align: center;
-  background: #FFFFFF;
+  background: var(--panel-soft, #FFFFFF);
   border-radius: 16px;
-  border: 2px dashed #CBD5E1;
+  border: 2px dashed var(--line, #CBD5E1);
 }
 
 body.public-site-active {
@@ -5072,27 +5117,27 @@ body.admin-site-active {
     #F6F7FB;
 }
 
-.auth-card,
-.metric-card,
-.panel,
-.detail-panel,
-.search-shell,
-.secondary-button,
-.small-button,
-.category-tabs,
-.pagination-bar,
-.livechat-thread-pane,
-.livechat-conversation,
-.attachment-viewer-shell,
-.setup-box {
+body:not(.dark-mode) .auth-card,
+body:not(.dark-mode) .metric-card,
+body:not(.dark-mode) .panel,
+body:not(.dark-mode) .detail-panel,
+body:not(.dark-mode) .search-shell,
+body:not(.dark-mode) .secondary-button,
+body:not(.dark-mode) .small-button,
+body:not(.dark-mode) .category-tabs,
+body:not(.dark-mode) .pagination-bar,
+body:not(.dark-mode) .livechat-thread-pane,
+body:not(.dark-mode) .livechat-conversation,
+body:not(.dark-mode) .attachment-viewer-shell,
+body:not(.dark-mode) .setup-box {
   border-color: #EEF0F4;
   background: #FFFFFF;
   color: #1C1E21;
   box-shadow: 0 4px 18px rgba(28, 30, 33, 0.03);
 }
 
-.auth-card,
-.attachment-viewer-shell {
+body:not(.dark-mode) .auth-card,
+body:not(.dark-mode) .attachment-viewer-shell {
   border-color: #EEF0F4;
   background: #FFFFFF;
   backdrop-filter: blur(20px);
@@ -5182,21 +5227,21 @@ th,
   color: #64748B;
 }
 
-.field input,
-.field textarea,
-.field select,
-.search-input,
-.inline-form input,
-.category-tab,
-.livechat-thread,
-.livechat-conversation-header,
-.livechat-bubble,
-.list-item,
-.avatar,
-.member-row,
-.contact-row,
-.report-attachment-card,
-.attachment-viewer-body {
+body:not(.dark-mode) .field input,
+body:not(.dark-mode) .field textarea,
+body:not(.dark-mode) .field select,
+body:not(.dark-mode) .search-input,
+body:not(.dark-mode) .inline-form input,
+body:not(.dark-mode) .category-tab,
+body:not(.dark-mode) .livechat-thread,
+body:not(.dark-mode) .livechat-conversation-header,
+body:not(.dark-mode) .livechat-bubble,
+body:not(.dark-mode) .list-item,
+body:not(.dark-mode) .avatar,
+body:not(.dark-mode) .member-row,
+body:not(.dark-mode) .contact-row,
+body:not(.dark-mode) .report-attachment-card,
+body:not(.dark-mode) .attachment-viewer-body {
   border-color: #EEF0F4;
   background: #FFFFFF;
   color: #1C1E21;
@@ -5263,164 +5308,166 @@ body.admin-site-active {
   --line-strong: #E2E5EB;
 }
 
-body.admin-site-active .workspace,
-body.admin-site-active .app-shell,
-body.admin-site-active .auth-screen {
+body.admin-site-active:not(.dark-mode) .workspace,
+body.admin-site-active:not(.dark-mode) .app-shell,
+body.admin-site-active:not(.dark-mode) .auth-screen {
   background: #F6F7FB;
   color: #1C1E21;
 }
 
-body.admin-site-active .panel,
-body.admin-site-active .metric-card,
-body.admin-site-active .detail-panel,
-body.admin-site-active .auth-card,
-body.admin-site-active .search-shell,
-body.admin-site-active .setup-box,
-body.admin-site-active .livechat-thread-pane,
-body.admin-site-active .livechat-conversation,
-body.admin-site-active .attachment-viewer-shell {
+body.admin-site-active:not(.dark-mode) .panel,
+body.admin-site-active:not(.dark-mode) .metric-card,
+body.admin-site-active:not(.dark-mode) .detail-panel,
+body.admin-site-active:not(.dark-mode) .auth-card,
+body.admin-site-active:not(.dark-mode) .search-shell,
+body.admin-site-active:not(.dark-mode) .setup-box,
+body.admin-site-active:not(.dark-mode) .livechat-thread-pane,
+body.admin-site-active:not(.dark-mode) .livechat-conversation,
+body.admin-site-active:not(.dark-mode) .attachment-viewer-shell {
   border-color: #EEF0F4;
   background: #FFFFFF;
   color: #1C1E21;
 }
 
-body.admin-site-active .panel-header,
-body.admin-site-active .dashboard-toolbar,
-body.admin-site-active .dashboard-date-pill,
-body.admin-site-active .page-size-field,
-body.admin-site-active .category-tabs,
-body.admin-site-active .pagination-bar,
-body.admin-site-active .livechat-conversation-header,
-body.admin-site-active .livechat-reply-form,
-body.admin-site-active .livechat-empty.inline,
-body.admin-site-active .attachment-viewer-body {
+body.admin-site-active:not(.dark-mode) .panel-header,
+body.admin-site-active:not(.dark-mode) .dashboard-toolbar {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+body.admin-site-active:not(.dark-mode) .page-size-field,
+body.admin-site-active:not(.dark-mode) .category-tabs,
+body.admin-site-active:not(.dark-mode) .pagination-bar,
+body.admin-site-active:not(.dark-mode) .livechat-reply-form,
+body.admin-site-active:not(.dark-mode) .livechat-empty.inline,
+body.admin-site-active:not(.dark-mode) .attachment-viewer-body {
   border-color: #EEF0F4;
   background: #F6F7FB;
   color: #1C1E21;
   box-shadow: none;
 }
 
-body.admin-site-active .field input,
-body.admin-site-active .field textarea,
-body.admin-site-active .field select,
-body.admin-site-active .search-input,
-body.admin-site-active .inline-form input,
-body.admin-site-active .livechat-reply-form textarea,
-body.admin-site-active .dashboard-range-select,
-body.admin-site-active .page-size-field select {
+body.admin-site-active:not(.dark-mode) .field input,
+body.admin-site-active:not(.dark-mode) .field textarea,
+body.admin-site-active:not(.dark-mode) .field select,
+body.admin-site-active:not(.dark-mode) .search-input,
+body.admin-site-active:not(.dark-mode) .inline-form input,
+body.admin-site-active:not(.dark-mode) .livechat-reply-form textarea,
+body.admin-site-active:not(.dark-mode) .page-size-field select {
   border-color: #EEF0F4;
   background: #FFFFFF;
   color: #1C1E21;
 }
 
-body.admin-site-active .field input::placeholder,
-body.admin-site-active .field textarea::placeholder,
-body.admin-site-active .search-input::placeholder,
-body.admin-site-active .inline-form input::placeholder,
-body.admin-site-active .livechat-reply-form textarea::placeholder {
+body.admin-site-active:not(.dark-mode) .field input::placeholder,
+body.admin-site-active:not(.dark-mode) .field textarea::placeholder,
+body.admin-site-active:not(.dark-mode) .search-input::placeholder,
+body.admin-site-active:not(.dark-mode) .inline-form input::placeholder,
+body.admin-site-active:not(.dark-mode) .livechat-reply-form textarea::placeholder {
   color: #8E95A2;
 }
 
-body.admin-site-active select option {
+body.admin-site-active:not(.dark-mode) select option {
   background: #FFFFFF;
   color: #1C1E21;
 }
 
-body.admin-site-active .secondary-button,
-body.admin-site-active .small-button,
-body.admin-site-active .category-tab,
-body.admin-site-active .livechat-thread,
-body.admin-site-active .livechat-bubble,
-body.admin-site-active .list-item,
-body.admin-site-active .avatar,
-body.admin-site-active .member-row,
-body.admin-site-active .contact-row,
-body.admin-site-active .report-attachment-card,
-body.admin-site-active .livechat-selected-attachment,
-body.admin-site-active .livechat-attachment {
+body.admin-site-active:not(.dark-mode) .secondary-button,
+body.admin-site-active:not(.dark-mode) .small-button,
+body.admin-site-active:not(.dark-mode) .category-tab,
+body.admin-site-active:not(.dark-mode) .livechat-thread,
+body.admin-site-active:not(.dark-mode) .livechat-bubble,
+body.admin-site-active:not(.dark-mode) .list-item,
+body.admin-site-active:not(.dark-mode) .avatar,
+body.admin-site-active:not(.dark-mode) .member-row,
+body.admin-site-active:not(.dark-mode) .contact-row,
+body.admin-site-active:not(.dark-mode) .report-attachment-card,
+body.admin-site-active:not(.dark-mode) .livechat-selected-attachment,
+body.admin-site-active:not(.dark-mode) .livechat-attachment {
   border-color: #EEF0F4;
   background: #FFFFFF;
   color: #1C1E21;
 }
 
-body.admin-site-active .secondary-button:hover,
-body.admin-site-active .small-button:hover,
-body.admin-site-active .category-tab:hover,
-body.admin-site-active .livechat-thread:hover,
-body.admin-site-active .livechat-thread.is-active,
-body.admin-site-active .report-attachment-button:hover,
-body.admin-site-active tr:hover td {
+body.admin-site-active:not(.dark-mode) .secondary-button:hover,
+body.admin-site-active:not(.dark-mode) .small-button:hover,
+body.admin-site-active:not(.dark-mode) .category-tab:hover,
+body.admin-site-active:not(.dark-mode) .livechat-thread:hover,
+body.admin-site-active:not(.dark-mode) .livechat-thread.is-active,
+body.admin-site-active:not(.dark-mode) .report-attachment-button:hover,
+body.admin-site-active:not(.dark-mode) tr:hover td {
   border-color: #FFD0E2;
   background: #FFE4EE;
   color: #E60067;
 }
 
-body.admin-site-active .category-tab.is-active,
-body.admin-site-active .small-button.is-current {
+body.admin-site-active:not(.dark-mode) .category-tab.is-active,
+body.admin-site-active:not(.dark-mode) .small-button.is-current {
   border-color: #FFD0E2;
   background: #FFE4EE;
   color: #E60067;
   font-weight: 800;
 }
 
-body.admin-site-active .category-tab-count,
-body.admin-site-active .status-pill {
+body.admin-site-active:not(.dark-mode) .category-tab-count,
+body.admin-site-active:not(.dark-mode) .status-pill {
   background: #FFE4EE;
   color: #E60067;
 }
 
-body.admin-site-active .category-tab.is-active .category-tab-count {
+body.admin-site-active:not(.dark-mode) .category-tab.is-active .category-tab-count {
   background: #E60067;
   color: #FFFFFF;
 }
 
-body.admin-site-active .livechat-message.from-admin .livechat-bubble {
+body.admin-site-active:not(.dark-mode) .livechat-message.from-admin .livechat-bubble {
   border-color: #FFD0E2;
   background: #FFE4EE;
   color: #1C1E21;
 }
 
-body.admin-site-active .livechat-sender,
-body.admin-site-active .livechat-bubble time,
-body.admin-site-active .muted,
-body.admin-site-active .cell-meta,
-body.admin-site-active .cell-main span,
-body.admin-site-active .list-item span {
+body.admin-site-active:not(.dark-mode) .livechat-sender,
+body.admin-site-active:not(.dark-mode) .livechat-bubble time,
+body.admin-site-active:not(.dark-mode) .muted,
+body.admin-site-active:not(.dark-mode) .cell-meta,
+body.admin-site-active:not(.dark-mode) .cell-main span,
+body.admin-site-active:not(.dark-mode) .list-item span {
   color: #8E95A2;
 }
 
-body.admin-site-active .cell-main strong,
-body.admin-site-active .list-item strong,
-body.admin-site-active .livechat-empty strong,
-body.admin-site-active .detail-empty strong,
-body.admin-site-active .kv span:last-child,
-body.admin-site-active .detail-text,
-body.admin-site-active td {
+body.admin-site-active:not(.dark-mode) .cell-main strong,
+body.admin-site-active:not(.dark-mode) .list-item strong,
+body.admin-site-active:not(.dark-mode) .livechat-empty strong,
+body.admin-site-active:not(.dark-mode) .detail-empty strong,
+body.admin-site-active:not(.dark-mode) .kv span:last-child,
+body.admin-site-active:not(.dark-mode) .detail-text,
+body.admin-site-active:not(.dark-mode) td {
   color: #1C1E21;
 }
 
-body.admin-site-active th {
+body.admin-site-active:not(.dark-mode) th {
   color: #64748B;
   background: #F6F7FB;
 }
 
-body.admin-site-active .livechat-image-preview,
-body.admin-site-active .report-attachment-preview,
-body.admin-site-active .attachment-viewer-image,
-body.admin-site-active .attachment-viewer-frame {
+body.admin-site-active:not(.dark-mode) .livechat-image-preview,
+body.admin-site-active:not(.dark-mode) .report-attachment-preview,
+body.admin-site-active:not(.dark-mode) .attachment-viewer-image,
+body.admin-site-active:not(.dark-mode) .attachment-viewer-frame {
   border-color: #EEF0F4;
   background: #F6F7FB;
 }
 
-body.admin-site-active .livechat-selected-attachment strong {
+body.admin-site-active:not(.dark-mode) .livechat-selected-attachment strong {
   color: #1C1E21;
 }
 
-body.admin-site-active .livechat-selected-attachment button {
+body.admin-site-active:not(.dark-mode) .livechat-selected-attachment button {
   color: #64748B;
 }
 
-body.admin-site-active .livechat-selected-attachment button:hover {
+body.admin-site-active:not(.dark-mode) .livechat-selected-attachment button:hover {
   background: #FFE4EE;
   color: #E60067;
 }
@@ -6313,7 +6360,7 @@ body.admin-site-active .auth-screen {
   box-sizing: border-box;
 }
 
-/* When on admin route, ensure public site is hidden immediately and auth screen is shown */
+/* When on admin route, ensure public site is hidden immediately */
 html.admin-route-loading #publicSite,
 html.admin-route-loading .public-site,
 body.admin-site-active #publicSite,
@@ -6321,11 +6368,7 @@ body.admin-site-active .public-site {
   display: none !important;
 }
 
-html.admin-route-loading #authScreen.hidden {
-  display: flex !important;
-}
-
-/* Enforce strict hidden specificity so deniedScreen and authScreen never overlap */
+/* Enforce strict hidden specificity so deniedScreen, authScreen, and appShell properly hide when requested */
 .auth-screen.hidden,
 body.admin-site-active .auth-screen.hidden,
 #authScreen.hidden,
@@ -6855,4 +6898,985 @@ body.admin-site-active #loginButton.auth-login-action-btn:disabled {
     padding: 28px 22px 24px !important;
   }
 }
+
+/* ==========================================================================
+   SIDEBAR DANGER BUTTON (SIGN OUT)
+   ========================================================================== */
+.sidebar .nav-button.nav-button-danger {
+  color: #E11D48 !important;
+}
+.sidebar .nav-button.nav-button-danger svg,
+.sidebar .nav-button.nav-button-danger i {
+  color: #E11D48 !important;
+}
+.sidebar .nav-button.nav-button-danger:hover {
+  background: #FFF1F2 !important;
+  border-color: #FFE4E6 !important;
+  color: #BE123C !important;
+}
+.sidebar .nav-button.nav-button-danger:hover svg,
+.sidebar .nav-button.nav-button-danger:hover i {
+  color: #BE123C !important;
+}
+
+/* ==========================================================================
+   THEME TOGGLE BUTTON
+   ========================================================================== */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.theme-toggle-btn i,
+.theme-toggle-btn svg {
+  width: 17px;
+  height: 17px;
+  color: #64748B;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+}
+.theme-toggle-btn:hover i,
+.theme-toggle-btn:hover svg {
+  transform: rotate(20deg) scale(1.12);
+  color: #E60067;
+}
+
+/* ==========================================================================
+   RESQTAP ADMIN DARK MODE SYSTEM
+   ========================================================================== */
+:root.dark-mode,
+html.dark-mode,
+body.dark-mode {
+  --page: #0B0F17;
+  --shell: #0B0F17;
+  --sidebar: #111827;
+  --sidebar-soft: rgba(230, 0, 103, 0.16);
+  --panel: #111827;
+  --panel-soft: #182234;
+  --ink: #F9FAFB;
+  --muted: #94A3B8;
+  --faint: #64748B;
+  --line: #1F2937;
+  --line-strong: #374151;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --soft-shadow: 0 4px 20px rgba(230, 0, 103, 0.15);
+  color-scheme: dark;
+}
+
+html.dark-mode {
+  background: #0B0F17 !important;
+}
+
+body.dark-mode {
+  background: #0B0F17 !important;
+  color: #F9FAFB !important;
+}
+
+/* App Shell & Workspace in Dark Mode */
+body.dark-mode .app-shell,
+body.dark-mode .workspace,
+body.dark-mode.admin-site-active .workspace,
+body.dark-mode.admin-site-active .app-shell {
+  background: #0B0F17 !important;
+  color: #F9FAFB !important;
+}
+
+/* Sidebar in Dark Mode */
+body.dark-mode .sidebar {
+  background: #111827 !important;
+  border-right-color: #1F2937 !important;
+}
+
+body.dark-mode .sidebar:hover {
+  background: #111827 !important;
+  box-shadow: 14px 0 40px rgba(0, 0, 0, 0.55), 0 0 0 1px #1F2937 !important;
+}
+
+body.dark-mode .sidebar .sidebar-brand {
+  border-bottom-color: #1F2937 !important;
+}
+
+body.dark-mode .sidebar-brand strong {
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .sidebar-brand span {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .sidebar .nav-group-label {
+  color: #64748B !important;
+}
+
+body.dark-mode .sidebar .nav-button {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .sidebar .nav-button svg,
+body.dark-mode .sidebar .nav-button i {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .sidebar .nav-button:hover {
+  background: #182234 !important;
+  border-color: #27354A !important;
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .sidebar .nav-button:hover svg,
+body.dark-mode .sidebar .nav-button:hover i {
+  color: #F9FAFB !important;
+}
+
+/* Sidebar Danger Button in Dark Mode */
+body.dark-mode .sidebar .nav-button.nav-button-danger {
+  color: #F87171 !important;
+}
+body.dark-mode .sidebar .nav-button.nav-button-danger svg,
+body.dark-mode .sidebar .nav-button.nav-button-danger i {
+  color: #F87171 !important;
+}
+body.dark-mode .sidebar .nav-button.nav-button-danger:hover {
+  background: rgba(239, 68, 68, 0.18) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  color: #FCA5A5 !important;
+}
+body.dark-mode .sidebar .nav-button.nav-button-danger:hover svg,
+body.dark-mode .sidebar .nav-button.nav-button-danger:hover i {
+  color: #FCA5A5 !important;
+}
+
+/* Sidebar Nav Button Active States in Dark Mode */
+body.dark-mode .nav-button[data-view="dashboard"].is-active,
+body.dark-mode .nav-button[data-view="dashboard"]:hover {
+  background: rgba(230, 0, 103, 0.18) !important;
+  border-color: rgba(230, 0, 103, 0.4) !important;
+  color: #FF4081 !important;
+}
+body.dark-mode .nav-button[data-view="dashboard"].is-active svg,
+body.dark-mode .nav-button[data-view="dashboard"]:hover svg { color: #FF4081 !important; }
+
+body.dark-mode .nav-button[data-view="users"].is-active,
+body.dark-mode .nav-button[data-view="users"]:hover {
+  background: rgba(37, 99, 235, 0.18) !important;
+  border-color: rgba(37, 99, 235, 0.4) !important;
+  color: #60A5FA !important;
+}
+body.dark-mode .nav-button[data-view="users"].is-active svg,
+body.dark-mode .nav-button[data-view="users"]:hover svg { color: #60A5FA !important; }
+
+body.dark-mode .nav-button[data-view="rooms"].is-active,
+body.dark-mode .nav-button[data-view="rooms"]:hover {
+  background: rgba(2, 132, 199, 0.18) !important;
+  border-color: rgba(2, 132, 199, 0.4) !important;
+  color: #38BDF8 !important;
+}
+body.dark-mode .nav-button[data-view="rooms"].is-active svg,
+body.dark-mode .nav-button[data-view="rooms"]:hover svg { color: #38BDF8 !important; }
+
+body.dark-mode .nav-button[data-view="sos"].is-active,
+body.dark-mode .nav-button[data-view="sos"]:hover {
+  background: rgba(225, 29, 72, 0.18) !important;
+  border-color: rgba(225, 29, 72, 0.4) !important;
+  color: #FB7185 !important;
+}
+body.dark-mode .nav-button[data-view="sos"].is-active svg,
+body.dark-mode .nav-button[data-view="sos"]:hover svg { color: #FB7185 !important; }
+
+body.dark-mode .nav-button[data-view="reports"].is-active,
+body.dark-mode .nav-button[data-view="reports"]:hover {
+  background: rgba(234, 88, 12, 0.18) !important;
+  border-color: rgba(234, 88, 12, 0.4) !important;
+  color: #FB923C !important;
+}
+body.dark-mode .nav-button[data-view="reports"].is-active svg,
+body.dark-mode .nav-button[data-view="reports"]:hover svg { color: #FB923C !important; }
+
+body.dark-mode .nav-button[data-view="notices"].is-active,
+body.dark-mode .nav-button[data-view="notices"]:hover {
+  background: rgba(217, 119, 6, 0.18) !important;
+  border-color: rgba(217, 119, 6, 0.4) !important;
+  color: #FBBF24 !important;
+}
+body.dark-mode .nav-button[data-view="notices"].is-active svg,
+body.dark-mode .nav-button[data-view="notices"]:hover svg { color: #FBBF24 !important; }
+
+body.dark-mode .nav-button[data-view="livechat"].is-active,
+body.dark-mode .nav-button[data-view="livechat"]:hover {
+  background: rgba(5, 150, 105, 0.18) !important;
+  border-color: rgba(5, 150, 105, 0.4) !important;
+  color: #34D399 !important;
+}
+body.dark-mode .nav-button[data-view="livechat"].is-active svg,
+body.dark-mode .nav-button[data-view="livechat"]:hover svg { color: #34D399 !important; }
+
+body.dark-mode .nav-button[data-view="aichat"].is-active,
+body.dark-mode .nav-button[data-view="aichat"]:hover {
+  background: rgba(124, 58, 237, 0.18) !important;
+  border-color: rgba(124, 58, 237, 0.4) !important;
+  color: #A78BFA !important;
+}
+body.dark-mode .nav-button[data-view="aichat"].is-active svg,
+body.dark-mode .nav-button[data-view="aichat"]:hover svg { color: #A78BFA !important; }
+
+body.dark-mode .nav-button[data-view="highlights"].is-active,
+body.dark-mode .nav-button[data-view="highlights"]:hover {
+  background: rgba(219, 39, 119, 0.18) !important;
+  border-color: rgba(219, 39, 119, 0.4) !important;
+  color: #F472B6 !important;
+}
+body.dark-mode .nav-button[data-view="highlights"].is-active svg,
+body.dark-mode .nav-button[data-view="highlights"]:hover svg { color: #F472B6 !important; }
+
+body.dark-mode .nav-button[data-view="logs"].is-active,
+body.dark-mode .nav-button[data-view="logs"]:hover {
+  background: rgba(8, 145, 178, 0.18) !important;
+  border-color: rgba(8, 145, 178, 0.4) !important;
+  color: #22D3EE !important;
+}
+body.dark-mode .nav-button[data-view="logs"].is-active svg,
+body.dark-mode .nav-button[data-view="logs"]:hover svg { color: #22D3EE !important; }
+
+body.dark-mode .nav-button[data-view="admins"].is-active,
+body.dark-mode .nav-button[data-view="admins"]:hover {
+  background: rgba(79, 70, 229, 0.18) !important;
+  border-color: rgba(79, 70, 229, 0.4) !important;
+  color: #818CF8 !important;
+}
+body.dark-mode .nav-button[data-view="admins"].is-active svg,
+body.dark-mode .nav-button[data-view="admins"]:hover svg { color: #818CF8 !important; }
+
+/* Topbar & Search in Dark Mode */
+body.dark-mode .topbar-left h2 {
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .search-shell {
+  background: #111827 !important;
+  border-color: #1F2937 !important;
+  color: #94A3B8 !important;
+}
+body.dark-mode .search-shell:focus-within {
+  border-color: #E60067 !important;
+  box-shadow: 0 0 0 3px rgba(230, 0, 103, 0.25) !important;
+}
+body.dark-mode .search-shell .search-input {
+  color: #F9FAFB !important;
+}
+body.dark-mode .search-shell .search-input::placeholder {
+  color: #64748B !important;
+}
+
+/* Secondary & Danger Buttons in Dark Mode */
+body.dark-mode .secondary-button,
+body.dark-mode .small-button,
+body.dark-mode.admin-site-active .secondary-button,
+body.dark-mode.admin-site-active .small-button {
+  background: #161F30 !important;
+  border-color: #27354A !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+}
+
+body.dark-mode .secondary-button:hover,
+body.dark-mode .small-button:hover,
+body.dark-mode.admin-site-active .secondary-button:hover,
+body.dark-mode.admin-site-active .small-button:hover {
+  background: #1E293B !important;
+  border-color: #38BDF8 !important;
+  color: #38BDF8 !important;
+  box-shadow: 0 6px 16px rgba(56, 189, 248, 0.15) !important;
+}
+
+body.dark-mode .secondary-button.danger,
+body.dark-mode .small-button.danger,
+body.dark-mode.admin-site-active .secondary-button.danger,
+body.dark-mode.admin-site-active .small-button.danger {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #F87171 !important;
+}
+
+body.dark-mode .secondary-button.danger:hover,
+body.dark-mode .small-button.danger:hover,
+body.dark-mode.admin-site-active .secondary-button.danger:hover,
+body.dark-mode.admin-site-active .small-button.danger:hover {
+  background: rgba(239, 68, 68, 0.24) !important;
+  border-color: #EF4444 !important;
+  color: #FCA5A5 !important;
+}
+
+/* Theme Toggle Button Specifics in Dark Mode */
+body.dark-mode .theme-toggle-btn i,
+body.dark-mode .theme-toggle-btn svg {
+  color: #FBBF24 !important;
+}
+body.dark-mode .theme-toggle-btn:hover {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  color: #FBBF24 !important;
+}
+body.dark-mode .theme-toggle-btn:hover i,
+body.dark-mode .theme-toggle-btn:hover svg {
+  transform: rotate(45deg) scale(1.12);
+  color: #FDE047 !important;
+}
+
+/* Panels, Metric Cards & Detail Panels in Dark Mode */
+body.dark-mode .panel,
+body.dark-mode .metric-card,
+body.dark-mode .detail-panel,
+body.dark-mode .setup-box,
+body.dark-mode .livechat-thread-pane,
+body.dark-mode .livechat-conversation,
+body.dark-mode .attachment-viewer-shell,
+body.dark-mode.admin-site-active .panel,
+body.dark-mode.admin-site-active .metric-card,
+body.dark-mode.admin-site-active .detail-panel,
+body.dark-mode.admin-site-active .setup-box,
+body.dark-mode.admin-site-active .livechat-thread-pane,
+body.dark-mode.admin-site-active .livechat-conversation,
+body.dark-mode.admin-site-active .attachment-viewer-shell {
+  background: #111827 !important;
+  border-color: #1F2937 !important;
+  color: #F9FAFB !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.dark-mode .panel-header h3,
+body.dark-mode .metric-card strong,
+body.dark-mode .cell-main strong,
+body.dark-mode .list-item strong,
+body.dark-mode .detail-empty strong,
+body.dark-mode .livechat-empty strong,
+body.dark-mode .kv span:last-child {
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .dashboard-date-pill,
+body.dark-mode.admin-site-active .dashboard-date-pill {
+  background: #161F30 !important;
+  border-color: #27354A !important;
+  color: #F9FAFB !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+}
+body.dark-mode .dashboard-date-pill:hover,
+body.dark-mode.admin-site-active .dashboard-date-pill:hover {
+  background: #1E293B !important;
+  border-color: #38BDF8 !important;
+  color: #38BDF8 !important;
+}
+body.dark-mode .dashboard-date-pill i,
+body.dark-mode .dashboard-date-pill svg,
+body.dark-mode.admin-site-active .dashboard-date-pill i,
+body.dark-mode.admin-site-active .dashboard-date-pill svg {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .dashboard-range-select,
+body.dark-mode.admin-site-active .dashboard-range-select {
+  background: transparent !important;
+  border: 0 !important;
+  color: #F9FAFB !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+body.dark-mode .dashboard-range-select option,
+body.dark-mode.admin-site-active .dashboard-range-select option {
+  background: #161F30 !important;
+  color: #F9FAFB !important;
+}
+
+/* Stat cards dark gradient */
+body.dark-mode .stat-card.purple,
+body.dark-mode .stat-card.blue {
+  background: linear-gradient(135deg, #131B2E 0%, #1A2744 100%) !important;
+  border-color: #1E3A8A !important;
+}
+
+/* Tables in Dark Mode */
+body.dark-mode .table-shell,
+body.dark-mode .table-wrap {
+  border-color: #1F2937 !important;
+  background: #111827 !important;
+}
+
+body.dark-mode table,
+body.dark-mode .data-table {
+  background: #111827 !important;
+}
+
+body.dark-mode th,
+body.dark-mode.admin-site-active th {
+  background: #161F30 !important;
+  color: #94A3B8 !important;
+  border-bottom: 1px solid #1F2937 !important;
+}
+
+body.dark-mode td,
+body.dark-mode.admin-site-active td {
+  color: #E2E8F0 !important;
+  border-bottom: 1px solid #1F2937 !important;
+}
+
+body.dark-mode tr:hover td,
+body.dark-mode.admin-site-active tr:hover td {
+  background: #1A2438 !important;
+  color: #FFFFFF !important;
+}
+
+/* Tabs & Pagination in Dark Mode */
+body.dark-mode .category-tabs,
+body.dark-mode .pagination-bar,
+body.dark-mode .page-size-field,
+body.dark-mode.admin-site-active .category-tabs,
+body.dark-mode.admin-site-active .pagination-bar,
+body.dark-mode.admin-site-active .page-size-field {
+  background: #161F30 !important;
+  border-color: #1F2937 !important;
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .category-tab,
+body.dark-mode.admin-site-active .category-tab {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .category-tab:hover,
+body.dark-mode.admin-site-active .category-tab:hover {
+  background: #1E293B !important;
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .category-tab.is-active,
+body.dark-mode.admin-site-active .category-tab.is-active {
+  background: rgba(230, 0, 103, 0.2) !important;
+  border-color: rgba(230, 0, 103, 0.4) !important;
+  color: #FF4081 !important;
+}
+
+/* Forms and Inputs in Dark Mode */
+body.dark-mode .field input,
+body.dark-mode .field textarea,
+body.dark-mode .field select,
+body.dark-mode .inline-form input,
+body.dark-mode .page-size-field select,
+body.dark-mode.admin-site-active .field input,
+body.dark-mode.admin-site-active .field textarea,
+body.dark-mode.admin-site-active .field select,
+body.dark-mode.admin-site-active .inline-form input,
+body.dark-mode.admin-site-active .page-size-field select {
+  background: #141C2C !important;
+  border-color: #243048 !important;
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .field input:focus,
+body.dark-mode .field textarea:focus,
+body.dark-mode .field select:focus {
+  border-color: #E60067 !important;
+  box-shadow: 0 0 0 3px rgba(230, 0, 103, 0.25) !important;
+}
+
+/* Livechat in Dark Mode */
+body.dark-mode .livechat-thread,
+body.dark-mode.admin-site-active .livechat-thread {
+  background: #111827 !important;
+  border-color: #1F2937 !important;
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .livechat-thread:hover,
+body.dark-mode .livechat-thread.is-active,
+body.dark-mode.admin-site-active .livechat-thread:hover,
+body.dark-mode.admin-site-active .livechat-thread.is-active {
+  background: #182234 !important;
+  border-color: #27354A !important;
+}
+
+body.dark-mode .livechat-bubble,
+body.dark-mode.admin-site-active .livechat-bubble {
+  background: #1A2438 !important;
+  border-color: #27354A !important;
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .livechat-message.from-admin .livechat-bubble,
+body.dark-mode.admin-site-active .livechat-message.from-admin .livechat-bubble {
+  background: rgba(230, 0, 103, 0.18) !important;
+  border-color: rgba(230, 0, 103, 0.35) !important;
+  color: #FCE7F3 !important;
+}
+
+body.dark-mode .livechat-message.from-ai .livechat-bubble,
+body.dark-mode.admin-site-active .livechat-message.from-ai .livechat-bubble {
+  background: rgba(14, 165, 233, 0.16) !important;
+  border-color: rgba(56, 189, 248, 0.35) !important;
+  color: #bae6fd !important;
+}
+
+body.dark-mode .livechat-message.from-system .livechat-bubble,
+body.dark-mode.admin-site-active .livechat-message.from-system .livechat-bubble {
+  background: rgba(236, 72, 153, 0.15) !important;
+  border-color: rgba(236, 72, 153, 0.35) !important;
+  color: #fbcfe8 !important;
+}
+
+body.dark-mode .livechat-reply-form,
+body.dark-mode.admin-site-active .livechat-reply-form {
+  background: #161F30 !important;
+  border-color: #1F2937 !important;
+}
+
+body.dark-mode .livechat-reply-form textarea,
+body.dark-mode.admin-site-active .livechat-reply-form textarea {
+  background: #111827 !important;
+  border-color: #243048 !important;
+  color: #F9FAFB !important;
+}
+
+/* Livechat Header in Dark Mode */
+body.dark-mode .livechat-conversation-header,
+body.dark-mode.admin-site-active .livechat-conversation-header {
+  background: #161F30 !important;
+  border-bottom: 1px solid #1F2937 !important;
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .livechat-conversation-header h3,
+body.dark-mode.admin-site-active .livechat-conversation-header h3 {
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .livechat-conversation-header .muted,
+body.dark-mode.admin-site-active .livechat-conversation-header .muted,
+body.dark-mode #livechatSelectedSubtitle,
+body.dark-mode #aiChatSelectedSubtitle {
+  color: #94A3B8 !important;
+}
+
+/* Avatar in Dark Mode */
+body.dark-mode .avatar,
+body.dark-mode.admin-site-active .avatar {
+  background: #182234 !important;
+  border-color: #27354A !important;
+  color: #94A3B8 !important;
+}
+body.dark-mode .avatar i,
+body.dark-mode .avatar svg,
+body.dark-mode.admin-site-active .avatar i,
+body.dark-mode.admin-site-active .avatar svg {
+  color: #94A3B8 !important;
+}
+
+/* Status Pill in Dark Mode */
+body.dark-mode .status-pill,
+body.dark-mode.admin-site-active .status-pill {
+  background: rgba(230, 0, 103, 0.2) !important;
+  border: 1px solid rgba(230, 0, 103, 0.35) !important;
+  color: #FF4081 !important;
+}
+
+/* Livechat Empty State */
+body.dark-mode .livechat-empty,
+body.dark-mode.admin-site-active .livechat-empty,
+body.dark-mode .detail-empty,
+body.dark-mode.admin-site-active .detail-empty {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .livechat-empty strong,
+body.dark-mode.admin-site-active .livechat-empty strong,
+body.dark-mode .detail-empty strong,
+body.dark-mode.admin-site-active .detail-empty strong {
+  color: #F9FAFB !important;
+}
+
+/* Charts & Legends in Dark Mode */
+body.dark-mode .chart-grid-line {
+  stroke: #1F2937 !important;
+}
+body.dark-mode .chart-axis-text {
+  fill: #94A3B8 !important;
+}
+
+/* Donut Chart Center & Track */
+body.dark-mode .donut-center,
+body.dark-mode.admin-site-active .donut-center {
+  fill: #111827 !important;
+  stroke: #1F2937 !important;
+}
+body.dark-mode .donut-track,
+body.dark-mode.admin-site-active .donut-track {
+  stroke: #1F2937 !important;
+}
+
+/* Chart Legends (Usage Statistics Pills) */
+body.dark-mode .chart-legend-item,
+body.dark-mode.admin-site-active .chart-legend-item {
+  background: #161F30 !important;
+  border-color: #27354A !important;
+  color: #E2E8F0 !important;
+}
+body.dark-mode .chart-legend-item:hover,
+body.dark-mode.admin-site-active .chart-legend-item:hover {
+  background: #1E293B !important;
+  border-color: #38BDF8 !important;
+  color: #FFFFFF !important;
+}
+
+/* Feature Legends (Feature Usage List Pills) */
+body.dark-mode .feature-legend-item,
+body.dark-mode.admin-site-active .feature-legend-item {
+  background: #161F30 !important;
+  border-color: #27354A !important;
+  color: #E2E8F0 !important;
+}
+body.dark-mode .feature-legend-item strong,
+body.dark-mode.admin-site-active .feature-legend-item strong {
+  color: #F9FAFB !important;
+}
+body.dark-mode .feature-legend-item:hover,
+body.dark-mode.admin-site-active .feature-legend-item:hover {
+  background: #1E293B !important;
+  border-color: #38BDF8 !important;
+}
+
+/* Panel Header & Dashboard Toolbar in Dark Mode */
+body.dark-mode .panel-header,
+body.dark-mode.admin-site-active .panel-header,
+body.dark-mode .dashboard-toolbar,
+body.dark-mode.admin-site-active .dashboard-toolbar {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Metric Trends in Dark Mode */
+body.dark-mode .stat-card.purple .metric-trend,
+body.dark-mode .stat-card.blue .metric-trend {
+  background: rgba(37, 99, 235, 0.2) !important;
+  color: #60A5FA !important;
+}
+body.dark-mode .stat-card.green .metric-trend {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34D399 !important;
+}
+body.dark-mode .stat-card.red .metric-trend,
+body.dark-mode .stat-card.pink .metric-trend {
+  background: rgba(225, 29, 72, 0.2) !important;
+  color: #FB7185 !important;
+}
+
+/* Highlights Creator Box & Manager in Dark Mode */
+body.dark-mode .highlight-creator-box,
+body.dark-mode.admin-site-active .highlight-creator-box {
+  background: #111827 !important;
+  border-color: #1F2937 !important;
+  color: #F9FAFB !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.dark-mode .creator-header,
+body.dark-mode.admin-site-active .creator-header,
+body.dark-mode .creator-header strong,
+body.dark-mode.admin-site-active .creator-header strong {
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .highlight-creator-box .field span,
+body.dark-mode.admin-site-active .highlight-creator-box .field span,
+body.dark-mode .upload-label,
+body.dark-mode.admin-site-active .upload-label {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .banner-preview-box,
+body.dark-mode.admin-site-active .banner-preview-box {
+  background: #0B0F17 !important;
+  border-color: #27354A !important;
+}
+
+body.dark-mode .banner-upload-dropzone:hover .banner-preview-box,
+body.dark-mode.admin-site-active .banner-upload-dropzone:hover .banner-preview-box {
+  background: rgba(230, 0, 103, 0.08) !important;
+  border-color: #E60067 !important;
+}
+
+body.dark-mode .no-preview-placeholder span,
+body.dark-mode.admin-site-active .no-preview-placeholder span {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .no-preview-placeholder small,
+body.dark-mode.admin-site-active .no-preview-placeholder small {
+  color: #64748B !important;
+}
+
+body.dark-mode .panel-section-divider,
+body.dark-mode.admin-site-active .panel-section-divider {
+  border-top-color: #1F2937 !important;
+}
+
+body.dark-mode .section-title-wrap h4,
+body.dark-mode.admin-site-active .section-title-wrap h4 {
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .section-title-wrap i,
+body.dark-mode .section-title-wrap svg,
+body.dark-mode.admin-site-active .section-title-wrap i,
+body.dark-mode.admin-site-active .section-title-wrap svg {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .highlight-item-card,
+body.dark-mode.admin-site-active .highlight-item-card {
+  background: #111827 !important;
+  border-color: #1F2937 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-mode .highlight-item-card:hover,
+body.dark-mode.admin-site-active .highlight-item-card:hover {
+  border-color: #E60067 !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6) !important;
+}
+
+body.dark-mode .highlight-card-title,
+body.dark-mode.admin-site-active .highlight-card-title {
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .highlight-card-link,
+body.dark-mode.admin-site-active .highlight-card-link {
+  background: rgba(37, 99, 235, 0.16) !important;
+  border-color: rgba(37, 99, 235, 0.35) !important;
+  color: #60A5FA !important;
+}
+
+body.dark-mode .highlight-card-link:hover,
+body.dark-mode.admin-site-active .highlight-card-link:hover {
+  background: rgba(37, 99, 235, 0.28) !important;
+  color: #93C5FD !important;
+}
+
+body.dark-mode .highlight-card-nolink,
+body.dark-mode.admin-site-active .highlight-card-nolink {
+  color: #64748B !important;
+}
+
+body.dark-mode .highlight-card-actions,
+body.dark-mode.admin-site-active .highlight-card-actions {
+  border-top-color: #1F2937 !important;
+}
+
+body.dark-mode .action-pill-btn,
+body.dark-mode.admin-site-active .action-pill-btn {
+  background: #161F30 !important;
+  border-color: #27354A !important;
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .action-pill-btn.muted,
+body.dark-mode.admin-site-active .action-pill-btn.muted {
+  background: #161F30 !important;
+  border-color: #27354A !important;
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .action-pill-btn.muted:hover,
+body.dark-mode.admin-site-active .action-pill-btn.muted:hover {
+  background: #1E293B !important;
+  border-color: #38BDF8 !important;
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .action-pill-btn.success,
+body.dark-mode.admin-site-active .action-pill-btn.success {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #34D399 !important;
+}
+
+body.dark-mode .action-pill-btn.success:hover,
+body.dark-mode.admin-site-active .action-pill-btn.success:hover {
+  background: rgba(16, 185, 129, 0.3) !important;
+  color: #6EE7B7 !important;
+}
+
+body.dark-mode .action-pill-btn.danger,
+body.dark-mode.admin-site-active .action-pill-btn.danger {
+  background: rgba(239, 68, 68, 0.16) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  color: #F87171 !important;
+}
+
+body.dark-mode .action-pill-btn.danger:hover,
+body.dark-mode.admin-site-active .action-pill-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.3) !important;
+  color: #FCA5A5 !important;
+}
+
+body.dark-mode .empty-highlights-state,
+body.dark-mode.admin-site-active .empty-highlights-state {
+  background: #111827 !important;
+  border-color: #27354A !important;
+  color: #94A3B8 !important;
+}
+
+body.dark-mode .empty-highlights-state strong,
+body.dark-mode.admin-site-active .empty-highlights-state strong {
+  color: #F9FAFB !important;
+}
+
+/* Admins & Members List Rows in Dark Mode */
+body.dark-mode .member-row,
+body.dark-mode .list-item,
+body.dark-mode .contact-row,
+body.dark-mode.admin-site-active .member-row,
+body.dark-mode.admin-site-active .list-item,
+body.dark-mode.admin-site-active .contact-row {
+  background: #141C2C !important;
+  border-color: #1F2937 !important;
+  color: #F9FAFB !important;
+}
+body.dark-mode .member-row:hover,
+body.dark-mode .list-item:hover,
+body.dark-mode .contact-row:hover,
+body.dark-mode.admin-site-active .member-row:hover,
+body.dark-mode.admin-site-active .list-item:hover,
+body.dark-mode.admin-site-active .contact-row:hover {
+  background: #182234 !important;
+}
+body.dark-mode .member-row strong,
+body.dark-mode .list-item strong,
+body.dark-mode.admin-site-active .member-row strong,
+body.dark-mode.admin-site-active .list-item strong {
+  color: #F9FAFB !important;
+}
+body.dark-mode .member-row span,
+body.dark-mode .list-item span,
+body.dark-mode.admin-site-active .member-row span,
+body.dark-mode.admin-site-active .list-item span {
+  color: #94A3B8 !important;
+}
+
+/* Inline Empty States (AI Chat & Livechat Thread List) */
+body.dark-mode .livechat-empty.inline,
+body.dark-mode .livechat-empty,
+body.dark-mode.admin-site-active .livechat-empty.inline,
+body.dark-mode.admin-site-active .livechat-empty {
+  background: #141C2C !important;
+  border-color: #1F2937 !important;
+  color: #94A3B8 !important;
+}
+body.dark-mode .livechat-empty.inline strong,
+body.dark-mode .livechat-empty strong,
+body.dark-mode.admin-site-active .livechat-empty.inline strong,
+body.dark-mode.admin-site-active .livechat-empty strong {
+  color: #F9FAFB !important;
+}
+
+/* Filter Category Tabs (Logs, Notices) in Dark Mode */
+body.dark-mode .category-tab,
+body.dark-mode.admin-site-active .category-tab {
+  background: #182234 !important;
+  border-color: #27354A !important;
+  color: #E2E8F0 !important;
+}
+body.dark-mode .category-tab:hover,
+body.dark-mode.admin-site-active .category-tab:hover {
+  background: #1E293B !important;
+  border-color: #38BDF8 !important;
+  color: #FFFFFF !important;
+}
+body.dark-mode .category-tab.is-active,
+body.dark-mode.admin-site-active .category-tab.is-active {
+  background: rgba(230, 0, 103, 0.22) !important;
+  border-color: rgba(230, 0, 103, 0.45) !important;
+  color: #FF4081 !important;
+}
+body.dark-mode .category-tab-count,
+body.dark-mode.admin-site-active .category-tab-count {
+  background: rgba(230, 0, 103, 0.3) !important;
+  color: #FF4081 !important;
+}
+body.dark-mode .category-tab.is-active .category-tab-count,
+body.dark-mode.admin-site-active .category-tab.is-active .category-tab-count {
+  background: #E60067 !important;
+  color: #FFFFFF !important;
+}
+
+/* Attachment Viewer & Report Cards in Dark Mode */
+body.dark-mode .report-attachment-card,
+body.dark-mode.admin-site-active .report-attachment-card {
+  background: #161F30 !important;
+  border-color: #1F2937 !important;
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .report-attachment-button:hover,
+body.dark-mode.admin-site-active .report-attachment-button:hover {
+  background: #1E293B !important;
+  border-color: #38BDF8 !important;
+}
+
+body.dark-mode .report-attachment-preview,
+body.dark-mode.admin-site-active .report-attachment-preview {
+  background: #111827 !important;
+  border-color: #1F2937 !important;
+}
+
+body.dark-mode .attachment-viewer-body,
+body.dark-mode.admin-site-active .attachment-viewer-body {
+  background: #0B0F17 !important;
+}
+
+body.dark-mode .attachment-viewer-header,
+body.dark-mode.admin-site-active .attachment-viewer-header {
+  background: #111827 !important;
+  border-bottom-color: #1F2937 !important;
+}
+
+body.dark-mode .attachment-viewer-image,
+body.dark-mode.admin-site-active .attachment-viewer-image {
+  background: #0B0F17 !important;
+}
+
+body.dark-mode .attachment-viewer-frame,
+body.dark-mode.admin-site-active .attachment-viewer-frame {
+  background: #0B0F17 !important;
+}
+
+body.dark-mode .livechat-image-preview,
+body.dark-mode.admin-site-active .livechat-image-preview {
+  background: #0B0F17 !important;
+  border-color: #1F2937 !important;
+}
+
+body.dark-mode .livechat-selected-attachment,
+body.dark-mode.admin-site-active .livechat-selected-attachment {
+  background: #161F30 !important;
+  border-color: #1F2937 !important;
+}
+body.dark-mode .livechat-selected-attachment strong,
+body.dark-mode.admin-site-active .livechat-selected-attachment strong {
+  color: #F9FAFB !important;
+}
+body.dark-mode .livechat-selected-attachment button,
+body.dark-mode.admin-site-active .livechat-selected-attachment button {
+  color: #94A3B8 !important;
+}
+body.dark-mode .livechat-selected-attachment button:hover,
+body.dark-mode.admin-site-active .livechat-selected-attachment button:hover {
+  background: rgba(230, 0, 103, 0.2) !important;
+  color: #FF4081 !important;
+}
+
+
+
+
 

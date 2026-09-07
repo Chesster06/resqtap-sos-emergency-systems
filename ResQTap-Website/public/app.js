@@ -50,7 +50,7 @@ const LOW_BATTERY = 20;
 const INVALID_KEY = /[.#$\/\[\]]/;
 const NOTICE_METHOD = "app_notification_bar";
 const NOTICE_SOURCE = "admin-panel";
-const LIVECHAT_ADMIN_LABEL = "ResQTap";
+const LIVECHAT_ADMIN_LABEL = "ResQTap Support";
 const LIVECHAT_CLAIM_NOTICE = "Agent has been claimed your ticket";
 const LIVECHAT_TYPING_IDLE_MS = 3000;
 const LIVECHAT_TYPING_REFRESH_MS = 1500;
@@ -101,7 +101,8 @@ const els = {
   deniedUid: document.getElementById("deniedUid"),
   adminPathCode: document.getElementById("adminPathCode"),
   deniedSignOut: document.getElementById("deniedSignOut"),
-  signOutButton: document.getElementById("signOutButton"),
+  sidebarSignOutBtn: document.getElementById("sidebarSignOutBtn"),
+  signOutButton: document.getElementById("sidebarSignOutBtn") || document.getElementById("signOutButton"),
   syncStatus: document.getElementById("syncStatus"),
   viewTitle: document.getElementById("viewTitle"),
   sidebarToggleBtn: document.getElementById("sidebarToggleBtn"),
@@ -201,6 +202,7 @@ function showPublicSite() {
 }
 
 function enterAdminRoute() {
+  document.documentElement.classList.remove("admin-route-loading");
   document.body.classList.remove("public-site-active");
   document.body.classList.add("admin-site-active");
   if (els.publicSite) els.publicSite.classList.add("hidden");
@@ -1058,9 +1060,10 @@ function audienceLabel(audience) {
 
 function setScreen(name) {
   enterAdminRoute();
-  els.authScreen.classList.toggle("hidden", name !== "auth");
-  els.deniedScreen.classList.toggle("hidden", name !== "denied");
-  els.appShell.classList.toggle("hidden", name !== "app");
+  document.documentElement.classList.remove("admin-route-loading");
+  if (els.authScreen) els.authScreen.classList.toggle("hidden", name !== "auth");
+  if (els.deniedScreen) els.deniedScreen.classList.toggle("hidden", name !== "denied");
+  if (els.appShell) els.appShell.classList.toggle("hidden", name !== "app");
 }
 
 function showToast(message) {
@@ -1673,8 +1676,10 @@ function chatStatusTone(status) {
 function getSupportThreads() {
   return entries(state.supportChats).filter(([, value]) => {
     const thread = asRecord(value);
-    return Object.keys(asRecord(thread.messages)).length > 0
-      || Object.keys(asRecord(thread.meta)).length > 0;
+    const messages = getSupportChatMessages(thread);
+    // Hanya senaraikan sesi livechat yang mempunyai sekurang-kurangnya 1 mesej.
+    // Jika thread kosong atau hanya mempunyai rekod rating, jangan buka di admin dashboard!
+    return messages.length > 0;
   }).map(([uid, value]) => {
     const thread = asRecord(value);
     const meta = asRecord(thread.meta);
@@ -1700,11 +1705,11 @@ function getSupportThreads() {
       publicId: text(meta.publicId || user.publicId).trim(),
       photoUrl: text(user.photoUrl || meta.photoUrl).trim(),
       photoB64: text(user.photoB64 || meta.photoB64).trim(),
-      status: text(meta.status || "open").trim() || "open",
+      status: text(meta.status).trim() || (messages.length > 0 ? "open" : "resolved"),
       updatedAt,
       lastMessage,
       lastSender,
-      unread: lastSender === "user",
+      unread: (lastSender === "user" || lastSender === "ai") && text(meta.status).trim() !== "resolved",
       messageCount: messages.length
     };
   }).sort((a, b) => b.updatedAt - a.updatedAt || a.name.localeCompare(b.name));
@@ -2552,10 +2557,22 @@ function renderLivechat() {
   updateLivechatComposer();
 
   els.livechatMessages.innerHTML = selectedThread.messages.length ? selectedThread.messages.map((message) => {
-    const fromAdmin = message.sender === "admin" || message.sender === "system";
-    const sender = fromAdmin
-      ? (message.source === "admin-panel" || message.sender === "system" ? LIVECHAT_ADMIN_LABEL : (message.senderName || "Admin"))
-      : (message.senderName || selectedThread.name);
+    const fromAdmin = message.sender === "admin";
+    const fromSystem = message.sender === "system";
+    const fromAi = message.sender === "ai" || message.sender === "assistant";
+    let sender = message.senderName || selectedThread.name;
+    let badgeHtml = "";
+
+    if (fromAdmin) {
+      sender = (message.source === "admin-panel" || !message.senderName || message.senderName === "Admin") ? LIVECHAT_ADMIN_LABEL : message.senderName;
+    } else if (fromSystem) {
+      sender = "ResQTap System Notice";
+      badgeHtml = ` <span class="badge-system-pill">System</span>`;
+    } else if (fromAi) {
+      sender = (message.senderName && message.senderName !== "ResQTap" && message.senderName !== "ResQTap Assistant" && message.senderName !== "ResQTap Support Chat Bot" && message.senderName !== "Admin") ? message.senderName : "ResQTap Support";
+      badgeHtml = ` <span class="badge-ai-pill">AI</span>`;
+    }
+
     const attachment = asRecord(message.attachment);
     const attachmentHtml = attachment.downloadUrl ? `
       ${text(attachment.downloadUrl).startsWith("data:image/")
@@ -2565,10 +2582,13 @@ function renderLivechat() {
             <span>${escapeHtml(attachment.name || "Attachment")}</span>
           </a>`}
     ` : "";
+
+    const msgClass = fromAdmin ? "from-admin" : (fromSystem ? "from-system" : (fromAi ? "from-ai" : "from-user"));
+
     return `
-      <div class="livechat-message ${fromAdmin ? "from-admin" : "from-user"}">
+      <div class="livechat-message ${msgClass}">
         <div class="livechat-bubble">
-          <span class="livechat-sender">${escapeHtml(sender)}</span>
+          <span class="livechat-sender">${escapeHtml(sender)}${badgeHtml}</span>
           ${message.text ? `<p>${escapeHtml(message.text)}</p>` : ""}
           ${attachmentHtml}
           <time>${escapeHtml(message.createdAt ? formatDate(message.createdAt) : "-")}</time>
@@ -4053,17 +4073,32 @@ function handleDetailResizeKeydown(event) {
 function bindEvents() {
   els.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const email = els.emailInput.value.trim();
+    let email = els.emailInput.value.trim();
     const password = els.passwordInput.value;
     els.authMessage.textContent = "";
     els.loginButton.disabled = true;
     const btnText = els.loginButton.querySelector(".btn-text");
     const originalText = btnText ? btnText.textContent : "Login";
     if (btnText) btnText.textContent = "Logging in...";
+
+    if (email && !email.includes("@")) {
+      email = email + "@resqtap.com";
+    }
+
     try {
+      document.documentElement.classList.remove("admin-route-loading");
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
-      els.authMessage.textContent = error.message || "Unable to sign in. Please verify your credentials.";
+      console.error("Admin login error:", error);
+      let msg = error.message || "Unable to sign in. Please verify your credentials.";
+      if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+        msg = "Email atau kata laluan tidak sah / Invalid email or password.";
+      } else if (error.code === "auth/invalid-email") {
+        msg = "Format email tidak sah / Invalid email format.";
+      } else if (error.code === "auth/too-many-requests") {
+        msg = "Terlalu banyak percubaan gagal. Sila cuba sebentar lagi / Too many failed attempts.";
+      }
+      els.authMessage.textContent = msg;
     } finally {
       els.loginButton.disabled = false;
       if (btnText) btnText.textContent = originalText;
@@ -4086,8 +4121,49 @@ function bindEvents() {
     });
   }
 
-  els.signOutButton.addEventListener("click", () => signOut(auth));
-  els.deniedSignOut.addEventListener("click", () => signOut(auth));
+  if (els.signOutButton) {
+    els.signOutButton.addEventListener("click", () => signOut(auth));
+  }
+  if (els.sidebarSignOutBtn && els.sidebarSignOutBtn !== els.signOutButton) {
+    els.sidebarSignOutBtn.addEventListener("click", () => signOut(auth));
+  }
+  if (els.deniedSignOut) {
+    els.deniedSignOut.addEventListener("click", () => signOut(auth));
+  }
+
+  // Dark Mode Toggle Logic
+  function applyTheme(theme) {
+    const isDark = theme === "dark";
+    document.documentElement.classList.toggle("dark-mode", isDark);
+    document.body.classList.toggle("dark-mode", isDark);
+    try {
+      localStorage.setItem("resqtap_theme", theme);
+    } catch (e) {}
+
+    const icon = document.getElementById("themeToggleIcon");
+    const text = document.getElementById("themeToggleText");
+    if (icon) {
+      icon.setAttribute("data-lucide", isDark ? "sun" : "moon");
+    }
+    if (text) {
+      text.textContent = isDark ? "Light Mode" : "Dark Mode";
+    }
+    refreshIcons();
+  }
+
+  const themeToggleBtn = document.getElementById("themeToggleBtn");
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", () => {
+      const isDark = document.documentElement.classList.contains("dark-mode") || document.body.classList.contains("dark-mode");
+      applyTheme(isDark ? "light" : "dark");
+    });
+  }
+
+  // Initialize theme on start
+  try {
+    const currentSavedTheme = localStorage.getItem("resqtap_theme") || (document.documentElement.classList.contains("dark-mode") ? "dark" : "light");
+    applyTheme(currentSavedTheme);
+  } catch (e) {}
 
   els.globalSearch.addEventListener("input", () => {
     state.search = els.globalSearch.value;

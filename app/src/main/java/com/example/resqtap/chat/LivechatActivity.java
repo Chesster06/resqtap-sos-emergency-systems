@@ -512,7 +512,7 @@ public class LivechatActivity extends BaseActivity {
         message.put("topic", safe(topic));
         message.put("sender", "system");
         message.put("senderUid", uid);
-        message.put("senderName", "ResQTap");
+        message.put("senderName", "ResQTap Support");
         message.put("createdAt", ServerValue.TIMESTAMP);
         message.put("source", "auto-support");
         return message;

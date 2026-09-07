@@ -617,6 +617,7 @@ Terms Version: 1.0</string>
     <string name="support_livechat_ticket_claimed">Agent has been claimed your ticket</string>
     <string name="support_livechat_typing">typing</string>
     <string name="support_livechat_auto_reply">Hi! Thank you for contacting ResQTap Support. Your support request has been received successfully and is currently being reviewed by our support team. We are looking into the issue you reported so we can provide the right solution as soon as possible. Please wait for our response shortly.\n\nIf you have any additional information, such as screenshots, more details, or further clarification about this issue, you can reply to this ticket at any time to help us resolve your problem faster.\n\nIs there any additional information you would like to share about the issue you are facing? We appreciate your patience and cooperation throughout this process.</string>
+    <string name="support_livechat_waiting_agent_auto">Sementara menunggu Live Agent menyertai perbualan ini, anda boleh terus bertanyakan sebarang soalan atau berikan maklumat lanjut isu anda kepada saya. Pegawai sokongan kami akan segera membantu anda.</string>
 
     <string name="ai_chat_title">ResQTap Assistant</string>
     <string name="ai_chat_subtitle">Ask about app features, settings, troubleshooting, and SOS tools.</string>
@@ -625,7 +626,7 @@ Terms Version: 1.0</string>
     <string name="ai_chat_hint">Ask about ResQTap</string>
     <string name="ai_chat_send">Send</string>
     <string name="ai_chat_you">You</string>
-    <string name="ai_chat_assistant">ResQTap</string>
+    <string name="ai_chat_assistant">ResQTap Support</string>
     <string name="ai_chat_typing">...</string>
     <string name="ai_chat_login_required">Please sign in to use the ResQTap assistant.</string>
     <string name="ai_chat_empty_message">Enter a message first.</string>
@@ -866,8 +867,14 @@ Terms Version: 1.0</string>
     <string name="live_support_empty_desc">Start chatting with our support agents. We are here to assist you!</string>
     <string name="chip_switch_to_livechat">Talk to Human Agent 💬</string>
     <string name="prompt_card_livechat_title">Livechat with support team?</string>
-    <string name="prompt_card_livechat_btn">Livechat</string>
+    <string name="prompt_card_livechat_btn">View</string>
     <string name="chat_transferred_to_admin_title">Transferred to Admin Session</string>
     <string name="chat_transferred_to_admin_desc">Your chat session has now been successfully transferred to the ResQTap Live Admin Support Desk. A member of our dedicated support team will review your conversation and assist you directly with your request. Please remain in the chat while an admin is being connected to ensure a smooth and uninterrupted support experience. Thank you for your patience and for contacting ResQTap Support.</string>
+    <string name="livechat_active_cannot_reset">Livechat session is currently active. Only admin can close this session.</string>
+    <string name="livechat_session_ended_notice">The live support session has been marked resolved and closed by Admin. You can now use AI Assistant again.</string>
+    <string name="rate_service_title">How do you rate our customer service?</string>
+    <string name="rate_service_bad">Bad</string>
+    <string name="rate_service_excellent">Excellent</string>
+    <string name="rate_service_thanks">Thank you for your rating! ❤️</string>
 </resources>
 

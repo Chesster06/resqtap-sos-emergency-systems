@@ -8,9 +8,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=admin-login-layout-v9">
+  <link rel="stylesheet" href="/styles.css?v=admin-darkmode-v6">
   <script>
     (function() {
+      try {
+        if (localStorage.getItem("resqtap_theme") === "dark") {
+          document.documentElement.classList.add("dark-mode");
+        }
+      } catch (e) {}
       var p = window.location.pathname.replace(/\/+$/, "");
       var s = window.location.search;
       var h = window.location.hash;
@@ -307,7 +312,7 @@
                 <span>Email/Username*</span>
               </label>
               <div class="auth-field-box">
-                <input id="emailInput" type="email" autocomplete="email" placeholder="admin@resqtap.com" required>
+                <input id="emailInput" type="text" autocomplete="username email" placeholder="admin@resqtap.com" required>
               </div>
             </div>
 
@@ -486,6 +491,12 @@
           <i data-lucide="shield-check" aria-hidden="true"></i>
           <span>Admins</span>
         </button>
+
+        <span class="nav-group-label">Session</span>
+        <button id="sidebarSignOutBtn" class="nav-button nav-button-danger" data-label="Sign out" type="button">
+          <i data-lucide="log-out" aria-hidden="true"></i>
+          <span>Sign out</span>
+        </button>
       </nav>
     </aside>
 
@@ -509,9 +520,9 @@
             <i data-lucide="trash-2" aria-hidden="true"></i>
             <span>Clear Logs</span>
           </button>
-          <button id="signOutButton" class="secondary-button danger icon-button" type="button">
-            <i data-lucide="log-out" aria-hidden="true"></i>
-            <span>Sign out</span>
+          <button id="themeToggleBtn" class="secondary-button icon-button theme-toggle-btn" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
+            <i data-lucide="moon" id="themeToggleIcon" aria-hidden="true"></i>
+            <span id="themeToggleText">Dark Mode</span>
           </button>
         </div>
       </header>

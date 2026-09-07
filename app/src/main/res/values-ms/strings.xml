@@ -420,6 +420,7 @@
     <string name="support_livechat_ticket_claimed">Agent has been claimed your ticket</string>
     <string name="support_livechat_typing">sedang menaip</string>
     <string name="support_livechat_auto_reply">Hi! Terima kasih kerana menghubungi ResQTap Support. Permintaan bantuan anda telah berjaya diterima dan sedang dalam proses semakan oleh pasukan sokongan kami. Kami sedang meneliti isu yang anda laporkan bagi memastikan penyelesaian yang tepat dapat diberikan secepat mungkin. Sila tunggu maklum balas daripada pihak kami dalam masa terdekat.\n\nSekiranya anda mempunyai maklumat tambahan, seperti tangkapan skrin, butiran lanjut, atau penjelasan tambahan berkaitan isu ini, anda boleh membalas ticket ini pada bila-bila masa untuk membantu kami menyelesaikan masalah anda dengan lebih cepat.\n\nAdakah terdapat sebarang maklumat tambahan yang ingin anda kongsikan mengenai isu yang anda hadapi? Kami menghargai kesabaran dan kerjasama anda sepanjang proses ini.</string>
+    <string name="support_livechat_waiting_agent_auto">Sementara menunggu Live Agent menyertai perbualan ini, anda boleh terus bertanyakan sebarang soalan atau berikan maklumat lanjut isu anda kepada saya. Pegawai sokongan kami akan segera membantu anda.</string>
 
     <string name="ai_chat_title">Pembantu ResQTap</string>
     <string name="ai_chat_subtitle">Tanya tentang ciri aplikasi, tetapan, masalah, dan fungsi SOS.</string>
@@ -428,7 +429,7 @@
     <string name="ai_chat_hint">Tanya tentang ResQTap</string>
     <string name="ai_chat_send">Hantar</string>
     <string name="ai_chat_you">Anda</string>
-    <string name="ai_chat_assistant">ResQTap</string>
+    <string name="ai_chat_assistant">ResQTap Support</string>
     <string name="ai_chat_typing">...</string>
     <string name="ai_chat_login_required">Sila log masuk untuk menggunakan pembantu ResQTap.</string>
     <string name="ai_chat_empty_message">Masukkan mesej dahulu.</string>
@@ -659,8 +660,14 @@
     <string name="live_support_empty_desc">Mulakan perbualan bersama pegawai sokongan kami. Kami sedia membantu anda!</string>
     <string name="chip_switch_to_livechat">Hubungi Sokongan Admin</string>
     <string name="prompt_card_livechat_title">Livechat dengan bantuan sebenar?</string>
-    <string name="prompt_card_livechat_btn">Livechat</string>
+    <string name="prompt_card_livechat_btn">View</string>
     <string name="chat_transferred_to_admin_title">Berpindah ke Sesi Admin</string>
     <string name="chat_transferred_to_admin_desc">Sesi perbualan anda kini telah berjaya dipindahkan ke Meja Bantuan Sokongan Admin ResQTap. Ahli pasukan sokongan kami akan meneliti perbualan anda dan membantu anda secara langsung dengan permintaan anda. Sila kekal berada di dalam perbualan sementara sambungan ke admin sedang dibuat bagi memastikan pengalaman sokongan yang lancar. Terima kasih atas kesabaran anda dan kerana menghubungi Sokongan ResQTap.</string>
+    <string name="livechat_active_cannot_reset">Sesi livechat sedang aktif. Hanya admin boleh menamatkan sesi perbualan ini.</string>
+    <string name="livechat_session_ended_notice">Sesi perbualan sokongan langsung telah diselesaikan dan ditamatkan oleh Admin. Anda kini boleh terus menggunakan AI Assistant semula.</string>
+    <string name="rate_service_title">Bagaimanakah penilaian anda terhadap khidmat pelanggan kami?</string>
+    <string name="rate_service_bad">Kurang Memuaskan</string>
+    <string name="rate_service_excellent">Cemerlang</string>
+    <string name="rate_service_thanks">Terima kasih atas penilaian anda! ❤️</string>
 </resources>
 
