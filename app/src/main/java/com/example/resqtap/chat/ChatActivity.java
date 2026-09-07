@@ -102,8 +102,6 @@ public class ChatActivity extends BaseActivity {
     private static final String CHAT_PREF_SAVED_SESSIONS = "ai_chat_saved_sessions";
     private static final boolean USE_DATABASE_CHAT_STORE = false;
 
-    public enum ChatMode { AI, LIVE }
-    private ChatMode currentMode = ChatMode.AI;
 
     private TextView headerTitle;
     private View badgeBeta;
@@ -224,20 +222,9 @@ public class ChatActivity extends BaseActivity {
             }
         });
 
-        if (btnNewChat != null) btnNewChat.setOnClickListener(v -> {
-            if (currentMode == ChatMode.LIVE) {
-                switchChatMode(ChatMode.AI);
-            }
-            startNewChatSession();
-        });
-        if (btnHistory != null) btnHistory.setOnClickListener(v -> {
-            if (currentMode == ChatMode.LIVE) {
-                switchChatMode(ChatMode.AI);
-            }
-            showRecentChatHistoryBottomSheet();
-        });
+        if (btnNewChat != null) btnNewChat.setOnClickListener(v -> startNewChatSession());
+        if (btnHistory != null) btnHistory.setOnClickListener(v -> showRecentChatHistoryBottomSheet());
         if (btnCamera != null) btnCamera.setOnClickListener(v -> showAttachmentOptionsBottomSheet());
-        if (bannerLiveMsgAlert != null) bannerLiveMsgAlert.setOnClickListener(v -> startLiveChatSession(true));
         if (btnClearAttachment != null) btnClearAttachment.setOnClickListener(v -> clearAttachmentSelection());
 
         setupSuggestionCards();
@@ -254,6 +241,7 @@ public class ChatActivity extends BaseActivity {
         }
 
         // Auto-reset: always start as a clean new chat session when entering Chatbot
+        activityStartedAt = System.currentTimeMillis();
         clearLocalChat();
         currentSessionId = "";
         currentSessionTopic = "";
@@ -261,11 +249,6 @@ public class ChatActivity extends BaseActivity {
         renderMessages();
         setupAiChatStore();
         setupLiveChatSystem();
-
-        String modeExtra = getIntent() != null ? getIntent().getStringExtra("mode") : null;
-        if ("live_support".equalsIgnoreCase(modeExtra) || "livechat".equalsIgnoreCase(modeExtra)) {
-            startLiveChatSession(true);
-        }
     }
 
     /** Setup klik kad cadangan soalan (Suggestion Prompt Cards). */
@@ -282,7 +265,7 @@ public class ChatActivity extends BaseActivity {
         View.OnClickListener listener1 = v -> sendPresetPrompt("What to do in an emergency?");
         View.OnClickListener listener2 = v -> sendPresetPrompt("How does SOS beacon work?");
         View.OnClickListener listener3 = v -> sendPresetPrompt("How to add emergency contacts?");
-        View.OnClickListener listenerLivechat = v -> startLiveChatSession(true);
+        View.OnClickListener listenerLivechat = v -> sendPresetPrompt("Hubungi Sokongan Admin");
 
         if (card1 != null) card1.setOnClickListener(listener1);
         if (btn1 != null) btn1.setOnClickListener(listener1);
@@ -298,12 +281,14 @@ public class ChatActivity extends BaseActivity {
         View chipRoom = findViewById(R.id.chip_prompt_room);
         View chipHospital = findViewById(R.id.chip_prompt_hospital);
         View chipWatch = findViewById(R.id.chip_prompt_watch);
+        View chipLivechat = findViewById(R.id.chip_switch_to_livechat);
 
         if (chipBeacon != null) chipBeacon.setOnClickListener(v -> sendPresetPrompt("How does SOS Beacon work?"));
         if (chipGeofence != null) chipGeofence.setOnClickListener(v -> sendPresetPrompt("How to set Safe Zones?"));
         if (chipRoom != null) chipRoom.setOnClickListener(v -> sendPresetPrompt("How to join a Room?"));
         if (chipHospital != null) chipHospital.setOnClickListener(v -> sendPresetPrompt("Find nearby hospitals"));
         if (chipWatch != null) chipWatch.setOnClickListener(v -> sendPresetPrompt("ResQTap Watch guide"));
+        if (chipLivechat != null) chipLivechat.setOnClickListener(v -> sendPresetPrompt("Hubungi Sokongan Admin"));
     }
 
     /** Hantar soalan cadangan terus ke chat. */
@@ -317,13 +302,12 @@ public class ChatActivity extends BaseActivity {
     /** Mulakan sesi perbualan baharu (Wipe Firebase and local storage). */
     public void startNewChatSession() {
         activityStartedAt = System.currentTimeMillis();
-        currentMode = ChatMode.AI;
         if (headerTitle != null) headerTitle.setText("AI Assistant");
         if (badgeBeta != null) badgeBeta.setVisibility(View.VISIBLE);
         if (badgeLiveStatus != null) badgeLiveStatus.setVisibility(View.GONE);
         if (bottomSuggestionsScroll != null) bottomSuggestionsScroll.setVisibility(View.VISIBLE);
         if (inputView != null) inputView.setHint(R.string.chat_input_hint_ai);
-        if (tvChatDisclaimer != null) tvChatDisclaimer.setText(R.string.chat_disclaimer_ai);
+        if (tvChatDisclaimer != null) tvChatDisclaimer.setText(R.string.chat_disclaimer_unified);
         clearAttachmentSelection();
         if (composerAttachmentStrip != null) composerAttachmentStrip.setVisibility(View.GONE);
         saveCurrentSessionToHistory();
@@ -352,30 +336,13 @@ public class ChatActivity extends BaseActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        String modeExtra = intent != null ? intent.getStringExtra("mode") : null;
-        if ("live_support".equalsIgnoreCase(modeExtra) || "livechat".equalsIgnoreCase(modeExtra)) {
-            switchChatMode(ChatMode.LIVE);
-        } else {
-            startNewChatSession();
-        }
+        startNewChatSession();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        if (!isFinishing()) {
-            saveCurrentSessionToHistory();
-            if (aiChatRef != null) {
-                aiChatRef.removeValue();
-            }
-            clearLocalChat();
-            currentSessionId = "";
-            currentSessionTopic = "";
-            messages.clear();
-            if (currentMode == ChatMode.AI) {
-                renderMessages();
-            }
-        }
+        saveCurrentSessionToHistory();
     }
 
     // =========================================================================
@@ -420,115 +387,7 @@ public class ChatActivity extends BaseActivity {
     }
 
     private void onSendClicked() {
-        if (currentMode == ChatMode.AI) {
-            sendMessage();
-        } else {
-            sendLiveSupportMessage();
-        }
-    }
-
-    private void switchChatMode(ChatMode mode) {
-        if (mode == currentMode) return;
-        if (mode == ChatMode.LIVE) {
-            startLiveChatSession(true);
-        } else {
-            currentMode = ChatMode.AI;
-            if (headerTitle != null) headerTitle.setText("AI Assistant");
-            if (badgeBeta != null) badgeBeta.setVisibility(View.VISIBLE);
-            if (badgeLiveStatus != null) badgeLiveStatus.setVisibility(View.GONE);
-            if (bottomSuggestionsScroll != null) bottomSuggestionsScroll.setVisibility(View.VISIBLE);
-            if (inputView != null) inputView.setHint(R.string.chat_input_hint_ai);
-            if (tvChatDisclaimer != null) tvChatDisclaimer.setText(R.string.chat_disclaimer_ai);
-            clearAttachmentSelection();
-            if (composerAttachmentStrip != null) composerAttachmentStrip.setVisibility(View.GONE);
-            renderMessages();
-        }
-    }
-
-    private void startLiveChatSession(boolean showUserPrompt) {
-        currentMode = ChatMode.LIVE;
-
-        if (headerTitle != null) {
-            headerTitle.setText("AI Assistant");
-        }
-        if (badgeBeta != null) {
-            badgeBeta.setVisibility(View.GONE);
-        }
-        if (badgeLiveStatus != null) {
-            badgeLiveStatus.setVisibility(View.VISIBLE);
-        }
-        if (bottomSuggestionsScroll != null) {
-            bottomSuggestionsScroll.setVisibility(View.GONE);
-        }
-        if (heroGreetingLayout != null) {
-            heroGreetingLayout.setVisibility(View.GONE);
-        }
-        if (inputView != null) {
-            inputView.setHint(R.string.chat_input_hint_live);
-        }
-        if (tvChatDisclaimer != null) {
-            tvChatDisclaimer.setText(R.string.chat_disclaimer_live);
-        }
-        if (bannerLiveMsgAlert != null) {
-            bannerLiveMsgAlert.setVisibility(View.GONE);
-        }
-
-        if (showUserPrompt) {
-            ChatMessage userPrompt = new ChatMessage("user", "Livechat", System.currentTimeMillis());
-            messages.add(userPrompt);
-            addMessageBubble(userPrompt);
-
-            ChatMessage notice = new ChatMessage("system",
-                    "Connected to ResQTap Live Support. You are now chatting directly with our admin support desk. AI bot responses are paused.",
-                    System.currentTimeMillis()
-            );
-            messages.add(notice);
-            addMessageBubble(notice);
-
-            notifyLiveChatSessionStarted();
-            scrollToBottom();
-        }
-
-        markLiveChatRead();
-    }
-
-    private void notifyLiveChatSessionStarted() {
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) return;
-        if (liveChatRef == null) {
-            setupLiveChatSystem();
-            if (liveChatRef == null) return;
-        }
-        String uid = user.getUid();
-        String name = UserPrefs.getName(this);
-        if (name == null || name.trim().isEmpty()) name = user.getDisplayName();
-        if (name == null || name.trim().isEmpty()) name = "User";
-
-        Map<String, Object> updates = new HashMap<>();
-        updates.put("meta/status", "open");
-        updates.put("meta/lastMessage", "Livechat session connected");
-        updates.put("meta/lastSender", "user");
-        updates.put("meta/userUid", uid);
-        updates.put("meta/userName", name);
-        updates.put("meta/userEmail", safe(UserPrefs.getEmail(this)));
-        updates.put("meta/updatedAt", ServerValue.TIMESTAMP);
-        updates.put("meta/unreadByUser", false);
-        updates.put("meta/userLastReadAt", ServerValue.TIMESTAMP);
-
-        DatabaseReference newMsgRef = liveChatRef.child("messages").push();
-        String messageId = newMsgRef.getKey();
-        if (messageId != null) {
-            Map<String, Object> msg = new HashMap<>();
-            msg.put("text", "User connected to Livechat");
-            msg.put("sender", "user");
-            msg.put("senderUid", uid);
-            msg.put("senderName", name);
-            msg.put("createdAt", ServerValue.TIMESTAMP);
-            msg.put("source", "app");
-            updates.put("messages/" + messageId, msg);
-        }
-
-        liveChatRef.updateChildren(updates);
+        sendMessage();
     }
 
     private void setupLiveChatSystem() {
@@ -577,6 +436,10 @@ public class ChatActivity extends BaseActivity {
                     String key = child.getKey();
 
                     if ("admin".equalsIgnoreCase(sender)) {
+                        // Jangan paparkan mesej admin lama sebelum sesi semasa dibuka
+                        if (createdAt <= activityStartedAt) {
+                            continue;
+                        }
                         boolean exists = false;
                         for (ChatMessage m : messages) {
                             if (key != null && key.equals(m.messageId)) {
@@ -585,14 +448,12 @@ public class ChatActivity extends BaseActivity {
                             }
                         }
                         if (!exists) {
-                            if (currentMode == ChatMode.LIVE || createdAt > activityStartedAt) {
-                                hasNewAdmin = true;
-                                if (currentMode != ChatMode.LIVE) {
-                                    startLiveChatSession(false);
-                                }
-                                ChatMessage adminMsg = new ChatMessage("admin", text, createdAt, senderName, attName, attUrl, attMime, key);
-                                messages.add(adminMsg);
-                                addMessageBubble(adminMsg);
+                            hasNewAdmin = true;
+                            ChatMessage adminMsg = new ChatMessage("admin", text, createdAt, senderName, attName, attUrl, attMime, key);
+                            messages.add(adminMsg);
+                            addMessageBubble(adminMsg);
+                            if (heroGreetingLayout != null) {
+                                heroGreetingLayout.setVisibility(View.GONE);
                             }
                         }
                     }
@@ -631,24 +492,12 @@ public class ChatActivity extends BaseActivity {
         }
     }
 
-    private void sendLiveSupportMessage() {
-        String text = safe(inputView != null ? inputView.getText() : "").trim();
-        boolean hasAttachment = (selectedAttachmentUri != null || selectedAttachmentBytes != null);
-        if (text.isEmpty() && !hasAttachment) {
-            Toast.makeText(this, R.string.support_livechat_message_required, Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null) {
-            Toast.makeText(this, R.string.support_livechat_login_required, Toast.LENGTH_SHORT).show();
-            return;
-        }
+    private void syncUserMessageToLiveSupport(FirebaseUser user, String text, String attName, String dataUrl, String attMime) {
+        if (user == null) return;
         if (liveChatRef == null) {
             setupLiveChatSystem();
             if (liveChatRef == null) return;
         }
-
         String uid = user.getUid();
         String name = UserPrefs.getName(this);
         if (name == null || name.trim().isEmpty()) name = user.getDisplayName();
@@ -666,241 +515,36 @@ public class ChatActivity extends BaseActivity {
         msg.put("createdAt", ServerValue.TIMESTAMP);
         msg.put("source", "app");
 
-        String lastMsgSummary = text.isEmpty() ? (selectedAttachmentName.isEmpty() ? "Attachment" : selectedAttachmentName) : text;
+        if (dataUrl != null && !dataUrl.isEmpty()) {
+            Map<String, Object> attMap = new HashMap<>();
+            attMap.put("name", attName == null || attName.isEmpty() ? "image.jpg" : attName);
+            attMap.put("mimeType", attMime == null || attMime.isEmpty() ? "image/jpeg" : attMime);
+            attMap.put("downloadUrl", dataUrl);
+            attMap.put("storageType", "inline_base64");
+            msg.put("attachment", attMap);
+        }
 
         Map<String, Object> updates = new HashMap<>();
         updates.put("meta/updatedAt", ServerValue.TIMESTAMP);
-        updates.put("meta/lastMessage", lastMsgSummary);
+        updates.put("meta/lastMessage", text.isEmpty() ? (attName == null || attName.isEmpty() ? "Attachment" : attName) : text);
         updates.put("meta/lastSender", "user");
         updates.put("meta/status", "open");
         updates.put("meta/userUid", uid);
         updates.put("meta/userName", name);
         updates.put("meta/userEmail", safe(UserPrefs.getEmail(this)));
         updates.put("meta/unreadByUser", false);
-        updates.put("meta/userLastReadAt", ServerValue.TIMESTAMP);
         updates.put("messages/" + messageId, msg);
 
-        String dataUrl = "";
-        String attName = selectedAttachmentName;
-        String attMime = selectedAttachmentMime;
-        if (hasAttachment) {
-            byte[] bytes = selectedAttachmentBytes;
-            if (bytes == null && selectedAttachmentUri != null) {
-                bytes = readUriBytes(selectedAttachmentUri);
-            }
-            if (bytes != null && bytes.length > 0) {
-                try {
-                    Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-                    if (bmp != null) {
-                        int maxDim = 1080;
-                        int w = bmp.getWidth();
-                        int h = bmp.getHeight();
-                        if (w > maxDim || h > maxDim) {
-                            float ratio = Math.min((float) maxDim / w, (float) maxDim / h);
-                            bmp = Bitmap.createScaledBitmap(bmp, Math.round(w * ratio), Math.round(h * ratio), true);
-                        }
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        bmp.compress(Bitmap.CompressFormat.JPEG, 75, baos);
-                        bytes = baos.toByteArray();
-                    }
-                } catch (Throwable ignored) {}
-
-                String b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
-                attMime = selectedAttachmentMime.isEmpty() ? "image/jpeg" : selectedAttachmentMime;
-                dataUrl = "data:" + attMime + ";base64," + b64;
-                Map<String, Object> attMap = new HashMap<>();
-                attMap.put("name", selectedAttachmentName.isEmpty() ? "image.jpg" : selectedAttachmentName);
-                attMap.put("mimeType", attMime);
-                attMap.put("downloadUrl", dataUrl);
-                attMap.put("storageType", "inline_base64");
-                attMap.put("size", bytes.length);
-                msg.put("attachment", attMap);
-            }
-        }
-
-        // Add to local messages and render immediately in the AI Assistant chat thread!
-        ChatMessage userMsg = new ChatMessage("user", text, System.currentTimeMillis(), name, attName, dataUrl, attMime, messageId);
-        messages.add(userMsg);
-        addMessageBubble(userMsg);
-        scrollToBottom();
-
-        if (inputView != null) inputView.setText("");
-        clearAttachmentSelection();
-        setSending(true);
-
-        liveChatRef.updateChildren(updates).addOnCompleteListener(task -> {
-            setSending(false);
-            if (task.isSuccessful()) {
-                scrollToBottom();
-            } else {
-                Toast.makeText(this, R.string.support_livechat_failed, Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void renderLiveMessages() {
-        if (heroGreetingLayout != null) {
-            heroGreetingLayout.setVisibility(View.GONE);
-        }
-        if (messagesContainer == null) return;
-        messagesContainer.removeAllViews();
-
-        if (liveMessages.isEmpty()) {
-            renderLiveEmptyState();
-            return;
-        }
-
-        for (LiveMessageItem item : liveMessages) {
-            addLiveMessageBubble(item);
-        }
-
-        if (adminTypingActive) {
-            showLiveAdminTypingIndicator();
-        }
-        scrollToBottom();
-    }
-
-    private void renderLiveEmptyState() {
-        LinearLayout wrap = new LinearLayout(this);
-        wrap.setOrientation(LinearLayout.VERTICAL);
-        wrap.setGravity(Gravity.CENTER);
-        wrap.setPadding(dp(24), dp(40), dp(24), dp(40));
-
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(R.drawable.ic_livechat_accent_24);
-        icon.setColorFilter(ContextCompat.getColor(this, R.color.brand_primary));
-        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(54), dp(54));
-        iconParams.gravity = Gravity.CENTER_HORIZONTAL;
-        wrap.addView(icon, iconParams);
-
-        TextView title = new TextView(this);
-        title.setText(R.string.tab_live_support);
-        title.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
-        title.setTextSize(17);
-        title.setTypeface(null, Typeface.BOLD);
-        title.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        titleParams.topMargin = dp(14);
-        titleParams.gravity = Gravity.CENTER_HORIZONTAL;
-        wrap.addView(title, titleParams);
-
-        TextView desc = new TextView(this);
-        desc.setText(R.string.live_support_empty_desc);
-        desc.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
-        desc.setTextSize(13);
-        desc.setGravity(Gravity.CENTER);
-        desc.setLineSpacing(0, 1.2f);
-        LinearLayout.LayoutParams descParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        descParams.topMargin = dp(6);
-        descParams.gravity = Gravity.CENTER_HORIZONTAL;
-        wrap.addView(desc, descParams);
-
-        messagesContainer.addView(wrap, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        ));
-    }
-
-    private void addLiveMessageBubble(LiveMessageItem message) {
-        boolean mine = "user".equalsIgnoreCase(message.sender) || (currentUid.equals(message.senderUid) && !"admin".equalsIgnoreCase(message.sender));
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.VERTICAL);
-        row.setGravity(mine ? Gravity.END : Gravity.START);
-        row.setPadding(0, 0, 0, dp(12));
-
-        TextView label = new TextView(this);
-        label.setText(mine ? getString(R.string.ai_chat_you) : (message.senderName.isEmpty() ? getString(R.string.live_support_admin_name) : message.senderName));
-        label.setTextColor(ContextCompat.getColor(this, mine ? R.color.brand_primary : R.color.text_secondary));
-        label.setTextSize(11);
-        label.setGravity(mine ? Gravity.END : Gravity.START);
-        row.addView(label);
-
-        LinearLayout bubble = new LinearLayout(this);
-        bubble.setOrientation(LinearLayout.VERTICAL);
-        bubble.setBackgroundResource(mine ? R.drawable.bg_livechat_bubble_user : R.drawable.bg_livechat_bubble_admin);
-        bubble.setPadding(dp(14), dp(10), dp(14), dp(10));
-        int bubbleMaxWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.78f);
-
-        if (!message.text.isEmpty()) {
-            TextView messageView = new TextView(this);
-            messageView.setText(message.text);
-            messageView.setTextSize(14);
-            messageView.setLineSpacing(0, 1.15f);
-            messageView.setMaxWidth(bubbleMaxWidth);
-            messageView.setTextColor(ContextCompat.getColor(this, mine ? R.color.white : R.color.text_primary));
-            bubble.addView(messageView);
-        }
-
-        if (!message.attachmentUrl.isEmpty()) {
-            if (message.attachmentUrl.startsWith("data:image/")) {
-                Bitmap img = bitmapFromDataUrl(message.attachmentUrl);
-                if (img != null) {
-                    ImageView preview = new ImageView(this);
-                    preview.setAdjustViewBounds(true);
-                    preview.setMaxWidth(bubbleMaxWidth);
-                    preview.setMaxHeight(dp(220));
-                    preview.setImageBitmap(img);
-                    preview.setPadding(0, message.text.isEmpty() ? 0 : dp(8), 0, 0);
-                    bubble.addView(preview, new LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.WRAP_CONTENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT
-                    ));
-                }
-            } else {
-                Button attBtn = new Button(this);
-                attBtn.setAllCaps(false);
-                attBtn.setText(message.attachmentName.isEmpty() ? getString(R.string.support_livechat_open_attachment) : message.attachmentName);
-                attBtn.setTextSize(12);
-                attBtn.setTextColor(ContextCompat.getColor(this, mine ? R.color.white : R.color.brand_primary));
-                attBtn.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
-                attBtn.setMaxWidth(bubbleMaxWidth);
-                attBtn.setBackgroundColor(ContextCompat.getColor(this, android.R.color.transparent));
-                attBtn.setPadding(0, message.text.isEmpty() ? 0 : dp(6), 0, 0);
-                attBtn.setOnClickListener(v -> openAttachment(message.attachmentUrl, message.attachmentMime));
-                bubble.addView(attBtn, new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                ));
-            }
-        }
-
-        LinearLayout.LayoutParams bubbleParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        bubbleParams.topMargin = dp(4);
-        row.addView(bubble, bubbleParams);
-
-        String timeStr = formatTime(message.createdAt);
-        if (!timeStr.isEmpty()) {
-            TextView time = new TextView(this);
-            time.setText(timeStr);
-            time.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
-            time.setTextSize(11);
-            time.setGravity(mine ? Gravity.END : Gravity.START);
-            LinearLayout.LayoutParams timeParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-            );
-            timeParams.topMargin = dp(4);
-            row.addView(time, timeParams);
-        }
-
-        messagesContainer.addView(row, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        ));
+        liveChatRef.updateChildren(updates);
     }
 
     private void setAdminTypingActive(boolean active) {
         if (adminTypingActive == active) return;
         adminTypingActive = active;
-        if (currentMode == ChatMode.LIVE) {
-            if (adminTypingActive) {
-                showLiveAdminTypingIndicator();
-            } else {
-                removeLiveTypingIndicator();
-            }
+        if (adminTypingActive) {
+            showLiveAdminTypingIndicator();
+        } else {
+            removeLiveTypingIndicator();
         }
     }
 
@@ -978,10 +622,6 @@ public class ChatActivity extends BaseActivity {
     }
 
     private void showAttachmentOptionsBottomSheet() {
-        if (currentMode != ChatMode.LIVE) {
-            switchChatMode(ChatMode.LIVE);
-        }
-
         BottomSheetDialog dialog = new BottomSheetDialog(this, R.style.Theme_ResQTap_BottomSheetDialog);
         View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_chat_attachment, null);
         dialog.setContentView(sheetView);
@@ -1246,7 +886,7 @@ public class ChatActivity extends BaseActivity {
                 String role = safe(item.optString("role"));
                 String content = safe(item.optString("content"));
                 long createdAt = item.optLong("createdAt", 0L);
-                if (!content.isEmpty() && !isWelcomeMessage(content) && ("user".equals(role) || "assistant".equals(role))) {
+                if (!content.isEmpty() && !isWelcomeMessage(content) && ("user".equals(role) || "assistant".equals(role) || "system".equals(role) || "admin".equals(role))) {
                     loaded.add(new ChatMessage(role, content, createdAt > 0L ? createdAt : System.currentTimeMillis()));
                 }
             }
@@ -1370,15 +1010,9 @@ public class ChatActivity extends BaseActivity {
     /** Simpan atau hantar data Message. */
     private void sendMessage() {
         String message = safe(inputView.getText()).trim();
-        if (message.isEmpty()) {
+        boolean hasAttachment = (selectedAttachmentUri != null || selectedAttachmentBytes != null);
+        if (message.isEmpty() && !hasAttachment) {
             Toast.makeText(this, R.string.ai_chat_empty_message, Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String lower = message.toLowerCase(Locale.ROOT);
-        if (lower.equals("livechat") || lower.equals("live chat") || lower.equals("live support") || lower.equals("admin")) {
-            inputView.setText("");
-            startLiveChatSession(true);
             return;
         }
         if (sending) return;
@@ -1391,30 +1025,101 @@ public class ChatActivity extends BaseActivity {
         }
 
         long now = System.currentTimeMillis();
-        pendingClientMessageId = "m" + now + "_" + Math.abs(message.hashCode());
+        String name = UserPrefs.getName(this);
+        if (name == null || name.trim().isEmpty()) name = user.getDisplayName();
+        if (name == null || name.trim().isEmpty()) name = "User";
+
+        // Read attachment if present
+        String dataUrl = "";
+        String attName = selectedAttachmentName;
+        String attMime = selectedAttachmentMime;
+        if (hasAttachment) {
+            byte[] bytes = selectedAttachmentBytes;
+            if (bytes == null && selectedAttachmentUri != null) {
+                bytes = readUriBytes(selectedAttachmentUri);
+            }
+            if (bytes != null && bytes.length > 0) {
+                try {
+                    Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                    if (bmp != null) {
+                        int maxDim = 1080;
+                        int w = bmp.getWidth();
+                        int h = bmp.getHeight();
+                        if (w > maxDim || h > maxDim) {
+                            float ratio = Math.min((float) maxDim / w, (float) maxDim / h);
+                            bmp = Bitmap.createScaledBitmap(bmp, Math.round(w * ratio), Math.round(h * ratio), true);
+                        }
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        bmp.compress(Bitmap.CompressFormat.JPEG, 75, baos);
+                        bytes = baos.toByteArray();
+                    }
+                } catch (Throwable ignored) {}
+                String b64 = Base64.encodeToString(bytes, Base64.NO_WRAP);
+                attMime = selectedAttachmentMime.isEmpty() ? "image/jpeg" : selectedAttachmentMime;
+                dataUrl = "data:" + attMime + ";base64," + b64;
+            }
+        }
+
+        String userMsgText = message;
+        if (userMsgText.isEmpty() && hasAttachment) {
+            userMsgText = "[Lampiran]";
+        }
+
+        pendingClientMessageId = "m" + now + "_" + Math.abs(userMsgText.hashCode());
         if (currentSessionId.isEmpty()) {
             currentSessionId = "session_" + now;
-            currentSessionTopic = message;
+            currentSessionTopic = userMsgText;
         }
-        ChatMessage userMsg = new ChatMessage("user", message, now);
+
+        ChatMessage userMsg = new ChatMessage("user", userMsgText, now, name, attName, dataUrl, attMime, pendingClientMessageId);
         messages.add(userMsg);
         saveCurrentSessionToHistory();
         saveLocalMessages();
         saveLocalExpiry(now + CHAT_EXPIRE_AFTER_MS);
-        saveUserMessage(user, message);
+        saveUserMessage(user, userMsgText);
+
+        // Sync to live support so support admin desk sees it
+        syncUserMessageToLiveSupport(user, userMsgText, attName, dataUrl, attMime);
+
         inputView.setText("");
+        clearAttachmentSelection();
         setSending(true);
         renderMessages();
-        showThinkingIndicator(message);
 
-        String reply = getFaqAnswer(message);
-        if ("__NAVIGATE_LIVECHAT__".equals(reply)) {
-            setSending(false);
-            removeTypingIndicator();
+        // Check if user is asking for admin or live support
+        String lower = message.toLowerCase(Locale.ROOT);
+        boolean asksSupport = lower.contains("livechat") || lower.contains("live chat") || lower.contains("admin") || lower.contains("sokongan") || lower.contains("human") || lower.contains("operator") || lower.contains("pegawai");
+
+        if (asksSupport) {
+            long noticeTime = now + 1;
+            ChatMessage transferNotice = new ChatMessage("system", getString(R.string.chat_transferred_to_admin_desc), noticeTime);
+            messages.add(transferNotice);
+            saveLocalMessages();
+            saveCurrentSessionToHistory();
+            renderMessages();
+
+            showThinkingIndicator(message);
+            mainHandler.postDelayed(() -> {
+                String reply = "Permintaan anda telah dimaklumkan ke Meja Bantuan ResQTap (Admin). "
+                        + "Admin sokongan kami boleh membalas perbualan ini terus di sini pada bila-bila masa.\n\n"
+                        + "Sementara itu, anda boleh terus bertanyakan sebarang soalan mengenai fungsi aplikasi atau kecemasan kepada saya!";
+                handleChatReply(reply);
+            }, 8000L);
             return;
         }
-        // Purata masa berfikir & analisis antara 5 hingga 10 saat (6.8 saat)
-        mainHandler.postDelayed(() -> handleChatReply(reply), 6800L);
+
+        if (hasAttachment && message.isEmpty()) {
+            showThinkingIndicator("Foto lampiran dihantar");
+            mainHandler.postDelayed(() -> {
+                String reply = "Lampiran anda telah berjaya dimuat naik ke perbualan dan direkodkan untuk rujukan admin sokongan. Ada apa-apa lagi yang boleh saya bantu mengenai aplikasi ResQTap?";
+                handleChatReply(reply);
+            }, 8000L);
+            return;
+        }
+
+        showThinkingIndicator(message);
+        String reply = getFaqAnswer(message);
+        mainHandler.postDelayed(() -> handleChatReply(reply), 8000L);
     }
 
     /** Simpan atau hantar data UserMessage. */
@@ -1581,7 +1286,10 @@ public class ChatActivity extends BaseActivity {
             public void run() {
                 int next = Math.min(fullText.length(), index[0] + step);
                 message.content = fullText.substring(0, next);
-                bubble.setText(message.content);
+                if (bubble != null) {
+                    bubble.setVisibility(View.VISIBLE);
+                    bubble.setText(message.content);
+                }
                 scrollToBottom();
 
                 if (next < fullText.length()) {
@@ -1617,11 +1325,10 @@ public class ChatActivity extends BaseActivity {
         if (awaitingLiveChatChoice) {
             if (lower.equals("y") || lower.equals("yes")) {
                 awaitingLiveChatChoice = false;
-                switchChatMode(ChatMode.LIVE);
-                return "__NAVIGATE_LIVECHAT__";
+                return "Meja Bantuan ResQTap (Admin) telah dimaklumkan. Anda boleh terus menghantar sebarang mesej atau lampiran di sini pada bila-bila masa!";
             } else if (lower.equals("n") || lower.equals("no")) {
                 awaitingLiveChatChoice = false;
-                return "Feel free to ask any other questions about ResQTap features or emergency assistance!";
+                return "Sila beritahu saya sekiranya ada soalan lain mengenai ciri aplikasi ResQTap atau bantuan kecemasan!";
             } else {
                 return getString(R.string.faq_offer_livechat);
             }
@@ -1975,8 +1682,9 @@ public class ChatActivity extends BaseActivity {
         bubble.setLineSpacing(0, 1.15f);
         bubble.setMaxWidth(bubbleMaxWidth);
         bubble.setTextColor(ContextCompat.getColor(this, mine ? R.color.white : R.color.text_primary));
-        if (!message.content.isEmpty()) {
-            bubbleWrap.addView(bubble);
+        bubbleWrap.addView(bubble);
+        if (message.content.isEmpty() && !safe(message.attachmentUrl).isEmpty()) {
+            bubble.setVisibility(View.GONE);
         }
 
         if (!safe(message.attachmentUrl).isEmpty()) {
@@ -2149,8 +1857,9 @@ public class ChatActivity extends BaseActivity {
         messageView.setLineSpacing(0, 1.15f);
         messageView.setMaxWidth(bubbleMaxWidth);
         messageView.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
-        if (!message.content.isEmpty()) {
-            bubbleWrap.addView(messageView);
+        bubbleWrap.addView(messageView);
+        if (message.content.isEmpty() && !safe(message.attachmentUrl).isEmpty()) {
+            messageView.setVisibility(View.GONE);
         }
 
         if (!safe(message.attachmentUrl).isEmpty()) {
@@ -2219,29 +1928,27 @@ public class ChatActivity extends BaseActivity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER);
-        row.setPadding(dp(16), dp(8), dp(16), dp(8));
+        row.setPadding(dp(12), dp(8), dp(12), dp(12));
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setBackgroundResource(R.drawable.bg_ai_card_btn_light);
-        card.setPadding(dp(14), dp(8), dp(14), dp(8));
+        card.setGravity(Gravity.CENTER);
+        card.setBackgroundResource(R.drawable.bg_card_admin_transfer);
+        card.setPadding(dp(18), dp(13), dp(18), dp(13));
 
-        ImageView icon = new ImageView(this);
-        icon.setImageResource(R.drawable.ic_livechat_accent_24);
-        icon.setColorFilter(ContextCompat.getColor(this, R.color.brand_primary));
-        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(16), dp(16));
-        iconParams.setMarginEnd(dp(8));
-        card.addView(icon, iconParams);
+        TextView desc = new TextView(this);
+        String descText = (text == null || text.trim().isEmpty()) ? getString(R.string.chat_transferred_to_admin_desc) : text.trim();
+        desc.setText(descText);
+        desc.setTextSize(12.5f);
+        desc.setGravity(Gravity.CENTER);
+        desc.setTextColor(ContextCompat.getColor(this, R.color.brand_primary));
+        desc.setTypeface(null, Typeface.NORMAL);
+        desc.setLineSpacing(0, 1.25f);
 
-        TextView tv = new TextView(this);
-        tv.setText(text);
-        tv.setTextSize(12);
-        tv.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
-        tv.setGravity(Gravity.CENTER);
-        card.addView(tv);
+        card.addView(desc, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        row.addView(card, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        row.addView(card, cardParams);
         messagesContainer.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
@@ -2410,7 +2117,7 @@ public class ChatActivity extends BaseActivity {
         return container;
     }
 
-    /** Jadualkan langkah proses berfikir AI secara berperingkat (Purata 6 - 8 saat). */
+    /** Jadualkan langkah proses berfikir AI secara berperingkat (8 saat: 4 langkah x 2 saat). */
     private void scheduleNextThinkingStep() {
         if (thinkingStepRunnable != null) {
             mainHandler.removeCallbacks(thinkingStepRunnable);
@@ -2430,11 +2137,11 @@ public class ChatActivity extends BaseActivity {
                                 }
                             })
                             .start();
-                    mainHandler.postDelayed(this, 1700L);
+                    mainHandler.postDelayed(this, 2000L);
                 }
             }
         };
-        mainHandler.postDelayed(thinkingStepRunnable, 1700L);
+        mainHandler.postDelayed(thinkingStepRunnable, 2000L);
     }
 
     /** Padam atau bersihkan ThinkingIndicator. */

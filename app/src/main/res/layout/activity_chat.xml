@@ -754,7 +754,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:fontFamily="sans-serif"
-            android:text="@string/chat_disclaimer_ai"
+            android:text="@string/chat_disclaimer_unified"
             android:textColor="@color/text_secondary"
             android:textSize="11sp" />
 

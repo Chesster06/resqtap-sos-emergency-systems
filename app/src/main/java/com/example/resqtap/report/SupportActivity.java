@@ -43,7 +43,6 @@ public class SupportActivity extends BaseActivity {
         if (livechat != null) {
             livechat.setOnClickListener(v -> {
                 Intent intent = new Intent(this, com.example.resqtap.chat.ChatActivity.class);
-                intent.putExtra("mode", "live_support");
                 startActivity(intent);
             });
         }

@@ -8,7 +8,21 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=admin-nav-fix-223">
+  <link rel="stylesheet" href="/styles.css?v=admin-login-layout-v9">
+  <script>
+    (function() {
+      document.documentElement.classList.add("admin-route-loading");
+      document.title = "ResQTap Admin";
+      window.addEventListener("DOMContentLoaded", function() {
+        document.body.classList.remove("public-site-active");
+        document.body.classList.add("admin-site-active");
+        var ps = document.getElementById("publicSite");
+        if (ps) ps.classList.add("hidden");
+        var as = document.getElementById("authScreen");
+        if (as) as.classList.remove("hidden");
+      });
+    })();
+  </script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
   <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
 </head>
@@ -254,50 +268,146 @@
   </main>
 
   <section id="authScreen" class="auth-screen hidden">
-    <form id="loginForm" class="auth-card">
-      <div class="brand-row">
-        <img class="brand-logo" src="/assets/resqtap_launcher.png" alt="ResQTap">
-        <div>
-          <h1>ResQTap Admin</h1>
-          <p>Realtime operations panel</p>
+    <!-- Top Purple Wave Banner -->
+    <div class="auth-top-banner">
+      <div class="auth-banner-particles" aria-hidden="true"></div>
+      <div class="auth-banner-content">
+        <div class="auth-brand-logo-row">
+          <img src="/assets/resqtap_launcher.png" alt="ResQTap Logo" class="auth-banner-logo">
+          <span class="auth-banner-brand-name">ResQTap</span>
         </div>
+        <h2 class="auth-welcome-text">Hello 👋 Welcome!</h2>
+        <p class="auth-banner-desc">Sign in to access your emergency operations portal</p>
+      </div>
+      <svg class="auth-banner-wave" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0,0 C360,90 1080,90 1440,0 L1440,120 L0,120 Z" fill="#FFFFFF"></path>
+      </svg>
+    </div>
+
+    <!-- Main Content Area with Subtle Grid Background -->
+    <div class="auth-main-area">
+      <div class="auth-grid-canvas" aria-hidden="true"></div>
+
+      <div class="auth-layout-container">
+        <!-- Floating Login Card -->
+        <form id="loginForm" class="auth-card-box">
+          <div class="auth-card-heading">
+            <h1 class="auth-card-title">Login</h1>
+            <p class="auth-card-desc">Please login to admin dashboard</p>
+          </div>
+
+          <div class="auth-fields-stack">
+            <div class="auth-input-group">
+              <label class="auth-input-label" for="emailInput">
+                <span>Email/Username*</span>
+              </label>
+              <div class="auth-field-box">
+                <input id="emailInput" type="email" autocomplete="email" placeholder="admin@resqtap.com" required>
+              </div>
+            </div>
+
+            <div class="auth-input-group">
+              <label class="auth-input-label" for="passwordInput">
+                <span>Password*</span>
+              </label>
+              <div class="auth-field-box password-box">
+                <input id="passwordInput" type="password" autocomplete="current-password" placeholder="••••••••••••" required>
+                <button type="button" id="togglePasswordBtn" class="auth-eye-btn" aria-label="Toggle password visibility">
+                  <i data-lucide="eye" id="togglePasswordIcon" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="auth-options-row">
+              <label class="auth-remember-me">
+                <input type="checkbox" id="rememberMeCheckbox">
+                <span>Remember me</span>
+              </label>
+              <a href="#" class="auth-forgot-link" onclick="event.preventDefault(); alert('Please contact system administrator to reset credentials.');">Forgot password?</a>
+            </div>
+          </div>
+
+          <button id="loginButton" class="auth-login-action-btn" type="submit">
+            <span class="btn-text">Login</span>
+          </button>
+
+          <div id="authMessage" class="form-message" role="status"></div>
+
+          <div class="auth-sub-links">
+            <a href="/" class="auth-back-to-site">
+              <i data-lucide="arrow-left" aria-hidden="true"></i>
+              <span>Back to main website</span>
+            </a>
+          </div>
+        </form>
       </div>
 
-      <label class="field">
-        <span>Email</span>
-        <input id="emailInput" type="email" autocomplete="email" placeholder="admin@resqtap.com" style="background-color: #1a1c24 !important; color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; border: 1px solid rgba(255,255,255,0.2) !important;" required>
-      </label>
+      <!-- Bottom Pink Decorative Elements -->
+      <div class="auth-bottom-decorations" aria-hidden="true">
 
-      <label class="field">
-        <span>Password</span>
-        <input id="passwordInput" type="password" autocomplete="current-password" placeholder="••••••••" style="background-color: #1a1c24 !important; color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; border: 1px solid rgba(255,255,255,0.2) !important;" required>
-      </label>
-
-      <button id="loginButton" class="primary-button icon-button" type="submit">
-        <i data-lucide="log-in" aria-hidden="true"></i>
-        <span>Sign in</span>
-      </button>
-      <p id="authMessage" class="form-message" role="status"></p>
-    </form>
+        <!-- Elegant bottom pink wave / curve -->
+        <svg class="auth-bottom-wave" viewBox="0 0 1440 80" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="bottomPinkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#E60067" stop-opacity="0.12" />
+              <stop offset="50%" stop-color="#FF2E88" stop-opacity="0.22" />
+              <stop offset="100%" stop-color="#B80053" stop-opacity="0.12" />
+            </linearGradient>
+            <linearGradient id="bottomPinkLine" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#E60067" stop-opacity="0" />
+              <stop offset="30%" stop-color="#E60067" stop-opacity="0.5" />
+              <stop offset="70%" stop-color="#FF2E88" stop-opacity="0.5" />
+              <stop offset="100%" stop-color="#E60067" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <path d="M0,40 C320,80 640,10 960,50 C1200,80 1360,20 1440,35 L1440,80 L0,80 Z" fill="url(#bottomPinkGrad)"></path>
+          <path d="M0,40 C320,80 640,10 960,50 C1200,80 1360,20 1440,35" fill="none" stroke="url(#bottomPinkLine)" stroke-width="2"></path>
+        </svg>
+      </div>
+    </div>
   </section>
 
   <section id="deniedScreen" class="auth-screen hidden">
-    <div class="auth-card">
-      <div class="brand-row">
-        <img class="brand-logo" src="/assets/resqtap_launcher.png" alt="ResQTap">
-        <div>
-          <h1>Access Pending</h1>
-          <p id="deniedUid">Admin claim required</p>
+    <div class="auth-top-banner">
+      <div class="auth-banner-content">
+        <div class="auth-brand-logo-row">
+          <img src="/assets/resqtap_launcher.png" alt="ResQTap Logo" class="auth-banner-logo">
+          <span class="auth-banner-brand-name">ResQTap</span>
+        </div>
+        <h2 class="auth-welcome-text">Access Verification</h2>
+      </div>
+      <svg class="auth-banner-wave" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0,0 C360,90 1080,90 1440,0 L1440,120 L0,120 Z" fill="#FFFFFF"></path>
+      </svg>
+    </div>
+
+    <div class="auth-main-area">
+      <div class="auth-grid-canvas" aria-hidden="true"></div>
+      <div class="auth-layout-container" style="justify-content: center;">
+        <div class="auth-card-box" style="max-width: 460px;">
+          <div class="auth-card-heading">
+            <h1 class="auth-card-title" style="color: #D97706; font-size: 1.6rem !important;">Access Restricted</h1>
+            <p id="deniedUid" class="auth-card-desc">Admin claim required</p>
+          </div>
+
+          <div class="setup-box" style="margin: 18px 0; padding: 14px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; text-align: left;">
+            <strong style="color: #92400E; display: block; margin-bottom: 6px;">Realtime Database Configuration:</strong>
+            <p style="font-size: 0.8rem; color: #B45309; margin: 0 0 8px;">Grant this UID in your Firebase Realtime Database:</p>
+            <code id="adminPathCode" style="display: block; padding: 8px 10px; background: #FFFFFF; border: 1px solid #FCD34D; border-radius: 6px; color: #92400E; font-size: 0.82rem; word-break: break-all;">admins/&lt;uid&gt;/active = true</code>
+          </div>
+
+          <button id="deniedSignOut" class="auth-login-action-btn" style="background: #475569 !important; box-shadow: 0 4px 12px rgba(71, 85, 105, 0.3) !important;" type="button">
+            <span>Sign out</span>
+          </button>
+
+          <div class="auth-sub-links">
+            <a href="/" class="auth-back-to-site">
+              <i data-lucide="arrow-left" aria-hidden="true"></i>
+              <span>Back to main website</span>
+            </a>
+          </div>
         </div>
       </div>
-      <div class="setup-box">
-        <strong>Grant this UID in Realtime Database:</strong>
-        <code id="adminPathCode">admins/&lt;uid&gt;/active = true</code>
-      </div>
-      <button id="deniedSignOut" class="secondary-button icon-button" type="button">
-        <i data-lucide="log-out" aria-hidden="true"></i>
-        <span>Sign out</span>
-      </button>
     </div>
   </section>
 

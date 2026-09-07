@@ -858,6 +858,7 @@ Terms Version: 1.0</string>
     <string name="chat_input_hint_live">Message support team...</string>
     <string name="chat_disclaimer_ai">AI can make mistakes. Always double-check info.</string>
     <string name="chat_disclaimer_live">Livechat with ResQTap Support Desk</string>
+    <string name="chat_disclaimer_unified">ResQTap Assistant • Smart responses &amp; live admin support</string>
     <string name="live_support_admin_name">Admin Support</string>
     <string name="live_support_online_status">Online • 1-on-1 Realtime Support</string>
     <string name="live_support_admin_typing">Admin is typing...</string>
@@ -866,5 +867,7 @@ Terms Version: 1.0</string>
     <string name="chip_switch_to_livechat">Talk to Human Agent 💬</string>
     <string name="prompt_card_livechat_title">Livechat with support team?</string>
     <string name="prompt_card_livechat_btn">Livechat</string>
+    <string name="chat_transferred_to_admin_title">Transferred to Admin Session</string>
+    <string name="chat_transferred_to_admin_desc">Your chat session has now been successfully transferred to the ResQTap Live Admin Support Desk. A member of our dedicated support team will review your conversation and assist you directly with your request. Please remain in the chat while an admin is being connected to ensure a smooth and uninterrupted support experience. Thank you for your patience and for contacting ResQTap Support.</string>
 </resources>
 

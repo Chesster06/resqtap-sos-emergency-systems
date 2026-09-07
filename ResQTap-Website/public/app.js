@@ -4057,14 +4057,34 @@ function bindEvents() {
     const password = els.passwordInput.value;
     els.authMessage.textContent = "";
     els.loginButton.disabled = true;
+    const btnText = els.loginButton.querySelector(".btn-text");
+    const originalText = btnText ? btnText.textContent : "Login";
+    if (btnText) btnText.textContent = "Logging in...";
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
-      els.authMessage.textContent = error.message || "Unable to sign in.";
+      els.authMessage.textContent = error.message || "Unable to sign in. Please verify your credentials.";
     } finally {
       els.loginButton.disabled = false;
+      if (btnText) btnText.textContent = originalText;
     }
   });
+
+  const togglePasswordBtn = document.getElementById("togglePasswordBtn");
+  if (togglePasswordBtn) {
+    togglePasswordBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const pwdInput = els.passwordInput;
+      if (!pwdInput) return;
+      const isPassword = pwdInput.getAttribute("type") === "password";
+      pwdInput.setAttribute("type", isPassword ? "text" : "password");
+      const iconEl = togglePasswordBtn.querySelector("[data-lucide]");
+      if (iconEl) {
+        iconEl.setAttribute("data-lucide", isPassword ? "eye-off" : "eye");
+        refreshIcons();
+      }
+    });
+  }
 
   els.signOutButton.addEventListener("click", () => signOut(auth));
   els.deniedSignOut.addEventListener("click", () => signOut(auth));

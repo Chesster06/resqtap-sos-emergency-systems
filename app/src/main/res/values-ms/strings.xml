@@ -651,13 +651,16 @@
     <string name="chat_input_hint_live">Mesej pasukan sokongan...</string>
     <string name="chat_disclaimer_ai">AI boleh membuat kesilapan. Sentiasa semak maklumat penting.</string>
     <string name="chat_disclaimer_live">Livechat bersama Meja Bantuan ResQTap</string>
+    <string name="chat_disclaimer_unified">Pembantu ResQTap • Respon pintar &amp; sokongan langsung admin</string>
     <string name="live_support_admin_name">Sokongan Admin</string>
     <string name="live_support_online_status">Dalam Talian • Sokongan 1-ke-1 Masa Nyata</string>
     <string name="live_support_admin_typing">Admin sedang menaip...</string>
     <string name="live_support_banner_new_msg">Mesej baharu daripada Sokongan</string>
     <string name="live_support_empty_desc">Mulakan perbualan bersama pegawai sokongan kami. Kami sedia membantu anda!</string>
-    <string name="chip_switch_to_livechat">Bercakap dengan Pegawai 💬</string>
+    <string name="chip_switch_to_livechat">Hubungi Sokongan Admin</string>
     <string name="prompt_card_livechat_title">Livechat dengan bantuan sebenar?</string>
     <string name="prompt_card_livechat_btn">Livechat</string>
+    <string name="chat_transferred_to_admin_title">Berpindah ke Sesi Admin</string>
+    <string name="chat_transferred_to_admin_desc">Sesi perbualan anda kini telah berjaya dipindahkan ke Meja Bantuan Sokongan Admin ResQTap. Ahli pasukan sokongan kami akan meneliti perbualan anda dan membantu anda secara langsung dengan permintaan anda. Sila kekal berada di dalam perbualan sementara sambungan ke admin sedang dibuat bagi memastikan pengalaman sokongan yang lancar. Terima kasih atas kesabaran anda dan kerana menghubungi Sokongan ResQTap.</string>
 </resources>
 
