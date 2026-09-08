@@ -217,6 +217,11 @@
     <string name="biometric_register_subtitle">轻触传感器以注册指纹</string>
     <string name="biometric_confirm_title">确认指纹</string>
     <string name="biometric_confirm_subtitle">再次轻触传感器以确认</string>
+    <string name="biometric_confirm_sheet_title">抬起手指，然后再轻触一次</string>
+    <string name="biometric_confirm_sheet_subtitle">继续抬起并轻触手指以完成指纹录入验证</string>
+    <string name="biometric_confirm_sheet_hint">抬起手指，然后再次触摸传感器</string>
+    <string name="biometric_confirm_sheet_success">指纹验证成功！</string>
+    <string name="biometric_confirm_sheet_action">稍后设置</string>
     <string name="biometric_prompt_verified_need_pin">指纹验证成功！请设置应用备用PIN码。</string>
     <string name="biometric_and_pin_enabled_success">生物识别与应用PIN码已成功开启！</string>
     <string name="security_biometric_disabled">生物识别解锁已关闭。</string>

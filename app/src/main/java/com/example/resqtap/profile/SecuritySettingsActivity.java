@@ -35,8 +35,17 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import java.util.concurrent.Executor;
 
+import android.animation.ValueAnimator;
+import android.hardware.fingerprint.FingerprintManager;
+import android.os.CancellationSignal;
+import android.view.HapticFeedbackConstants;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -305,35 +314,123 @@ public class SecuritySettingsActivity extends BaseActivity {
 
     private void startBiometricConfirmationStep() {
         try {
-            Executor executor = ContextCompat.getMainExecutor(this);
-            BiometricPrompt prompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
-                @Override
-                public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
-                    super.onAuthenticationSucceeded(result);
+            BottomSheetDialog bottomSheet = new BottomSheetDialog(this);
+            View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_confirm_fingerprint, null);
+            bottomSheet.setContentView(sheetView);
+
+            CircularProgressIndicator progressRing = sheetView.findViewById(R.id.progress_fingerprint_ring);
+            FrameLayout targetLayout = sheetView.findViewById(R.id.layout_fingerprint_target);
+            ImageView ivFingerprint = sheetView.findViewById(R.id.iv_sheet_fingerprint);
+            ImageView ivCheck = sheetView.findViewById(R.id.iv_sheet_check);
+            TextView tvHint = sheetView.findViewById(R.id.tv_sheet_hint);
+            View btnDoItLater = sheetView.findViewById(R.id.btn_sheet_do_it_later);
+
+            boolean[] isConfirmed = new boolean[]{false};
+            CancellationSignal cancellationSignal = new CancellationSignal();
+
+            Runnable onConfirmedSuccess = () -> {
+                if (isConfirmed[0]) return;
+                isConfirmed[0] = true;
+                try {
+                    cancellationSignal.cancel();
+                } catch (Exception ignored) {
+                }
+
+                try {
+                    sheetView.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+                } catch (Exception ignored) {
+                }
+
+                // Animate progress ring smoothly from 50 to 100
+                ValueAnimator animator = ValueAnimator.ofInt(50, 100);
+                animator.setDuration(400);
+                animator.addUpdateListener(animation -> {
+                    if (progressRing != null) {
+                        progressRing.setProgress((int) animation.getAnimatedValue());
+                    }
+                });
+                animator.start();
+
+                // Transition colors and icons to success
+                if (progressRing != null) {
+                    progressRing.setIndicatorColor(ContextCompat.getColor(this, R.color.success_green));
+                }
+                if (ivFingerprint != null) {
+                    ivFingerprint.animate().alpha(0f).setDuration(220).start();
+                }
+                if (ivCheck != null) {
+                    ivCheck.setVisibility(View.VISIBLE);
+                    ivCheck.setAlpha(0f);
+                    ivCheck.setScaleX(0.6f);
+                    ivCheck.setScaleY(0.6f);
+                    ivCheck.animate()
+                            .alpha(1f)
+                            .scaleX(1.0f)
+                            .scaleY(1.0f)
+                            .setDuration(350)
+                            .setInterpolator(new android.view.animation.OvershootInterpolator())
+                            .start();
+                }
+                if (tvHint != null) {
+                    tvHint.setText(R.string.biometric_confirm_sheet_success);
+                    tvHint.setTextColor(ContextCompat.getColor(this, R.color.success_green));
+                }
+
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    try {
+                        bottomSheet.dismiss();
+                    } catch (Exception ignored) {
+                    }
                     Toast.makeText(SecuritySettingsActivity.this, R.string.biometric_prompt_verified_need_pin, Toast.LENGTH_LONG).show();
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         isSettingPinForBiometric = true;
                         openSetPin(false, true);
-                    }, 350);
-                }
+                    }, 300);
+                }, 600);
+            };
 
-                @Override
-                public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
-                    super.onAuthenticationError(errorCode, errString);
+            // 1. Hardware Fingerprint Sensor Listener
+            try {
+                FingerprintManager fm = getSystemService(FingerprintManager.class);
+                if (fm != null && fm.isHardwareDetected() && fm.hasEnrolledFingerprints()) {
+                    fm.authenticate(null, cancellationSignal, 0, new FingerprintManager.AuthenticationCallback() {
+                        @Override
+                        public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
+                            runOnUiThread(onConfirmedSuccess);
+                        }
+
+                        @Override
+                        public void onAuthenticationError(int errorCode, CharSequence errString) {
+                        }
+                    }, null);
+                }
+            } catch (Exception ignored) {
+            }
+
+            // 2. Tap to confirm directly on screen target
+            if (targetLayout != null) {
+                targetLayout.setOnClickListener(v -> onConfirmedSuccess.run());
+            }
+
+            if (btnDoItLater != null) {
+                btnDoItLater.setOnClickListener(v -> bottomSheet.dismiss());
+            }
+
+            bottomSheet.setOnDismissListener(dialog -> {
+                try {
+                    cancellationSignal.cancel();
+                } catch (Exception ignored) {
+                }
+                if (!isConfirmed[0]) {
                     if (toggleBiometric != null) {
                         toggleBiometric.setChecked(false);
                     }
                     UserPrefs.setFingerprintEnabled(SecuritySettingsActivity.this, false);
+                    UserPrefs.setBiometricPin(SecuritySettingsActivity.this, "");
                 }
             });
 
-            BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
-                    .setTitle(getString(R.string.biometric_confirm_title))
-                    .setSubtitle(getString(R.string.biometric_confirm_subtitle))
-                    .setNegativeButtonText(getString(R.string.cancel))
-                    .build();
-
-            prompt.authenticate(promptInfo);
+            bottomSheet.show();
         } catch (Exception e) {
             if (toggleBiometric != null) {
                 toggleBiometric.setChecked(false);

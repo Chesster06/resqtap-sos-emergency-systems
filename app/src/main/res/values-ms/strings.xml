@@ -378,6 +378,11 @@
     <string name="biometric_register_subtitle">Sentuh sensor untuk daftar cap jari</string>
     <string name="biometric_confirm_title">Sahkan Cap Jari</string>
     <string name="biometric_confirm_subtitle">Sentuh sensor sekali lagi untuk sahkan</string>
+    <string name="biometric_confirm_sheet_title">Angkat, kemudian sentuh sekali lagi</string>
+    <string name="biometric_confirm_sheet_subtitle">Angkat dan sentuh jari anda sekali lagi untuk melengkapkan pengesahan cap jari</string>
+    <string name="biometric_confirm_sheet_hint">Angkat jari, kemudian sentuh sensor sekali lagi</string>
+    <string name="biometric_confirm_sheet_success">Cap jari berjaya disahkan!</string>
+    <string name="biometric_confirm_sheet_action">LAKUKAN KEMUDIAN</string>
     <string name="biometric_prompt_verified_need_pin">Cap jari disahkan! Sila tetapkan PIN aplikasi sandaran.</string>
     <string name="biometric_and_pin_enabled_success">Biometrik &amp; PIN Aplikasi berjaya diaktifkan!</string>
     <string name="security_biometric_disabled">Kunci biometrik dinyahaktifkan.</string>

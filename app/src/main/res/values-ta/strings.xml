@@ -217,6 +217,11 @@
     <string name="biometric_register_subtitle">பதிவு செய்ய சென்சாரைத் தொடவும்</string>
     <string name="biometric_confirm_title">கைரேகையை உறுதிப்படுத்தவும்</string>
     <string name="biometric_confirm_subtitle">உறுதிப்படுத்த மீண்டும் சென்சாரைத் தொடவும்</string>
+    <string name="biometric_confirm_sheet_title">விரலை எடுத்துவிட்டு மீண்டும் தொடவும்</string>
+    <string name="biometric_confirm_sheet_subtitle">உங்கள் கைரேகையின் வெவ்வேறு பகுதிகளைச் சேர்க்க விரலை மீண்டும் தொடவும்</string>
+    <string name="biometric_confirm_sheet_hint">விரலை எடுத்து மீண்டும் சென்சாரைத் தொடவும்</string>
+    <string name="biometric_confirm_sheet_success">கைரேகை சரிபார்க்கப்பட்டது!</string>
+    <string name="biometric_confirm_sheet_action">பிறகு செய்யவும்</string>
     <string name="biometric_prompt_verified_need_pin">கைரேகை உறுதிப்படுத்தப்பட்டது! ஆப் PIN அமைக்கவும்.</string>
     <string name="biometric_and_pin_enabled_success">பயோமெட்ரிக் மற்றும் ஆப் PIN வெற்றிகரமாக இயக்கப்பட்டது!</string>
     <string name="security_biometric_disabled">பயோமெட்ரிக் பூட்டு முடக்கப்பட்டது.</string>
