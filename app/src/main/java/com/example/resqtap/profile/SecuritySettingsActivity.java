@@ -288,13 +288,12 @@ public class SecuritySettingsActivity extends BaseActivity {
             ImageView ivFingerprint = sheetView.findViewById(R.id.iv_sheet_fingerprint);
             ImageView ivCheck = sheetView.findViewById(R.id.iv_sheet_check);
             TextView tvHint = sheetView.findViewById(R.id.tv_sheet_hint);
-            View btnDoItLater = sheetView.findViewById(R.id.btn_sheet_do_it_later);
 
-            // Initial UI state for touch 1
-            if (tvTitle != null) tvTitle.setText(R.string.biometric_register_title);
-            if (tvSubtitle != null) tvSubtitle.setText(R.string.biometric_register_subtitle);
+            // Initial UI state matching "gambar kiri": "Lift, then touch again" with 50% red arc
+            if (tvTitle != null) tvTitle.setText(R.string.biometric_confirm_sheet_title);
+            if (tvSubtitle != null) tvSubtitle.setText(R.string.biometric_confirm_sheet_subtitle);
             if (progressRing != null) {
-                progressRing.setProgress(0);
+                progressRing.setProgress(50);
                 progressRing.setIndicatorColor(android.graphics.Color.parseColor("#E53935"));
             }
             if (ivFingerprint != null) {
@@ -305,11 +304,11 @@ public class SecuritySettingsActivity extends BaseActivity {
                 ivCheck.setVisibility(View.GONE);
             }
             if (tvHint != null) {
-                tvHint.setText(R.string.biometric_sheet_touch_sensor);
-                tvHint.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+                tvHint.setText(R.string.biometric_confirm_sheet_hint);
+                tvHint.setTextColor(android.graphics.Color.parseColor("#E53935"));
             }
 
-            int[] step = new int[]{1}; // 1 = wait touch 1 (register), 2 = wait touch 2 (confirm), 3 = completed
+            int[] step = new int[]{1}; // 1 = wait touch 1, 2 = wait touch 2, 3 = completed
             boolean[] isTransitioning = new boolean[]{false};
             CancellationSignal[] activeSignal = new CancellationSignal[]{null};
 
@@ -320,7 +319,7 @@ public class SecuritySettingsActivity extends BaseActivity {
             }
             final FingerprintManager finalFm = fm;
 
-            // Touch 2: Confirm fingerprint -> Green checkmark, success animation, proceed to PIN
+            // Touch 2: Second touch -> complete ring from 75 to 100, turn green, show checkmark tick
             Runnable onTouchTwoSuccess = () -> {
                 if (step[0] != 2 || isTransitioning[0]) return;
                 isTransitioning[0] = true;
@@ -339,9 +338,9 @@ public class SecuritySettingsActivity extends BaseActivity {
                 } catch (Exception ignored) {
                 }
 
-                // Animate progress ring from 50 to 100
-                ValueAnimator animator = ValueAnimator.ofInt(50, 100);
-                animator.setDuration(400);
+                // Animate progress ring from 75 to 100
+                ValueAnimator animator = ValueAnimator.ofInt(75, 100);
+                animator.setDuration(350);
                 animator.addUpdateListener(animation -> {
                     if (progressRing != null) {
                         progressRing.setProgress((int) animation.getAnimatedValue());
@@ -387,7 +386,7 @@ public class SecuritySettingsActivity extends BaseActivity {
                 }, 650);
             };
 
-            // Touch 1: Register fingerprint -> Animate ring 0% to 50% (red arc), change title to "Lift, then touch again", NO CHECKMARK
+            // Touch 1: First touch -> animate ring from 50 to 75, pulse icon, NO green tick
             Runnable onTouchOneSuccess = () -> {
                 if (step[0] != 1 || isTransitioning[0]) return;
                 isTransitioning[0] = true;
@@ -405,9 +404,9 @@ public class SecuritySettingsActivity extends BaseActivity {
                 } catch (Exception ignored) {
                 }
 
-                // Animate progress smoothly from 0 to 50
-                ValueAnimator animator = ValueAnimator.ofInt(0, 50);
-                animator.setDuration(400);
+                // Animate progress smoothly from 50 to 75 (red arc expands)
+                ValueAnimator animator = ValueAnimator.ofInt(50, 75);
+                animator.setDuration(350);
                 animator.addUpdateListener(animation -> {
                     if (progressRing != null) {
                         progressRing.setProgress((int) animation.getAnimatedValue());
@@ -415,24 +414,30 @@ public class SecuritySettingsActivity extends BaseActivity {
                 });
                 animator.start();
 
-                // Update texts to match reference design: "Lift, then touch again" with red hint
-                if (tvTitle != null) {
-                    tvTitle.setText(R.string.biometric_confirm_sheet_title);
-                }
-                if (tvSubtitle != null) {
-                    tvSubtitle.setText(R.string.biometric_confirm_sheet_subtitle);
-                }
-                if (tvHint != null) {
-                    tvHint.setText(R.string.biometric_confirm_sheet_hint);
-                    tvHint.setTextColor(android.graphics.Color.parseColor("#E53935"));
+                // Gentle pulse animation on fingerprint icon to acknowledge 1st touch
+                if (ivFingerprint != null) {
+                    ivFingerprint.animate()
+                            .scaleX(1.15f)
+                            .scaleY(1.15f)
+                            .setDuration(160)
+                            .withEndAction(() -> {
+                                if (ivFingerprint != null) {
+                                    ivFingerprint.animate()
+                                            .scaleX(1.0f)
+                                            .scaleY(1.0f)
+                                            .setDuration(160)
+                                            .start();
+                                }
+                            })
+                            .start();
                 }
 
-                // Give user a moment to lift finger before arming touch 2
+                // Allow 450ms for user to lift finger before arming touch 2
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     step[0] = 2;
                     isTransitioning[0] = false;
                     listenFingerprintStep(finalFm, activeSignal, onTouchTwoSuccess);
-                }, 500);
+                }, 450);
             };
 
             // Tapping on screen target triggers step
@@ -445,10 +450,6 @@ public class SecuritySettingsActivity extends BaseActivity {
                         onTouchTwoSuccess.run();
                     }
                 });
-            }
-
-            if (btnDoItLater != null) {
-                btnDoItLater.setOnClickListener(v -> bottomSheet.dismiss());
             }
 
             bottomSheet.setOnDismissListener(dialog -> {
