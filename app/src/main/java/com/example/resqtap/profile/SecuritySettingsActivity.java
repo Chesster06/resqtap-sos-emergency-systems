@@ -51,6 +51,7 @@ public class SecuritySettingsActivity extends BaseActivity {
     private SwitchMaterial toggleDuressSafeguard;
     private View rowChangePin;
     private View rowBiometric;
+    private boolean isSyncingUI = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,63 +103,63 @@ public class SecuritySettingsActivity extends BaseActivity {
     }
 
     private void syncSecuritySettingsUI() {
-        boolean appLockOn = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
-        boolean biometricOn = UserPrefs.isFingerprintEnabled(this) && appLockOn;
-        boolean duressOn = UserPrefs.isDuressSafeguardEnabled(this);
+        isSyncingUI = true;
+        try {
+            boolean appLockOn = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
+            boolean biometricOn = UserPrefs.isFingerprintEnabled(this) && appLockOn;
+            boolean duressOn = UserPrefs.isDuressSafeguardEnabled(this);
 
-        if (toggleAppLock != null) {
-            toggleAppLock.setChecked(appLockOn);
-        }
+            if (toggleAppLock != null) {
+                toggleAppLock.setChecked(appLockOn);
+            }
 
-        // Semak sokongan perkakasan biometrik (Fingerprint)
-        BiometricManager biometricManager = BiometricManager.from(this);
-        int canAuth = biometricManager.canAuthenticate(
-                BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK
-        );
+            // Semak sokongan perkakasan biometrik (Fingerprint)
+            BiometricManager biometricManager = BiometricManager.from(this);
+            int canAuth = biometricManager.canAuthenticate(
+                    BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK
+            );
 
-        if (canAuth == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE ||
-            canAuth == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE) {
-            // Peranti tiada sensor biometrik / tidak disokong - sembunyikan baris
-            if (rowBiometric != null) {
-                rowBiometric.setVisibility(View.GONE);
+            if (canAuth == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE ||
+                canAuth == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE) {
+                // Peranti tiada sensor biometrik / tidak disokong - sembunyikan baris
+                if (rowBiometric != null) {
+                    rowBiometric.setVisibility(View.GONE);
+                }
+                if (toggleBiometric != null) {
+                    toggleBiometric.setChecked(false);
+                    toggleBiometric.setEnabled(false);
+                }
+                UserPrefs.setFingerprintEnabled(this, false);
+            } else {
+                // Peranti menyokong sensor biometrik
+                if (rowBiometric != null) {
+                    rowBiometric.setVisibility(View.VISIBLE);
+                }
+                if (toggleBiometric != null) {
+                    toggleBiometric.setChecked(biometricOn);
+                    toggleBiometric.setEnabled(true);
+                }
             }
-            if (toggleBiometric != null) {
-                toggleBiometric.setChecked(false);
-            }
-            UserPrefs.setFingerprintEnabled(this, false);
-        } else {
-            // Peranti menyokong sensor biometrik
-            if (rowBiometric != null) {
-                rowBiometric.setVisibility(View.VISIBLE);
-            }
-            if (toggleBiometric != null) {
-                toggleBiometric.setChecked(biometricOn);
-                toggleBiometric.setEnabled(appLockOn);
-            }
-        }
 
-        if (toggleDuressSafeguard != null) {
-            toggleDuressSafeguard.setChecked(duressOn);
-        }
-        if (rowChangePin != null) {
-            rowChangePin.setVisibility(appLockOn ? View.VISIBLE : View.GONE);
+            if (toggleDuressSafeguard != null) {
+                toggleDuressSafeguard.setChecked(duressOn);
+            }
+            if (rowChangePin != null) {
+                rowChangePin.setVisibility(appLockOn ? View.VISIBLE : View.GONE);
+            }
+        } finally {
+            isSyncingUI = false;
         }
     }
 
     private void setupListeners() {
         View rowAppLock = findViewById(R.id.row_app_lock);
         if (rowAppLock != null && toggleAppLock != null) {
-            rowAppLock.setOnClickListener(v -> toggleAppLock.performClick());
+            rowAppLock.setOnClickListener(v -> toggleAppLock.toggle());
         }
 
         if (rowBiometric != null && toggleBiometric != null) {
-            rowBiometric.setOnClickListener(v -> {
-                if (toggleBiometric.isEnabled()) {
-                    toggleBiometric.performClick();
-                } else {
-                    Toast.makeText(this, R.string.security_app_lock_desc, Toast.LENGTH_SHORT).show();
-                }
-            });
+            rowBiometric.setOnClickListener(v -> toggleBiometric.toggle());
         }
 
         View rowDuress = findViewById(R.id.row_duress_safeguard);
@@ -168,15 +169,12 @@ public class SecuritySettingsActivity extends BaseActivity {
 
         if (toggleAppLock != null) {
             toggleAppLock.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                if (!buttonView.isPressed()) {
-                    return; // Ignore programmatic UI updates
-                }
+                if (isSyncingUI) return;
                 if (isChecked) {
                     // Setiap kali Pin Lock di-enable semula, buka UI Pin (SetPinActivity)
                     if (!UserPrefs.isAppLockEnabled(this) || UserPrefs.getAppLockPin(this).length() != 4) {
                         openSetPin(false);
                     } else {
-                        if (toggleBiometric != null) toggleBiometric.setEnabled(true);
                         if (rowChangePin != null) rowChangePin.setVisibility(View.VISIBLE);
                     }
                 } else {
@@ -184,7 +182,6 @@ public class SecuritySettingsActivity extends BaseActivity {
                     UserPrefs.setAppLockEnabled(this, false);
                     UserPrefs.setAppLockPin(this, "");
                     if (toggleBiometric != null) {
-                        toggleBiometric.setEnabled(false);
                         toggleBiometric.setChecked(false);
                         UserPrefs.setFingerprintEnabled(this, false);
                     }
@@ -200,10 +197,16 @@ public class SecuritySettingsActivity extends BaseActivity {
 
         if (toggleBiometric != null) {
             toggleBiometric.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                if (!buttonView.isPressed()) {
-                    return;
-                }
+                if (isSyncingUI) return;
                 if (isChecked) {
+                    boolean appLockOn = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
+                    if (!appLockOn) {
+                        Toast.makeText(this, R.string.security_biometric_need_pin, Toast.LENGTH_LONG).show();
+                        toggleBiometric.setChecked(false);
+                        openSetPin(false);
+                        return;
+                    }
+
                     BiometricManager bm = BiometricManager.from(this);
                     int authResult = bm.canAuthenticate(
                             BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK
@@ -231,6 +234,7 @@ public class SecuritySettingsActivity extends BaseActivity {
 
         if (toggleDuressSafeguard != null) {
             toggleDuressSafeguard.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (isSyncingUI) return;
                 UserPrefs.setDuressSafeguardEnabled(this, isChecked);
             });
         }

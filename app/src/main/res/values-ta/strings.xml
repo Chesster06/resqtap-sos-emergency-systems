@@ -212,6 +212,7 @@
     <string name="app_lock_forgot_pin">PIN மறந்துவிட்டதா?</string>
     <string name="security_biometric_not_enrolled">இந்த சாதனத்தில் கைரேகை பதிவு செய்யப்படவில்லை. அமைப்புகளில் கைரேகையை பதிவு செய்யவும்.</string>
     <string name="security_biometric_unsupported">இந்த சாதனம் பயோமெட்ரிக் அங்கீகாரத்தை ஆதரிக்கவில்லை.</string>
+    <string name="security_biometric_need_pin">கைரேகை பூட்டைப் பயன்படுத்த முதலில் ஆப் லாக் (PIN) இயக்கவும்.</string>
 
 
     <string name="personal_info_title">தனிப்பட்ட தகவல்</string>

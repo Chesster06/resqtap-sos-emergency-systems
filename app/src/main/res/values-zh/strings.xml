@@ -212,6 +212,7 @@
     <string name="app_lock_forgot_pin">忘记PIN码？</string>
     <string name="security_biometric_not_enrolled">此设备未注册指纹，请在系统设置中添加指纹。</string>
     <string name="security_biometric_unsupported">此设备不支持生物识别验证。</string>
+    <string name="security_biometric_need_pin">请先开启应用锁（PIN码）以使用指纹解锁。</string>
 
 
     <string name="personal_info_title">个人资料</string>

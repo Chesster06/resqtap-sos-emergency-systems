@@ -570,6 +570,7 @@ Terms Version: 1.0</string>
     <string name="app_lock_forgot_pin">Forgot PIN?</string>
     <string name="security_biometric_not_enrolled">No fingerprints registered on this device. Please register a fingerprint in device settings.</string>
     <string name="security_biometric_unsupported">This device does not support biometric authentication.</string>
+    <string name="security_biometric_need_pin">Please enable App Lock (PIN) first to use Fingerprint unlock.</string>
 
 
 

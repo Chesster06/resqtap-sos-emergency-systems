@@ -373,6 +373,7 @@
     <string name="app_lock_forgot_pin">Lupa PIN?</string>
     <string name="security_biometric_not_enrolled">Tiada cap jari didaftarkan pada peranti ini. Sila daftarkan cap jari dalam tetapan telefon.</string>
     <string name="security_biometric_unsupported">Peranti ini tidak menyokong pengesahan biometrik.</string>
+    <string name="security_biometric_need_pin">Sila aktifkan Kunci Aplikasi (PIN) terlebih dahulu untuk menggunakan Cap Jari.</string>
 
 
 
