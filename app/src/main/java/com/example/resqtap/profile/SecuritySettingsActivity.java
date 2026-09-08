@@ -55,10 +55,10 @@ public class SecuritySettingsActivity extends BaseActivity {
                 if (isSettingPinForBiometric) {
                     if (result.getResultCode() == RESULT_OK) {
                         UserPrefs.setFingerprintEnabled(this, true);
-                        UserPrefs.setAppLockEnabled(this, true);
                         Toast.makeText(this, R.string.biometric_and_pin_enabled_success, Toast.LENGTH_SHORT).show();
                     } else {
                         UserPrefs.setFingerprintEnabled(this, false);
+                        UserPrefs.setBiometricPin(this, "");
                     }
                     isSettingPinForBiometric = false;
                 }
@@ -243,6 +243,7 @@ public class SecuritySettingsActivity extends BaseActivity {
                     startBiometricRegistrationFlow();
                 } else {
                     UserPrefs.setFingerprintEnabled(this, false);
+                    UserPrefs.setBiometricPin(this, "");
                     Toast.makeText(this, R.string.security_biometric_disabled, Toast.LENGTH_SHORT).show();
                 }
             });
@@ -312,7 +313,7 @@ public class SecuritySettingsActivity extends BaseActivity {
                     Toast.makeText(SecuritySettingsActivity.this, R.string.biometric_prompt_verified_need_pin, Toast.LENGTH_LONG).show();
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         isSettingPinForBiometric = true;
-                        openSetPin(false);
+                        openSetPin(false, true);
                     }, 350);
                 }
 
@@ -342,8 +343,13 @@ public class SecuritySettingsActivity extends BaseActivity {
     }
 
     private void openSetPin(boolean isChanging) {
+        openSetPin(isChanging, false);
+    }
+
+    private void openSetPin(boolean isChanging, boolean isForBiometric) {
         Intent intent = new Intent(this, SetPinActivity.class);
         intent.putExtra(SetPinActivity.EXTRA_IS_CHANGING, isChanging);
+        intent.putExtra(SetPinActivity.EXTRA_IS_FOR_BIOMETRIC, isForBiometric);
         setPinLauncher.launch(intent);
     }
 

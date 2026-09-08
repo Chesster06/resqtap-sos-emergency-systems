@@ -30,6 +30,7 @@ import com.example.resqtap.utils.UserPrefs;
 public class SetPinActivity extends AppCompatActivity {
 
     public static final String EXTRA_IS_CHANGING = "extra_is_changing";
+    public static final String EXTRA_IS_FOR_BIOMETRIC = "extra_is_for_biometric";
 
     private static final int STATE_ENTER_CURRENT = 0;
     private static final int STATE_ENTER_NEW = 1;
@@ -37,6 +38,7 @@ public class SetPinActivity extends AppCompatActivity {
 
     private int currentState = STATE_ENTER_NEW;
     private boolean isChanging = false;
+    private boolean isForBiometric = false;
     private String firstPin = null;
 
     private final StringBuilder enteredPin = new StringBuilder();
@@ -66,7 +68,8 @@ public class SetPinActivity extends AppCompatActivity {
         });
 
         isChanging = getIntent().getBooleanExtra(EXTRA_IS_CHANGING, false);
-        String existingPin = UserPrefs.getAppLockPin(this);
+        isForBiometric = getIntent().getBooleanExtra(EXTRA_IS_FOR_BIOMETRIC, false);
+        String existingPin = isForBiometric ? UserPrefs.getBiometricPin(this) : UserPrefs.getAppLockPin(this);
         if (isChanging && existingPin != null && existingPin.length() == 4) {
             currentState = STATE_ENTER_CURRENT;
         } else {
@@ -203,7 +206,7 @@ public class SetPinActivity extends AppCompatActivity {
         String input = enteredPin.toString();
 
         if (currentState == STATE_ENTER_CURRENT) {
-            String existing = UserPrefs.getAppLockPin(this);
+            String existing = isForBiometric ? UserPrefs.getBiometricPin(this) : UserPrefs.getAppLockPin(this);
             if (input.equals(existing)) {
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     currentState = STATE_ENTER_NEW;
@@ -229,8 +232,12 @@ public class SetPinActivity extends AppCompatActivity {
             }, 200);
         } else if (currentState == STATE_CONFIRM_NEW) {
             if (input.equals(firstPin)) {
-                UserPrefs.setAppLockPin(this, firstPin);
-                UserPrefs.setAppLockEnabled(this, true);
+                if (isForBiometric) {
+                    UserPrefs.setBiometricPin(this, firstPin);
+                } else {
+                    UserPrefs.setAppLockPin(this, firstPin);
+                    UserPrefs.setAppLockEnabled(this, true);
+                }
                 AppLockManager.setUnlocked(true);
                 Toast.makeText(this, R.string.security_pin_saved, Toast.LENGTH_SHORT).show();
                 setResult(RESULT_OK);

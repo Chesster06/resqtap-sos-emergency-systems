@@ -36,6 +36,7 @@ public final class UserPrefs {
     private static final String KEY_APP_LOCK_ENABLED = "app_lock_enabled";
     private static final String KEY_APP_LOCK_PIN = "app_lock_pin";
     private static final String KEY_FINGERPRINT_ENABLED = "fingerprint_enabled";
+    private static final String KEY_BIOMETRIC_PIN = "biometric_pin";
     private static final String KEY_DURESS_SAFEGUARD_ENABLED = "duress_safeguard_enabled";
     private static final String KEY_LANGUAGE = "language";
     private static final String KEY_ADDRESS = "address";
@@ -273,6 +274,7 @@ public final class UserPrefs {
                 .remove(KEY_APP_LOCK_ENABLED)
                 .remove(KEY_APP_LOCK_PIN)
                 .remove(KEY_FINGERPRINT_ENABLED)
+                .remove(KEY_BIOMETRIC_PIN)
                 .apply();
     }
 
@@ -384,6 +386,16 @@ public final class UserPrefs {
     /** Fungsi untuk setFingerprintEnabled. */
     public static void setFingerprintEnabled(Context context, boolean enabled) {
         prefs(context).edit().putBoolean(KEY_FINGERPRINT_ENABLED, enabled).apply();
+    }
+
+    /** Ambil atau muat data BiometricPin. */
+    public static String getBiometricPin(Context context) {
+        return prefs(context).getString(KEY_BIOMETRIC_PIN, "");
+    }
+
+    /** Fungsi untuk setBiometricPin. */
+    public static void setBiometricPin(Context context, String pin) {
+        prefs(context).edit().putString(KEY_BIOMETRIC_PIN, pin == null ? "" : pin).apply();
     }
 
     /** Semak dan sahkan DuressSafeguardEnabled. */

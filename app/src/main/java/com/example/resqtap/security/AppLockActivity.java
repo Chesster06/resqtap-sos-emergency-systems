@@ -93,10 +93,12 @@ public class AppLockActivity extends AppCompatActivity {
 
         boolean biometricOn = UserPrefs.isFingerprintEnabled(this);
         boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
+        boolean hasBiometricPin = biometricOn && UserPrefs.getBiometricPin(this).length() == 4;
+        boolean hasAnyPin = hasAppLockPin || hasBiometricPin;
 
         TextView tvTitle = findViewById(R.id.tv_title);
         TextView tvDesc = findViewById(R.id.tv_desc);
-        if (hasAppLockPin) {
+        if (hasAnyPin) {
             if (tvTitle != null) tvTitle.setText(R.string.app_lock_screen_title);
             if (tvDesc != null) tvDesc.setText(R.string.app_lock_screen_desc);
         } else if (biometricOn) {
@@ -118,11 +120,11 @@ public class AppLockActivity extends AppCompatActivity {
 
         View forgotPin = findViewById(R.id.btn_forgot_pin);
         if (forgotPin != null) {
-            forgotPin.setVisibility(hasAppLockPin ? View.VISIBLE : View.GONE);
+            forgotPin.setVisibility(hasAnyPin ? View.VISIBLE : View.GONE);
             forgotPin.setOnClickListener(v -> showForgotPinDialog());
         }
 
-        if (dotsContainer != null && biometricOn && !hasAppLockPin) {
+        if (dotsContainer != null && biometricOn && !hasAnyPin) {
             dotsContainer.setOnClickListener(v -> authenticateBiometric());
         }
     }
@@ -134,12 +136,14 @@ public class AppLockActivity extends AppCompatActivity {
         };
 
         boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
+        boolean hasBiometricPin = UserPrefs.isFingerprintEnabled(this) && UserPrefs.getBiometricPin(this).length() == 4;
+        boolean hasAnyPin = hasAppLockPin || hasBiometricPin;
 
         for (int id : keyIds) {
             TextView key = findViewById(id);
             if (key != null) {
                 key.setOnClickListener(v -> {
-                    if (hasAppLockPin) {
+                    if (hasAnyPin) {
                         appendDigit(key.getText().toString());
                     } else {
                         authenticateBiometric();
@@ -151,7 +155,7 @@ public class AppLockActivity extends AppCompatActivity {
         View backspace = findViewById(R.id.btn_backspace);
         if (backspace != null) {
             backspace.setOnClickListener(v -> {
-                if (hasAppLockPin) {
+                if (hasAnyPin) {
                     removeDigit();
                 } else {
                     authenticateBiometric();
@@ -191,8 +195,11 @@ public class AppLockActivity extends AppCompatActivity {
     }
 
     private void verifyPin() {
-        String correctPin = UserPrefs.getAppLockPin(this);
-        if (enteredPin.toString().equals(correctPin)) {
+        String input = enteredPin.toString();
+        boolean appLockValid = UserPrefs.isAppLockEnabled(this) && input.equals(UserPrefs.getAppLockPin(this));
+        boolean biometricPinValid = UserPrefs.isFingerprintEnabled(this) && input.equals(UserPrefs.getBiometricPin(this));
+
+        if (appLockValid || biometricPinValid) {
             unlockSuccess();
         } else {
             shakeDots();
