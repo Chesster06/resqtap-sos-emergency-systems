@@ -33,9 +33,9 @@ public class MedicalNewsAdapter extends RecyclerView.Adapter<MedicalNewsAdapter.
 
     private final Context context;
     private final List<MedicalNewsItem> items = new ArrayList<>();
-    private final ExecutorService imageExecutor = Executors.newFixedThreadPool(3);
+    private final ExecutorService imageExecutor = Executors.newFixedThreadPool(4);
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private static final LruCache<String, Bitmap> imageCache = new LruCache<>(30);
+    private static final LruCache<String, Bitmap> imageCache = new LruCache<>(40);
 
     public MedicalNewsAdapter(Context context) {
         this.context = context;
@@ -69,14 +69,16 @@ public class MedicalNewsAdapter extends RecyclerView.Adapter<MedicalNewsAdapter.
             holder.tvSnippet.setText(snippet);
         }
 
-        String meta = (item.getSource().isEmpty() ? "Kesihatan" : item.getSource()) + " • " + item.getPublishedAt();
+        String fallbackSource = context != null ? context.getString(R.string.medical_news_source_health) : "Health";
+        String meta = (item.getSource().isEmpty() ? fallbackSource : item.getSource()) + " • " + item.getPublishedAt();
         holder.tvMeta.setText(meta);
 
-        // Thumbnail loading
-        holder.imgThumb.setImageResource(position % 2 == 0 ? R.drawable.img_news_hospital_kkm : R.drawable.img_news_cpr);
+        // Muat gambar sebenar berita
         String imgUrl = item.getImageUrl();
-        if (imgUrl != null && !imgUrl.isEmpty()) {
-            loadImageAsync(imgUrl, holder.imgThumb);
+        holder.imgThumb.setImageDrawable(null);
+        holder.imgThumb.setBackgroundColor(0xFFE5E7EB);
+        if (imgUrl != null && !imgUrl.trim().isEmpty()) {
+            loadImageAsync(imgUrl.trim(), holder.imgThumb);
         }
 
         holder.itemView.setOnClickListener(v -> {
@@ -115,24 +117,42 @@ public class MedicalNewsAdapter extends RecyclerView.Adapter<MedicalNewsAdapter.
             return;
         }
 
+        targetView.setTag(urlStr);
+
         imageExecutor.execute(() -> {
+            HttpURLConnection conn = null;
+            InputStream is = null;
             try {
                 URL url = new URL(urlStr);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
-                conn.setRequestProperty("User-Agent", "ResQTap-App/1.0");
-                if (conn.getResponseCode() == 200) {
-                    InputStream is = conn.getInputStream();
-                    Bitmap bitmap = BitmapFactory.decodeStream(is);
-                    is.close();
-                    conn.disconnect();
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setConnectTimeout(8000);
+                conn.setReadTimeout(8000);
+                conn.setInstanceFollowRedirects(true);
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                conn.setRequestProperty("Accept", "image/webp,image/apng,image/*,*/*;q=0.8");
+
+                if (conn.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                    is = conn.getInputStream();
+                    BitmapFactory.Options opt = new BitmapFactory.Options();
+                    opt.inPreferredConfig = Bitmap.Config.RGB_565;
+                    Bitmap bitmap = BitmapFactory.decodeStream(is, null, opt);
                     if (bitmap != null) {
                         imageCache.put(urlStr, bitmap);
-                        mainHandler.post(() -> targetView.setImageBitmap(bitmap));
+                        mainHandler.post(() -> {
+                            if (urlStr.equals(targetView.getTag())) {
+                                targetView.setImageBitmap(bitmap);
+                            }
+                        });
                     }
                 }
             } catch (Exception ignored) {
+            } finally {
+                if (is != null) {
+                    try { is.close(); } catch (Exception ignored) {}
+                }
+                if (conn != null) {
+                    conn.disconnect();
+                }
             }
         });
     }

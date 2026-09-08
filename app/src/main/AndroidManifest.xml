@@ -134,6 +134,24 @@
             android:windowSoftInputMode="adjustNothing" />
 
         <activity
+            android:name=".profile.SecuritySettingsActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustNothing" />
+
+        <activity
+            android:name=".security.AppLockActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustNothing" />
+
+        <activity
+            android:name=".security.SetPinActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustNothing" />
+
+
+
+        <activity
             android:name=".chat.FullscreenMessageActivity"
             android:exported="false" />
 

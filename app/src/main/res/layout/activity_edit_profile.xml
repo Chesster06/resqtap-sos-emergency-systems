@@ -221,7 +221,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Email"
+                            android:text="@string/hint_email"
                             android:textColor="@color/edit_profile_row_label"
                             android:textSize="15sp" />
 
@@ -299,7 +299,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Gender"
+                            android:text="@string/hint_gender"
                             android:textColor="@color/edit_profile_row_label"
                             android:textSize="15sp" />
 
@@ -431,7 +431,7 @@
                 android:layout_marginBottom="10dp"
                 android:paddingStart="4dp"
                 android:paddingEnd="4dp"
-                android:text="Medical &amp; Contact"
+                android:text="@string/medical_detail_header"
                 android:textColor="@color/text_primary"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -467,7 +467,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Phone"
+                            android:text="@string/hint_phone"
                             android:textColor="@color/edit_profile_row_label"
                             android:textSize="15sp" />
 
@@ -517,7 +517,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Blood Type"
+                            android:text="@string/hint_blood_type"
                             android:textColor="@color/edit_profile_row_label"
                             android:textSize="15sp" />
 
@@ -567,7 +567,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Allergies"
+                            android:text="@string/hint_allergy"
                             android:textColor="@color/edit_profile_row_label"
                             android:textSize="15sp" />
 
@@ -617,7 +617,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Conditions"
+                            android:text="@string/hint_condition"
                             android:textColor="@color/edit_profile_row_label"
                             android:textSize="15sp" />
 
@@ -667,7 +667,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Address"
+                            android:text="@string/hint_address"
                             android:textColor="@color/edit_profile_row_label"
                             android:textSize="15sp" />
 

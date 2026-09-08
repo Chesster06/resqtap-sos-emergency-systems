@@ -146,9 +146,72 @@
     <string name="profile_name_default">未设置姓名</string>
     <string name="profile_personal_info">个人资料</string>
     <string name="profile_emergency_contacts">紧急联系人</string>
+    <string name="profile_security">安全设置</string>
+    <string name="profile_security_desc">应用锁、生物识别与账户安全</string>
     <string name="profile_app_settings">应用设置</string>
     <string name="profile_help_support">帮助与支持</string>
     <string name="profile_about">关于 ResQTap</string>
+
+    <!-- Security Settings Strings (Chinese) -->
+    <string name="security_title">安全设置</string>
+    <string name="security_desc">配置应用锁、PIN码和账户保护。</string>
+    <string name="security_section_app_lock">应用保护</string>
+    <string name="security_app_lock_title">应用锁 (PIN码)</string>
+    <string name="security_app_lock_desc">打开应用时需要输入4位数字PIN码。</string>
+    <string name="security_biometric_title">生物识别 / 指纹解锁</string>
+    <string name="security_biometric_desc">使用指纹或面部识别解锁应用。</string>
+    <string name="security_change_pin_title">修改应用PIN码</string>
+    <string name="security_change_pin_desc">更新您的4位数安全通行码。</string>
+    <string name="security_section_account">账户与访问</string>
+    <string name="security_change_password_title">修改密码</string>
+    <string name="security_change_password_desc">更新您的账户登录密码。</string>
+    <string name="security_change_password_modal_desc">输入当前密码并设置新密码。</string>
+    <string name="security_current_password_hint">当前密码</string>
+    <string name="security_new_password_hint">新密码（至少6位字符）</string>
+    <string name="security_confirm_password_hint">确认新密码</string>
+    <string name="security_password_updated">密码修改成功！</string>
+    <string name="security_password_incorrect">当前密码不正确。</string>
+    <string name="security_password_mismatch">新密码与确认密码不一致。</string>
+    <string name="security_password_too_short">新密码必须至少包含6位字符。</string>
+    <string name="security_device_status_title">设备安全状态</string>
+
+    <string name="security_device_status_secure">已受保护 • 屏幕锁已激活</string>
+    <string name="security_device_status_warning">注意 • 尚未设置设备屏幕锁</string>
+    <string name="security_section_emergency">紧急防护</string>
+    <string name="security_duress_safeguard_title">胁迫 SOS 防护</string>
+    <string name="security_duress_safeguard_desc">防止在紧急呼救时被误取消。</string>
+    <string name="security_pin_dialog_title">设置4位数安全PIN码</string>
+    <string name="security_pin_dialog_change_title">修改安全PIN码</string>
+    <string name="security_pin_dialog_hint">输入4位数字</string>
+    <string name="security_pin_current_hint">当前4位数PIN码</string>
+    <string name="security_pin_new_hint">新4位数PIN码</string>
+    <string name="security_pin_confirm_hint">确认新4位数PIN码</string>
+    <string name="security_pin_step_enter_title">输入新PIN码</string>
+    <string name="security_pin_step_enter_desc">请输入4位数字新PIN码以保护应用</string>
+    <string name="security_pin_step_enter_your_title">输入您的PIN码</string>
+    <string name="security_pin_step_enter_your_desc">请输入4位数字PIN码以保护应用</string>
+    <string name="security_pin_step_confirm_title">确认新PIN码</string>
+    <string name="security_pin_step_confirm_desc">请再次输入4位数字新PIN码进行确认</string>
+    <string name="security_pin_step_confirm_your_title">确认您的PIN码</string>
+    <string name="security_pin_step_confirm_your_desc">请再次输入4位数字PIN码进行确认</string>
+    <string name="security_pin_step_current_title">输入当前PIN码</string>
+    <string name="security_pin_step_current_desc">请输入您当前的4位数字PIN码以继续</string>
+    <string name="security_pin_saved">安全PIN码设置成功！</string>
+    <string name="security_pin_incorrect">当前PIN码错误，请重试。</string>
+    <string name="security_pin_mismatch">新PIN码与确认密码不一致。</string>
+    <string name="security_pin_length_error">PIN码必须正好是4位数字。</string>
+    <string name="security_password_reset_sent">重置密码邮件已发送至 %1$s。</string>
+    <string name="security_password_reset_no_email">未找到此账户注册的邮箱。</string>
+    <string name="security_app_lock_disabled">应用锁已停用。</string>
+    <string name="app_lock_screen_title">输入安全PIN码</string>
+    <string name="app_lock_screen_desc">请输入4位数PIN码以进入 ResQTap。</string>
+    <string name="app_lock_incorrect_pin">PIN码错误，请重试。</string>
+    <string name="app_lock_use_biometric">触摸传感器或使用生物识别</string>
+    <string name="app_lock_biometric_prompt_title">解锁 ResQTap</string>
+    <string name="app_lock_biometric_prompt_subtitle">验证您的身份以进入应用</string>
+    <string name="app_lock_forgot_pin">忘记PIN码？</string>
+
+
     <string name="personal_info_title">个人资料</string>
     <string name="personal_info_subtitle">保持你的资料最新</string>
     <string name="hint_religion">宗教</string>
@@ -286,6 +349,14 @@
     <string name="friend_incoming_requests_placeholder">好友请求将显示在这里</string>
     <string name="friend_no_friends_title">暂无好友</string>
     <string name="friend_no_friends_desc">点击上方添加按钮（+）扫描好友二维码</string>
+    <string name="friend_details_loading">正在加载详情…</string>
+    <string name="friend_details_blood">血型</string>
+    <string name="friend_details_allergies">过敏</string>
+    <string name="friend_details_conditions">健康状况</string>
+    <string name="friend_details_call">呼叫</string>
+    <string name="friend_details_no_phone">无电话号码</string>
+    <string name="friend_details_no_email">无电子邮箱</string>
+    <string name="friend_details_not_provided">无</string>
     <string name="friend_default_name">好友</string>
     <string name="friend_user_default">用户</string>
     <string name="friend_tag_format">ID: #%1$s • 好友</string>
@@ -345,5 +416,31 @@
     <string name="gmail_only_warning">请使用 @gmail.com 邮箱。</string>
     <string name="call_connected">已连接</string>
     <string name="ok">确定</string>
+    <string name="tab_ai_assistant">AI 助手</string>
+    <string name="tab_live_support">人工客服</string>
+
+    <!-- Medical News & Home Localization -->
+    <string name="home_news_section_title">5条最新资讯</string>
+    <string name="home_see_all_news">查看所有资讯</string>
+    <string name="home_highlights_title">精选亮点</string>
+    <string name="medical_news_title">健康医疗资讯</string>
+    <string name="medical_news_load_failed">加载最新资讯失败，请稍后重试。</string>
+    <string name="medical_news_source_health">健康</string>
+    <string name="medical_news_latest">最新</string>
+
+    <!-- Room & Friend Notifications Localization -->
+    <string name="notif_friend_request_title">好友请求</string>
+    <string name="notif_friend_request_msg">%1$s 向您发送了好友请求。</string>
+    <string name="notif_friend_accepted_title">好友请求已接受</string>
+    <string name="notif_friend_accepted_msg">%1$s 已接受您的好友请求！</string>
+    <string name="someone">有人</string>
+    <string name="notif_room_created_title">房间创建成功</string>
+    <string name="notif_room_created_msg">您已成功创建房间 %1$s。</string>
+    <string name="notif_room_joined_title">成功加入房间</string>
+    <string name="notif_room_joined_msg">您已成功加入房间 %1$s。</string>
+    <string name="notif_room_deleted_title">房间已删除</string>
+    <string name="notif_room_left_title">离开房间</string>
+    <string name="notif_room_deleted_msg">您已删除房间 %1$s。</string>
+    <string name="notif_room_left_msg">您已离开房间 %1$s。</string>
 </resources>
 

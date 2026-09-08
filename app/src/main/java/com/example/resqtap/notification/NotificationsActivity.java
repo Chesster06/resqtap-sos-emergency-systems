@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 
@@ -55,7 +56,7 @@ public class NotificationsActivity extends BaseActivity {
     private ValueEventListener userNotifListener;
     private DataSnapshot globalSnapshot;
     private DataSnapshot userSnapshot;
-    private final DateFormat dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT);
+    private final DateFormat dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, Locale.getDefault());
     private boolean showingDetail = false;
 
     // =========================================================================
@@ -236,7 +237,7 @@ public class NotificationsActivity extends BaseActivity {
             body.setPadding(dp(18), dp(16), dp(18), dp(16));
 
             TextView title = new TextView(this);
-            title.setText(item.title);
+            title.setText(getLocalizedTitle(item.title));
             title.setTextColor(getColor(R.color.text_primary));
             title.setTextSize(15.5f);
             title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
@@ -245,7 +246,7 @@ public class NotificationsActivity extends BaseActivity {
             body.addView(title);
 
             TextView message = new TextView(this);
-            message.setText(item.message);
+            message.setText(getLocalizedMessage(item.message));
             message.setTextColor(getColor(R.color.text_primary));
             message.setTextSize(13);
             message.setPadding(0, dp(5), 0, 0);
@@ -279,14 +280,92 @@ public class NotificationsActivity extends BaseActivity {
         }
     }
 
+    private String getLocalizedTitle(String raw) {
+        if (raw == null || raw.trim().isEmpty()) return "";
+        String s = raw.trim();
+        if (s.equalsIgnoreCase("Bilik Berjaya Dicipta") || s.equalsIgnoreCase("Room Created Successfully")) {
+            return getString(R.string.notif_room_created_title);
+        }
+        if (s.equalsIgnoreCase("Sertai Bilik Berjaya") || s.equalsIgnoreCase("Joined Room Successfully")) {
+            return getString(R.string.notif_room_joined_title);
+        }
+        if (s.equalsIgnoreCase("Bilik Dipadamkan") || s.equalsIgnoreCase("Room Deleted")) {
+            return getString(R.string.notif_room_deleted_title);
+        }
+        if (s.equalsIgnoreCase("Meninggalkan Bilik") || s.equalsIgnoreCase("Left Room")) {
+            return getString(R.string.notif_room_left_title);
+        }
+        if (s.equalsIgnoreCase("Permintaan Rakan") || s.equalsIgnoreCase("Friend Request")) {
+            return getString(R.string.notif_friend_request_title);
+        }
+        if (s.equalsIgnoreCase("Permintaan Rakan Diterima") || s.equalsIgnoreCase("Friend Request Accepted")) {
+            return getString(R.string.notif_friend_accepted_title);
+        }
+        return raw;
+    }
+
+    private String getLocalizedMessage(String raw) {
+        if (raw == null || raw.trim().isEmpty()) return "";
+        String s = raw.trim();
+        if (s.startsWith("Anda telah berjaya mencipta bilik ")) {
+            String code = s.substring("Anda telah berjaya mencipta bilik ".length()).replace(".", "").trim();
+            return getString(R.string.notif_room_created_msg, code);
+        }
+        if (s.startsWith("You have successfully created room ")) {
+            String code = s.substring("You have successfully created room ".length()).replace(".", "").trim();
+            return getString(R.string.notif_room_created_msg, code);
+        }
+        if (s.startsWith("Anda telah berjaya menyertai bilik ")) {
+            String code = s.substring("Anda telah berjaya menyertai bilik ".length()).replace(".", "").trim();
+            return getString(R.string.notif_room_joined_msg, code);
+        }
+        if (s.startsWith("You have successfully joined room ")) {
+            String code = s.substring("You have successfully joined room ".length()).replace(".", "").trim();
+            return getString(R.string.notif_room_joined_msg, code);
+        }
+        if (s.startsWith("Anda telah memadamkan bilik ")) {
+            String code = s.substring("Anda telah memadamkan bilik ".length()).replace(".", "").trim();
+            return getString(R.string.notif_room_deleted_msg, code);
+        }
+        if (s.startsWith("You have deleted room ")) {
+            String code = s.substring("You have deleted room ".length()).replace(".", "").trim();
+            return getString(R.string.notif_room_deleted_msg, code);
+        }
+        if (s.startsWith("Anda telah keluar dari bilik ")) {
+            String code = s.substring("Anda telah keluar dari bilik ".length()).replace(".", "").trim();
+            return getString(R.string.notif_room_left_msg, code);
+        }
+        if (s.startsWith("You have left room ")) {
+            String code = s.substring("You have left room ".length()).replace(".", "").trim();
+            return getString(R.string.notif_room_left_msg, code);
+        }
+        if (s.endsWith(" telah menghantar permintaan rakan.")) {
+            String who = s.substring(0, s.length() - " telah menghantar permintaan rakan.".length()).trim();
+            return getString(R.string.notif_friend_request_msg, who);
+        }
+        if (s.endsWith(" sent you a friend request.")) {
+            String who = s.substring(0, s.length() - " sent you a friend request.".length()).trim();
+            return getString(R.string.notif_friend_request_msg, who);
+        }
+        if (s.endsWith(" telah menerima permintaan rakan anda!")) {
+            String who = s.substring(0, s.length() - " telah menerima permintaan rakan anda!".length()).trim();
+            return getString(R.string.notif_friend_accepted_msg, who);
+        }
+        if (s.endsWith(" accepted your friend request!")) {
+            String who = s.substring(0, s.length() - " accepted your friend request!".length()).trim();
+            return getString(R.string.notif_friend_accepted_msg, who);
+        }
+        return raw;
+    }
+
     /** Paparkan NotificationDetail. */
     private void showNotificationDetail(Notice item) {
         if (item == null) return;
-        if (detailTitle != null) detailTitle.setText(item.title);
+        if (detailTitle != null) detailTitle.setText(getLocalizedTitle(item.title));
         if (detailTime != null) {
             detailTime.setText(getString(R.string.notification_detail_sent, dateFormat.format(new Date(item.time))));
         }
-        if (detailMessage != null) detailMessage.setText(item.message);
+        if (detailMessage != null) detailMessage.setText(getLocalizedMessage(item.message));
         if (detailSource != null) {
             if (item.imageUrl.isEmpty()) {
                 detailSource.setVisibility(View.GONE);

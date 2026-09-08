@@ -68,7 +68,7 @@ public class MedicalNewsActivity extends BaseActivity {
             public void onError(Exception e) {
                 if (progressLoading != null) progressLoading.setVisibility(View.GONE);
                 if (swipeRefresh != null) swipeRefresh.setRefreshing(false);
-                Toast.makeText(MedicalNewsActivity.this, "Gagal memuatkan berita terkini. Sila cuba sebentar lagi.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MedicalNewsActivity.this, R.string.medical_news_load_failed, Toast.LENGTH_SHORT).show();
             }
         });
     }

@@ -185,7 +185,7 @@
                         android:background="@color/divider" />
 
                     <include
-                        android:id="@+id/item_hospital"
+                        android:id="@+id/item_security"
                         layout="@layout/item_profile_menu" />
 
                     <View

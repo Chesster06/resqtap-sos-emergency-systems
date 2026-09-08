@@ -10,14 +10,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.resqtap.R;
 import com.example.resqtap.friend.FirebaseFriendClient.FriendInfo;
+import com.example.resqtap.utils.AvatarUtils;
 import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.checkbox.MaterialCheckBox;
+import com.google.android.material.imageview.ShapeableImageView;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 
 /**
  * FriendSelectAdapter
@@ -47,7 +47,6 @@ public class FriendSelectAdapter extends RecyclerView.Adapter<FriendSelectAdapte
     }
 
     @NonNull
-    /** Inflate susun atur XML untuk item ViewHolder. */
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_friend_select, parent, false);
@@ -64,13 +63,14 @@ public class FriendSelectAdapter extends RecyclerView.Adapter<FriendSelectAdapte
         return new ViewHolder(v);
     }
 
-    /** Bind data ke elemen paparan item. */
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         FriendInfo f = friends.get(position);
         android.content.Context ctx = holder.itemView.getContext();
         holder.name.setText(f.name.isEmpty() ? ctx.getString(R.string.friend_default_name) : f.name);
         holder.tag.setText(f.name + "#" + f.publicId);
+
+        AvatarUtils.applyAvatar(holder.avatar, f.photoB64, f.photoUrl, R.drawable.ic_avatar);
 
         ViewGroup.LayoutParams lp = holder.itemView.getLayoutParams();
         if (lp != null && lp.width != ViewGroup.LayoutParams.MATCH_PARENT) {
@@ -105,7 +105,6 @@ public class FriendSelectAdapter extends RecyclerView.Adapter<FriendSelectAdapte
         });
     }
 
-    /** Ambil atau muat data ItemCount. */
     @Override
     public int getItemCount() {
         return friends.size();
@@ -113,6 +112,7 @@ public class FriendSelectAdapter extends RecyclerView.Adapter<FriendSelectAdapte
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         final MaterialCardView card;
+        final ShapeableImageView avatar;
         final TextView name;
         final TextView tag;
         final View boxIndicator;
@@ -121,6 +121,7 @@ public class FriendSelectAdapter extends RecyclerView.Adapter<FriendSelectAdapte
         ViewHolder(@NonNull View itemView) {
             super(itemView);
             card = itemView.findViewById(R.id.card_friend_item);
+            avatar = itemView.findViewById(R.id.iv_friend_avatar);
             name = itemView.findViewById(R.id.tv_friend_name);
             tag = itemView.findViewById(R.id.tv_friend_tag);
             boxIndicator = itemView.findViewById(R.id.box_select_indicator);

@@ -23,19 +23,17 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <FrameLayout
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/req_avatar"
                 android:layout_width="52dp"
                 android:layout_height="52dp"
-                android:background="@drawable/bg_bottom_nav_glass">
-
-                <ImageView
-                    android:id="@+id/req_avatar"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_avatar"
-                    app:tint="@color/text_primary" />
-            </FrameLayout>
+                android:background="@color/edit_profile_avatar_bg"
+                android:contentDescription="@null"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_avatar"
+                app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.ResQTap.Circle"
+                app:strokeColor="@color/edit_profile_avatar_ring"
+                app:strokeWidth="1dp" />
 
             <LinearLayout
                 android:layout_width="0dp"

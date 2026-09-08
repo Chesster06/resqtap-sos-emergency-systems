@@ -50,7 +50,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-bold"
-                android:text="AI Assistant"
+                android:text="@string/tab_ai_assistant"
                 android:textColor="@color/text_primary"
                 android:textSize="20sp"
                 android:textStyle="bold" />
@@ -93,7 +93,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="5dp"
                     android:fontFamily="sans-serif-bold"
-                    android:text="Live Support"
+                    android:text="@string/tab_live_support"
                     android:textColor="@color/brand_primary"
                     android:textSize="10sp"
                     android:textStyle="bold" />

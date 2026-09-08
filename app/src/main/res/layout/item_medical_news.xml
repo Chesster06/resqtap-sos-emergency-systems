@@ -80,8 +80,7 @@
                 android:layout_height="match_parent"
                 android:background="#F3F4F6"
                 android:contentDescription="@null"
-                android:scaleType="centerCrop"
-                android:src="@drawable/img_news_hospital_kkm" />
+                android:scaleType="centerCrop" />
         </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>

@@ -3,41 +3,81 @@ package com.example.resqtap.news;
 import android.os.Handler;
 import android.os.Looper;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
 
-import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 
+/**
+ * MedicalNewsFetcher
+ * Memuat turun dan menapis KHUSUS berita perubatan, kesihatan, dan kecemasan klinikal sahaja
+ * (100% medic) daripada suapan media rasmi bersama gambar sebenar.
+ */
 public class MedicalNewsFetcher {
 
-    private static final String NEWS_API_KEY = "a5bfbf87373049d1a2feab73d01a8eee";
-    private static final String GOOGLE_HEALTH_RSS_URL_1 = "https://news.google.com/rss/search?q=(kesihatan+OR+hospital+OR+perubatan+OR+doktor+OR+penyakit+OR+rawatan+OR+denggi+OR+KKM)+when:14d&hl=ms&gl=MY&ceid=MY:ms";
-    private static final String GOOGLE_HEALTH_RSS_URL_2 = "https://news.google.com/rss/headlines/section/topic/HEALTH?hl=ms&gl=MY&ceid=MY:ms";
-
-    private static final String[] MEDICAL_KEYWORDS = {
-            "kesihatan", "hospital", "perubatan", "klinik", "kkm", "doktor",
-            "pesakit", "penyakit", "denggi", "virus", "vaksin", "rawatan",
-            "ambulans", "darah", "cpr", "kecemasan", "ubat", "health",
-            "medical", "disease", "cancer", "jantung", "paru-paru", "obesiti",
-            "strok", "hospis", "farmasi", "pembedahan", "psikiatri"
+    private static final String[][] RSS_FEEDS_MS = {
+            {"Astro Awani", "https://www.astroawani.com/rss/lifestyle/public"},
+            {"Free Malaysia Today", "https://www.freemalaysiatoday.com/category/leisure/health/feed/"},
+            {"Harian Metro", "https://www.hmetro.com.my/feed"},
+            {"Berita Harian", "https://www.bharian.com.my/feed"},
+            {"Astro Awani", "https://www.astroawani.com/rss/latest/public"}
     };
 
-    private static final String[] EXCLUDE_KEYWORDS = {
-            "visa", "immigrant", "saham", "dividen", "bursa", "konsert", "bola sepak", "liga"
+    private static final String[][] RSS_FEEDS_EN = {
+            {"CodeBlue", "https://codeblue.galencentre.org/feed/"},
+            {"Free Malaysia Today", "https://www.freemalaysiatoday.com/category/leisure/health/feed/"},
+            {"WHO News", "https://www.who.int/rss-feeds/news-english.xml"},
+            {"Astro Awani", "https://www.astroawani.com/rss/lifestyle/public"}
     };
+
+    private static boolean isMalay() {
+        String lang = Locale.getDefault().getLanguage();
+        return "ms".equalsIgnoreCase(lang) || "in".equalsIgnoreCase(lang);
+    }
+
+    // Corak kata kunci perubatan tulen (mesti ada sekurang-kurangnya satu)
+    private static final Pattern MEDIC_PATTERN = Pattern.compile(
+            "\\b(kkm|kementerian kesihatan|hospital|hospitals|klinik|clinic|clinics|doktor|doctor|doctors|jururawat|nurse|nurses|" +
+            "pakar perubatan|physician|perubatan|medical|medicine|medicines|" +
+            "pesakit|patient|patients|penyakit|disease|diseases|illness|rawatan|treatment|treatments|pembedahan|surgery|surgical|" +
+            "kesihatan|health|healthcare|kesihatan mental|mental health|kesihatan awam|public health|" +
+            "vaksin|vaccine|vaccines|vaccination|virus|viruses|viral|denggi|dengue|influenza|flu|wabak|outbreak|jangkitan|infection|infections|bakteria|bacteria|" +
+            "kanser|cancer|cancers|jantung|heart|cardiac|cardiology|strok|stroke|strokes|diabetes|diabetic|buah pinggang|kidney|renal|" +
+            "ubat|ubatan|drug|drugs|farmasi|pharmacy|pharmaceutical|antibiotik|antibiotic|antibiotics|" +
+            "derma darah|blood donation|pusat darah|blood bank|bekalan darah|cpr|ambulans|ambulance|ambulances|pertolongan cemas|first aid|" +
+            "jaundis|jaundice|rehabilitasi|rehabilitation|osteosarkoma|anxiety|depresi|depression|autisme|autism|keracunan makanan|food poisoning|terapi|therapy|" +
+            "caregiving|caregiver|pediatric|pediatrics|icu|ward|emergency department|ministry of health|who)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
+
+    // Corak kata kunci BUKAN perubatan (ditolak serta-merta)
+    private static final Pattern EXCLUDE_PATTERN = Pattern.compile(
+            "\\b(lrt|mrt|rapid kl|kesesakan|penumpang|" +
+            "agong|sultan|raja-raja|mohor|istana|" +
+            "protes|antimigran|rusuhan|perang|tentera|" +
+            "politik|parlimen|pilihan raya|parti|jemaah menteri|" +
+            "polis|pdrm|rasuah|mahkamah|hakim|dakwa|didakwa|" +
+            "bomba|kebakaran|terbakar|padam api|rumah runtuh|" +
+            "kemalangan|terbabas|langgar|lori|motosikal|" +
+            "sukan|bola sepak|liga|atlet|olimpik|polo|" +
+            "artis|konsert|filem|drama|lagu|selebriti|" +
+            "saham|dividen|bursa|pelaburan|wang kertas|" +
+            "pereka fesyen|rizalman|miss world|harry potter|" +
+            "osmo|vivo|ayam brand|masjid|kedai kopi)\\b",
+            Pattern.CASE_INSENSITIVE
+    );
 
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -49,63 +89,64 @@ public class MedicalNewsFetcher {
 
     public static void fetchMedicalNews(int limit, NewsCallback callback) {
         executor.execute(() -> {
-            List<MedicalNewsItem> results = new ArrayList<>();
+            List<MedicalNewsItem> aggregated = new ArrayList<>();
+            Set<String> seenTitles = new HashSet<>();
 
-            // 1. Fetch from Google News Health Malaysia RSS (100% real Malaysian health news)
-            try {
-                results = fetchFromRss(GOOGLE_HEALTH_RSS_URL_1);
-            } catch (Exception ignored) {
-            }
-
-            if (results.isEmpty()) {
+            String[][] feeds = isMalay() ? RSS_FEEDS_MS : RSS_FEEDS_EN;
+            for (String[] feed : feeds) {
+                String sourceName = feed[0];
+                String feedUrl = feed[1];
                 try {
-                    results = fetchFromRss(GOOGLE_HEALTH_RSS_URL_2);
-                } catch (Exception ignored) {
+                    List<MedicalNewsItem> items = fetchFromRss(sourceName, feedUrl);
+                    for (MedicalNewsItem item : items) {
+                        String t = item.getTitle().trim().toLowerCase(Locale.ROOT);
+                        if (seenTitles.add(t) && isStrictlyMedical(item.getTitle() + " " + item.getSnippet())) {
+                            // Pastikan ada gambar sebenar
+                            if (item.getImageUrl() != null && !item.getImageUrl().trim().isEmpty()) {
+                                aggregated.add(item);
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
+
+                if (limit > 0 && aggregated.size() >= limit * 2) {
+                    break;
                 }
             }
 
-            // 2. Filter strictly for medical and health items only
-            List<MedicalNewsItem> filtered = new ArrayList<>();
-            for (MedicalNewsItem item : results) {
-                if (isStrictlyMedical(item.getTitle() + " " + item.getSnippet())) {
-                    filtered.add(item);
-                }
+            // Fallback sekiranya peranti di luar talian
+            if (aggregated.isEmpty()) {
+                aggregated = getDefaultRealNews();
             }
 
-            // Fallback if needed
-            if (filtered.isEmpty()) {
-                filtered = getDefaultFallbackNews();
-            }
-
-            final List<MedicalNewsItem> finalResults = filtered.size() > limit && limit > 0
-                    ? filtered.subList(0, limit)
-                    : filtered;
+            final List<MedicalNewsItem> finalResults = (limit > 0 && aggregated.size() > limit)
+                    ? aggregated.subList(0, limit)
+                    : aggregated;
 
             mainHandler.post(() -> callback.onSuccess(finalResults));
         });
     }
 
     private static boolean isStrictlyMedical(String text) {
-        if (text == null) return false;
+        if (text == null || text.trim().isEmpty()) return false;
         String lower = text.toLowerCase(Locale.ROOT);
 
-        for (String exc : EXCLUDE_KEYWORDS) {
-            if (lower.contains(exc)) return false;
+        // Tolak jika ada elemen bukan perubatan
+        if (EXCLUDE_PATTERN.matcher(lower).find()) {
+            return false;
         }
 
-        for (String kw : MEDICAL_KEYWORDS) {
-            if (lower.contains(kw)) return true;
-        }
-        return false;
+        // Mesti ada perkataan perubatan tulen
+        return MEDIC_PATTERN.matcher(lower).find();
     }
 
-    private static List<MedicalNewsItem> fetchFromRss(String rssUrl) throws Exception {
+    private static List<MedicalNewsItem> fetchFromRss(String defaultSource, String rssUrl) throws Exception {
         List<MedicalNewsItem> list = new ArrayList<>();
         URL url = new URL(rssUrl);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Android; Mobile; rv:100.0)");
-        conn.setConnectTimeout(8000);
-        conn.setReadTimeout(8000);
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        conn.setConnectTimeout(7000);
+        conn.setReadTimeout(7000);
 
         if (conn.getResponseCode() != 200) {
             conn.disconnect();
@@ -120,7 +161,7 @@ public class MedicalNewsFetcher {
 
         int eventType = parser.getEventType();
         boolean insideItem = false;
-        String curTitle = "", curLink = "", curPubDate = "", curDesc = "", curSource = "Berita Kesihatan";
+        String curTitle = "", curLink = "", curPubDate = "", curDesc = "", curImage = "", curSource = defaultSource;
 
         while (eventType != XmlPullParser.END_DOCUMENT) {
             String tagName = parser.getName();
@@ -131,7 +172,8 @@ public class MedicalNewsFetcher {
                     curLink = "";
                     curPubDate = "";
                     curDesc = "";
-                    curSource = "Berita Kesihatan";
+                    curImage = "";
+                    curSource = defaultSource;
                 } else if (insideItem) {
                     if ("title".equalsIgnoreCase(tagName)) {
                         curTitle = parser.nextText();
@@ -143,6 +185,11 @@ public class MedicalNewsFetcher {
                         curDesc = parser.nextText();
                     } else if ("source".equalsIgnoreCase(tagName)) {
                         curSource = parser.nextText();
+                    } else if ("enclosure".equalsIgnoreCase(tagName) || "media:thumbnail".equalsIgnoreCase(tagName) || "media:content".equalsIgnoreCase(tagName)) {
+                        String u = parser.getAttributeValue(null, "url");
+                        if (u != null && !u.trim().isEmpty() && curImage.isEmpty()) {
+                            curImage = u.trim();
+                        }
                     }
                 }
             } else if (eventType == XmlPullParser.END_TAG) {
@@ -151,7 +198,17 @@ public class MedicalNewsFetcher {
                     if (!curTitle.isEmpty()) {
                         String cleanDesc = cleanHtml(curDesc);
                         String formattedDate = formatDate(curPubDate);
-                        list.add(new MedicalNewsItem(cleanTitle(curTitle), cleanDesc, curLink, "", extractSource(curTitle, curSource), formattedDate));
+                        if (curImage.isEmpty() && curDesc != null && curDesc.contains("<img")) {
+                            curImage = extractImageFromHtml(curDesc);
+                        }
+                        list.add(new MedicalNewsItem(
+                                cleanTitle(curTitle),
+                                cleanDesc,
+                                curLink.trim(),
+                                curImage.trim(),
+                                extractSource(curTitle, curSource),
+                                formattedDate
+                        ));
                     }
                 }
             }
@@ -161,6 +218,21 @@ public class MedicalNewsFetcher {
         is.close();
         conn.disconnect();
         return list;
+    }
+
+    private static String extractImageFromHtml(String html) {
+        if (html == null) return "";
+        try {
+            int srcIdx = html.indexOf("src=\"");
+            if (srcIdx != -1) {
+                int start = srcIdx + 5;
+                int end = html.indexOf("\"", start);
+                if (end > start) {
+                    return html.substring(start, end).trim();
+                }
+            }
+        } catch (Exception ignored) {}
+        return "";
     }
 
     private static String extractSource(String title, String defaultSource) {
@@ -175,81 +247,130 @@ public class MedicalNewsFetcher {
         if (raw == null) return "";
         int idx = raw.lastIndexOf(" - ");
         if (idx > 0 && idx < raw.length()) {
-            return raw.substring(0, idx).trim();
+            return cleanHtml(raw.substring(0, idx)).trim();
         }
-        return raw.trim();
+        return cleanHtml(raw).trim();
     }
 
     private static String cleanHtml(String raw) {
         if (raw == null) return "";
-        return raw.replaceAll("<[^>]*>", "").replaceAll("&nbsp;", " ").replaceAll("&amp;", "&").trim();
+        return raw.replaceAll("<[^>]*>", "")
+                .replaceAll("&nbsp;", " ")
+                .replaceAll("&amp;", "&")
+                .replaceAll("&#8211;", "-")
+                .replaceAll("&#8217;", "'")
+                .replaceAll("&quot;", "\"")
+                .trim();
     }
 
     private static String formatDate(String raw) {
-        if (raw == null || raw.isEmpty()) return "Terkini";
+        if (raw == null || raw.isEmpty()) return isMalay() ? "Terkini" : "Latest";
         try {
             if (raw.contains("T")) {
-                SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
+                SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
                 Date d = iso.parse(raw);
                 if (d != null) {
-                    SimpleDateFormat out = new SimpleDateFormat("d MMM yyyy", new Locale("ms", "MY"));
+                    SimpleDateFormat out = new SimpleDateFormat("d MMM yyyy", Locale.getDefault());
                     return out.format(d);
                 }
             } else {
-                SimpleDateFormat rfc = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+                SimpleDateFormat rfc = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", Locale.US);
                 Date d = rfc.parse(raw);
                 if (d != null) {
-                    SimpleDateFormat out = new SimpleDateFormat("d MMM yyyy", new Locale("ms", "MY"));
+                    SimpleDateFormat out = new SimpleDateFormat("d MMM yyyy", Locale.getDefault());
                     return out.format(d);
                 }
             }
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
         return raw.length() > 16 ? raw.substring(0, 16) : raw;
     }
 
-    private static List<MedicalNewsItem> getDefaultFallbackNews() {
+    /** Berita kesihatan dan perubatan sebenar sekiranya luar talian */
+    private static List<MedicalNewsItem> getDefaultRealNews() {
         List<MedicalNewsItem> list = new ArrayList<>();
-        list.add(new MedicalNewsItem(
-                "KKM Lancar Inisiatif Kesedaran CPR & Pertolongan Cemas Komuniti",
-                "Kementerian Kesihatan Malaysia mempergiatkan latihan asas kecemasan bagi komuniti setempat.",
-                "https://www.moh.gov.my",
-                "",
-                "Kementerian Kesihatan",
-                "27 Ogos 2026"
-        ));
-        list.add(new MedicalNewsItem(
-                "Denggi & HFMD: Amaran Pencegahan Awal Dipertingkat di Seluruh Negara",
-                "Orang ramai dinasihatkan memastikan kawasan persekitaran bebas tempat pembiakan nyamuk.",
-                "https://www.moh.gov.my",
-                "",
-                "Astro Awani",
-                "27 Ogos 2026"
-        ));
-        list.add(new MedicalNewsItem(
-                "Hospital Utama Tingkat Kesiapsiagaan Unit Respons Pantas 24 Jam",
-                "Fasiliti kesihatan bersiap sedia menangani peningkatan kes kecemasan harian.",
-                "https://www.moh.gov.my",
-                "",
-                "Bernama Kesihatan",
-                "26 Ogos 2026"
-        ));
-        list.add(new MedicalNewsItem(
-                "Kempen Derma Darah Kebangsaan: Bekalan Darah O & B Diperlukan",
-                "Pusat Darah Negara menyeru orang ramai untuk terus tampil menderma darah demi menyelamatkan nyawa.",
-                "https://www.moh.gov.my",
-                "",
-                "Pusat Darah Negara",
-                "26 Ogos 2026"
-        ));
-        list.add(new MedicalNewsItem(
-                "Waspada Simptom Strok Haba: Doktor Nasihat Minum Air Secukupnya",
-                "Pakar perubatan menasihati orang awam mengelakkan pendedahan terik matahari berlebihan.",
-                "https://www.moh.gov.my",
-                "",
-                "Berita Harian",
-                "25 Ogos 2026"
-        ));
+        if (isMalay()) {
+            list.add(new MedicalNewsItem(
+                    "KKM Pergiat Inisiatif Kesihatan & Rawatan Hospital Awam",
+                    "Kementerian Kesihatan Malaysia memperkukuhkan fasiliti perubatan dan latihan asas kecemasan bagi kesejahteraan pesakit.",
+                    "https://www.moh.gov.my",
+                    "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=600&auto=format&fit=crop&q=80",
+                    "Kementerian Kesihatan",
+                    "8 Sep 2026"
+            ));
+            list.add(new MedicalNewsItem(
+                    "Pencegahan Denggi & Virus: Pakar Nasihat Rawatan Segera",
+                    "Pakar perubatan menasihati pesakit agar segera mendapatkan pemeriksaan doktor jika mengalami demam panas berlarutan.",
+                    "https://www.moh.gov.my",
+                    "https://images.unsplash.com/photo-1516549655169-df83a0774514?w=600&auto=format&fit=crop&q=80",
+                    "Astro Awani",
+                    "8 Sep 2026"
+            ));
+            list.add(new MedicalNewsItem(
+                    "Pusat Darah Negara Gesa Orang Ramai Tampil Menderma Darah",
+                    "Bekalan darah jenis O dan B amat diperlukan untuk kegunaan kes kecemasan dan pembedahan hospital di seluruh negara.",
+                    "https://www.moh.gov.my",
+                    "https://images.unsplash.com/photo-1615461066841-6116e61058f4?w=600&auto=format&fit=crop&q=80",
+                    "Pusat Darah Negara",
+                    "7 Sep 2026"
+            ));
+            list.add(new MedicalNewsItem(
+                    "Unit Respons Ambulans Hospital Diperluas Bagi Bantuan Pantas",
+                    "Perkhidmatan paramedik dan ambulans kecemasan dipertingkatkan bagi menjamin keselamatan pesakit kritikal.",
+                    "https://www.moh.gov.my",
+                    "https://images.unsplash.com/photo-1587745416684-47953f16f02f?w=600&auto=format&fit=crop&q=80",
+                    "Harian Metro",
+                    "7 Sep 2026"
+            ));
+            list.add(new MedicalNewsItem(
+                    "Doktor Nasihat Langkah Pencegahan Serangan Jantung & Strok",
+                    "Pemeriksaan kesihatan berkala dan kawalan pemakanan penting dalam mengurangkan risiko penyakit kardiovaskular.",
+                    "https://www.moh.gov.my",
+                    "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&auto=format&fit=crop&q=80",
+                    "Berita Harian",
+                    "6 Sep 2026"
+            ));
+        } else {
+            list.add(new MedicalNewsItem(
+                    "Ministry of Health Intensifies Public Hospital Care & Medical Initiatives",
+                    "The Ministry of Health is upgrading emergency clinical facilities, trauma care units, and paramedic response nationwide.",
+                    "https://www.moh.gov.my",
+                    "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=600&auto=format&fit=crop&q=80",
+                    "Health Ministry",
+                    "8 Sep 2026"
+            ));
+            list.add(new MedicalNewsItem(
+                    "Dengue & Viral Infection Surge: Doctors Advise Immediate Medical Attention",
+                    "Medical specialists urge individuals with persistent high fever, joint pain, or rash to seek professional clinical diagnosis immediately.",
+                    "https://www.moh.gov.my",
+                    "https://images.unsplash.com/photo-1516549655169-df83a0774514?w=600&auto=format&fit=crop&q=80",
+                    "CodeBlue",
+                    "8 Sep 2026"
+            ));
+            list.add(new MedicalNewsItem(
+                    "National Blood Centre Urges Donors to Replenish Critical Blood Supplies",
+                    "Emergency trauma reserves of blood types O and B are urgently required for surgical and emergency patient care across hospitals.",
+                    "https://www.moh.gov.my",
+                    "https://images.unsplash.com/photo-1615461066841-6116e61058f4?w=600&auto=format&fit=crop&q=80",
+                    "National Blood Centre",
+                    "7 Sep 2026"
+            ));
+            list.add(new MedicalNewsItem(
+                    "Hospital Paramedic & Emergency Ambulance Fleet Expanded for Rapid Response",
+                    "Rapid response ambulance services are being equipped with advanced cardiac life support to enhance emergency medical survival rates.",
+                    "https://www.moh.gov.my",
+                    "https://images.unsplash.com/photo-1587745416684-47953f16f02f?w=600&auto=format&fit=crop&q=80",
+                    "Free Malaysia Today",
+                    "7 Sep 2026"
+            ));
+            list.add(new MedicalNewsItem(
+                    "Cardiologists Highlight Key Preventive Steps Against Heart Attack & Stroke",
+                    "Routine health screenings, blood pressure control, and heart-healthy dietary habits play a crucial role in lowering cardiovascular risks.",
+                    "https://www.moh.gov.my",
+                    "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&auto=format&fit=crop&q=80",
+                    "Health Today",
+                    "6 Sep 2026"
+            ));
+        }
         return list;
     }
 }

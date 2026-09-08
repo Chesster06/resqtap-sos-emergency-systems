@@ -306,10 +306,73 @@
 
     <string name="profile_personal_info">Maklumat Peribadi</string>
     <string name="profile_emergency_contacts">Kenalan Kecemasan</string>
+    <string name="profile_security">Keselamatan</string>
+    <string name="profile_security_desc">Kunci aplikasi, biometrik &amp; keselamatan</string>
     <string name="profile_app_settings">Tetapan Aplikasi</string>
     <string name="profile_language">Bahasa</string>
     <string name="profile_help_support">Bantuan &amp; Sokongan</string>
     <string name="profile_about">Tentang ResQTap</string>
+
+    <!-- Security Settings Activity Strings (Malay) -->
+    <string name="security_title">Keselamatan</string>
+    <string name="security_desc">Konfigurasi kunci aplikasi, PIN dan perlindungan akaun.</string>
+    <string name="security_section_app_lock">Perlindungan Aplikasi</string>
+    <string name="security_app_lock_title">Kunci Aplikasi (PIN)</string>
+    <string name="security_app_lock_desc">Minta PIN 4 digit semasa membuka aplikasi.</string>
+    <string name="security_biometric_title">Biometrik / Cap Jari</string>
+    <string name="security_biometric_desc">Gunakan cap jari atau imbasan wajah untuk buka kunci.</string>
+    <string name="security_change_pin_title">Tukar PIN Aplikasi</string>
+    <string name="security_change_pin_desc">Kemas kini kod keselamatan 4 digit anda.</string>
+    <string name="security_section_account">Akaun &amp; Akses</string>
+    <string name="security_change_password_title">Tukar Kata Laluan</string>
+    <string name="security_change_password_desc">Kemas kini kata laluan log masuk akaun anda.</string>
+    <string name="security_change_password_modal_desc">Masukkan kata laluan semasa dan tetapkan kata laluan baharu.</string>
+    <string name="security_current_password_hint">Kata Laluan Semasa</string>
+    <string name="security_new_password_hint">Kata Laluan Baharu (min. 6 aksara)</string>
+    <string name="security_confirm_password_hint">Sahkan Kata Laluan Baharu</string>
+    <string name="security_password_updated">Kata laluan berjaya dikemas kini!</string>
+    <string name="security_password_incorrect">Kata laluan semasa tidak tepat.</string>
+    <string name="security_password_mismatch">Kata laluan baharu dan pengesahan tidak sepadan.</string>
+    <string name="security_password_too_short">Kata laluan baharu mestilah sekurang-kurangnya 6 aksara.</string>
+    <string name="security_device_status_title">Status Keselamatan Peranti</string>
+
+    <string name="security_device_status_secure">Dilindungi • Kunci skrin peranti aktif</string>
+    <string name="security_device_status_warning">Perhatian • Kunci skrin peranti belum ditetapkan</string>
+    <string name="security_section_emergency">Perlindungan Kecemasan</string>
+    <string name="security_duress_safeguard_title">Pelindung Duress SOS</string>
+    <string name="security_duress_safeguard_desc">Cegah pembatalan kecemasan yang tidak disengajakan semasa amaran aktif.</string>
+    <string name="security_pin_dialog_title">Tetapkan PIN Keselamatan 4 Digit</string>
+    <string name="security_pin_dialog_change_title">Tukar PIN Keselamatan</string>
+    <string name="security_pin_dialog_hint">Masukkan 4 digit</string>
+    <string name="security_pin_current_hint">PIN 4 digit semasa</string>
+    <string name="security_pin_new_hint">PIN 4 digit baharu</string>
+    <string name="security_pin_confirm_hint">Sahkan PIN 4 digit baharu</string>
+    <string name="security_pin_step_enter_title">Masukkan PIN Baharu</string>
+    <string name="security_pin_step_enter_desc">Masukkan 4 digit PIN baharu untuk keselamatan aplikasi</string>
+    <string name="security_pin_step_enter_your_title">Masukkan PIN Anda</string>
+    <string name="security_pin_step_enter_your_desc">Masukkan 4 digit PIN untuk keselamatan aplikasi</string>
+    <string name="security_pin_step_confirm_title">Sahkan PIN Baharu</string>
+    <string name="security_pin_step_confirm_desc">Masukkan semula 4 digit PIN baharu untuk pengesahan</string>
+    <string name="security_pin_step_confirm_your_title">Sahkan PIN Anda</string>
+    <string name="security_pin_step_confirm_your_desc">Masukkan semula 4 digit PIN anda untuk pengesahan</string>
+    <string name="security_pin_step_current_title">Masukkan PIN Semasa</string>
+    <string name="security_pin_step_current_desc">Masukkan 4 digit PIN semasa anda untuk meneruskan</string>
+    <string name="security_pin_saved">PIN keselamatan berjaya ditetapkan!</string>
+    <string name="security_pin_incorrect">PIN semasa tidak sah. Sila cuba lagi.</string>
+    <string name="security_pin_mismatch">PIN baharu dan pengesahan tidak sepadan.</string>
+    <string name="security_pin_length_error">PIN mestilah tepat 4 digit.</string>
+    <string name="security_password_reset_sent">E-mel set semula kata laluan telah dihantar ke %1$s.</string>
+    <string name="security_password_reset_no_email">Tiada e-mel berdaftar ditemui untuk akaun ini.</string>
+    <string name="security_app_lock_disabled">Kunci aplikasi telah dinyahaktifkan.</string>
+    <string name="app_lock_screen_title">Masukkan PIN Keselamatan</string>
+    <string name="app_lock_screen_desc">Sila masukkan 4 digit PIN untuk membuka ResQTap.</string>
+    <string name="app_lock_incorrect_pin">PIN tidak sah. Sila cuba lagi.</string>
+    <string name="app_lock_use_biometric">Sentuh pengimbas atau guna Biometrik</string>
+    <string name="app_lock_biometric_prompt_title">Buka Kunci ResQTap</string>
+    <string name="app_lock_biometric_prompt_subtitle">Sahkan identiti anda untuk mengakses aplikasi</string>
+    <string name="app_lock_forgot_pin">Lupa PIN?</string>
+
+
 
     <string name="toast_processing">Sedang diproses...</string>
     <string name="toast_generic_error">Ralat. Sila cuba lagi.</string>
@@ -571,6 +634,14 @@
     <string name="friend_incoming_requests_placeholder">Permintaan rakan akan dipaparkan di sini</string>
     <string name="friend_no_friends_title">Belum ada rakan</string>
     <string name="friend_no_friends_desc">Tekan butang tambah (+) di atas untuk imbas kod QR rakan</string>
+    <string name="friend_details_loading">Memuatkan butiran…</string>
+    <string name="friend_details_blood">Darah</string>
+    <string name="friend_details_allergies">Alahan</string>
+    <string name="friend_details_conditions">Kesihatan</string>
+    <string name="friend_details_call">Panggil</string>
+    <string name="friend_details_no_phone">Tiada nombor telefon</string>
+    <string name="friend_details_no_email">Tiada emel</string>
+    <string name="friend_details_not_provided">Tiada</string>
     <string name="friend_default_name">Rakan</string>
     <string name="friend_user_default">Pengguna</string>
     <string name="friend_tag_format">ID: #%1$s • Rakan</string>
@@ -669,5 +740,29 @@
     <string name="rate_service_bad">Kurang Memuaskan</string>
     <string name="rate_service_excellent">Cemerlang</string>
     <string name="rate_service_thanks">Terima kasih atas penilaian anda! ❤️</string>
+
+    <!-- Medical News & Home Localization -->
+    <string name="home_news_section_title">5 Berita Terkini</string>
+    <string name="home_see_all_news">Lihat Semua Berita</string>
+    <string name="home_highlights_title">Sorotan</string>
+    <string name="medical_news_title">Berita Kesihatan</string>
+    <string name="medical_news_load_failed">Gagal memuatkan berita terkini. Sila cuba sebentar lagi.</string>
+    <string name="medical_news_source_health">Kesihatan</string>
+    <string name="medical_news_latest">Terkini</string>
+
+    <!-- Room & Friend Notifications Localization -->
+    <string name="notif_friend_request_title">Permintaan Rakan</string>
+    <string name="notif_friend_request_msg">%1$s telah menghantar permintaan rakan.</string>
+    <string name="notif_friend_accepted_title">Permintaan Rakan Diterima</string>
+    <string name="notif_friend_accepted_msg">%1$s telah menerima permintaan rakan anda!</string>
+    <string name="someone">Seseorang</string>
+    <string name="notif_room_created_title">Bilik Berjaya Dicipta</string>
+    <string name="notif_room_created_msg">Anda telah berjaya mencipta bilik %1$s.</string>
+    <string name="notif_room_joined_title">Sertai Bilik Berjaya</string>
+    <string name="notif_room_joined_msg">Anda telah berjaya menyertai bilik %1$s.</string>
+    <string name="notif_room_deleted_title">Bilik Dipadamkan</string>
+    <string name="notif_room_left_title">Meninggalkan Bilik</string>
+    <string name="notif_room_deleted_msg">Anda telah memadamkan bilik %1$s.</string>
+    <string name="notif_room_left_msg">Anda telah keluar dari bilik %1$s.</string>
 </resources>
 

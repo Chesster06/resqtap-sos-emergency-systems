@@ -202,6 +202,10 @@ public class ScanQrActivity extends BaseActivity {
                         tvError.setVisibility(View.GONE);
                         tvFoundName.setText(friend.name);
                         tvFoundTag.setText(friend.name + "#" + friend.publicId);
+                        com.google.android.material.imageview.ShapeableImageView ivFoundAvatar = dialogView.findViewById(R.id.iv_found_user_avatar);
+                        if (ivFoundAvatar != null) {
+                            com.example.resqtap.utils.AvatarUtils.applyAvatar(ivFoundAvatar, friend.photoB64, friend.photoUrl, R.drawable.ic_avatar);
+                        }
                         btnInvite.setEnabled(true);
                         btnInvite.setText(R.string.friend_invite_btn);
                         btnInvite.setIconResource(R.drawable.ic_person_add);

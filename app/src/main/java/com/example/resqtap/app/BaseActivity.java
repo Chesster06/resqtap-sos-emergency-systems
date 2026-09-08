@@ -77,7 +77,9 @@ public abstract class BaseActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        com.example.resqtap.security.AppLockManager.checkLock(this);
         updateGlobalChatFab();
+
 
         try {
             FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();

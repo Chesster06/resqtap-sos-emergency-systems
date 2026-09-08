@@ -220,8 +220,8 @@ public final class FirebaseRoomClient {
             String notifId = "room_created_" + System.currentTimeMillis();
             Map<String, Object> notif = new HashMap<>();
             notif.put("id", notifId);
-            notif.put("title", "Bilik Berjaya Dicipta");
-            notif.put("message", "Anda telah berjaya mencipta bilik " + code + ".");
+            notif.put("title", "Room Created Successfully");
+            notif.put("message", "You have successfully created room " + code + ".");
             notif.put("createdAt", ServerValue.TIMESTAMP);
             db().child("userNotifications").child(u).child(notifId).setValue(notif);
         } catch (Exception ignored) {}
@@ -233,7 +233,7 @@ public final class FirebaseRoomClient {
         if (u.isEmpty()) throw new RuntimeException("invalid_uid");
 
         String name = String.valueOf(roomName == null ? "" : roomName).trim();
-        if (name.isEmpty()) name = "Bilik Keselamatan";
+        if (name.isEmpty()) name = "Safety Room";
 
         String code = normalizeCode("ROOM-" + RoomCodeUtils.generate(6));
         String instanceId = String.valueOf(System.currentTimeMillis());
@@ -381,8 +381,8 @@ public final class FirebaseRoomClient {
         meta.put("createdAt", ServerValue.TIMESTAMP);
         updates.put("userNotifications/" + u + "/room_joined_" + System.currentTimeMillis(), new HashMap<String, Object>() {{
             put("id", "room_joined_" + System.currentTimeMillis());
-            put("title", "Sertai Bilik Berjaya");
-            put("message", "Anda telah berjaya menyertai bilik " + code + ".");
+            put("title", "Joined Room Successfully");
+            put("message", "You have successfully joined room " + code + ".");
             put("createdAt", ServerValue.TIMESTAMP);
         }});
         updates.put("userRooms/" + u + "/" + code, meta);
@@ -1523,8 +1523,8 @@ public final class FirebaseRoomClient {
 
         updates.put("userNotifications/" + u + "/room_left_" + System.currentTimeMillis(), new HashMap<String, Object>() {{
             put("id", "room_left_" + System.currentTimeMillis());
-            put("title", "Meninggalkan Bilik");
-            put("message", "Anda telah keluar dari bilik " + code + ".");
+            put("title", "Left Room");
+            put("message", "You have left room " + code + ".");
             put("createdAt", ServerValue.TIMESTAMP);
         }});
         updates.put("userRooms/" + u + "/" + code, null);
@@ -1705,8 +1705,8 @@ public final class FirebaseRoomClient {
 
         updates.put("userNotifications/" + u + "/room_deleted_" + System.currentTimeMillis(), new HashMap<String, Object>() {{
             put("id", "room_deleted_" + System.currentTimeMillis());
-            put("title", "Bilik Dipadamkan");
-            put("message", "Anda telah memadamkan bilik " + code + ".");
+            put("title", "Room Deleted");
+            put("message", "You have deleted room " + code + ".");
             put("createdAt", ServerValue.TIMESTAMP);
         }});
         updates.put("userRooms/" + u + "/" + code, null);

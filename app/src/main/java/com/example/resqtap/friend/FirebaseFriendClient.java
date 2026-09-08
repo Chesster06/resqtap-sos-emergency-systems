@@ -3,6 +3,7 @@ package com.example.resqtap.friend;
 import android.content.Context;
 import android.util.Log;
 
+import com.example.resqtap.R;
 import com.example.resqtap.notification.NotificationUtils;
 import com.example.resqtap.room.FirebaseRoomClient;
 import com.google.android.gms.tasks.Task;
@@ -34,6 +35,7 @@ public class FirebaseFriendClient {
         public String publicId = "";
         public String name = "";
         public String photoUrl = "";
+        public String photoB64 = "";
         public long addedAt = 0L;
 
         /** Fungsi untuk from. */
@@ -44,6 +46,7 @@ public class FirebaseFriendClient {
             info.publicId = String.valueOf(snap.child("publicId").getValue() == null ? "" : snap.child("publicId").getValue()).trim();
             info.name = String.valueOf(snap.child("name").getValue() == null ? "" : snap.child("name").getValue()).trim();
             info.photoUrl = String.valueOf(snap.child("photoUrl").getValue() == null ? "" : snap.child("photoUrl").getValue()).trim();
+            info.photoB64 = String.valueOf(snap.child("photoB64").getValue() == null ? "" : snap.child("photoB64").getValue()).trim();
             Object at = snap.child("addedAt").getValue();
             if (at instanceof Number) {
                 info.addedAt = ((Number) at).longValue();
@@ -56,6 +59,8 @@ public class FirebaseFriendClient {
         public String fromUid = "";
         public String fromName = "";
         public String fromPublicId = "";
+        public String fromPhotoUrl = "";
+        public String fromPhotoB64 = "";
         public String targetUid = "";
         public String status = "pending";
         public long createdAt = 0L;
@@ -68,6 +73,8 @@ public class FirebaseFriendClient {
             if (req.fromUid.isEmpty()) req.fromUid = snap.getKey() == null ? "" : snap.getKey().trim();
             req.fromName = String.valueOf(snap.child("fromName").getValue() == null ? "" : snap.child("fromName").getValue()).trim();
             req.fromPublicId = String.valueOf(snap.child("fromPublicId").getValue() == null ? "" : snap.child("fromPublicId").getValue()).trim();
+            req.fromPhotoUrl = String.valueOf(snap.child("fromPhotoUrl").getValue() == null ? "" : snap.child("fromPhotoUrl").getValue()).trim();
+            req.fromPhotoB64 = String.valueOf(snap.child("fromPhotoB64").getValue() == null ? "" : snap.child("fromPhotoB64").getValue()).trim();
             req.targetUid = String.valueOf(snap.child("targetUid").getValue() == null ? "" : snap.child("targetUid").getValue()).trim();
             req.status = String.valueOf(snap.child("status").getValue() == null ? "pending" : snap.child("status").getValue()).trim();
             Object at = snap.child("createdAt").getValue();
@@ -163,11 +170,12 @@ public class FirebaseFriendClient {
         info.uid = snap.getKey() == null ? "" : snap.getKey().trim();
         info.name = String.valueOf(snap.child("name").getValue() == null ? "" : snap.child("name").getValue()).trim();
         if (info.name.isEmpty()) info.name = String.valueOf(snap.child("fullName").getValue() == null ? "" : snap.child("fullName").getValue()).trim();
-        if (info.name.isEmpty()) info.name = "Pengguna";
+        if (info.name.isEmpty()) info.name = "User";
 
         String rawPub = String.valueOf(snap.child("publicId").getValue() == null ? "" : snap.child("publicId").getValue()).trim();
         info.publicId = format4DigitId(info.uid, rawPub);
         info.photoUrl = String.valueOf(snap.child("photoUrl").getValue() == null ? "" : snap.child("photoUrl").getValue()).trim();
+        info.photoB64 = String.valueOf(snap.child("photoB64").getValue() == null ? "" : snap.child("photoB64").getValue()).trim();
         return info;
     }
 
@@ -189,10 +197,19 @@ public class FirebaseFriendClient {
             throw new RuntimeException("request_already_pending");
         }
 
+        String myB64 = "";
+        String myUrl = "";
+        if (context != null) {
+            myB64 = com.example.resqtap.utils.UserPrefs.getPhotoB64(context);
+            myUrl = com.example.resqtap.utils.UserPrefs.getPhotoUrl(context);
+        }
+
         Map<String, Object> reqData = new HashMap<>();
         reqData.put("fromUid", fUid);
         reqData.put("fromName", String.valueOf(fromName == null ? "" : fromName).trim());
         reqData.put("fromPublicId", String.valueOf(fromPublicId == null ? "" : fromPublicId).trim());
+        reqData.put("fromPhotoB64", String.valueOf(myB64 == null ? "" : myB64).trim());
+        reqData.put("fromPhotoUrl", String.valueOf(myUrl == null ? "" : myUrl).trim());
         reqData.put("targetUid", tUid);
         reqData.put("status", "pending");
         reqData.put("createdAt", ServerValue.TIMESTAMP);
@@ -202,10 +219,14 @@ public class FirebaseFriendClient {
         updates.put("sentRequests/" + fUid + "/" + tUid, reqData);
 
         String notifId = "friend_req_" + System.currentTimeMillis();
+        String notifTitle = context != null ? context.getString(R.string.notif_friend_request_title) : "Friend Request";
+        String who = fromName.isEmpty() ? (context != null ? context.getString(R.string.someone) : "Someone") : fromName;
+        String notifMsg = context != null ? context.getString(R.string.notif_friend_request_msg, who) : who + " sent you a friend request.";
+
         Map<String, Object> notif = new HashMap<>();
         notif.put("id", notifId);
-        notif.put("title", "Permintaan Rakan");
-        notif.put("message", (fromName.isEmpty() ? "Seseorang" : fromName) + " telah menghantar permintaan rakan.");
+        notif.put("title", notifTitle);
+        notif.put("message", notifMsg);
         notif.put("createdAt", ServerValue.TIMESTAMP);
         updates.put("userNotifications/" + tUid + "/" + notifId, notif);
 
@@ -221,21 +242,29 @@ public class FirebaseFriendClient {
 
         DataSnapshot fromUserSnap = await(db().child("users").child(fUid).get());
         String fName = request.fromName;
-        String fPhoto = "";
+        String fPhoto = request.fromPhotoUrl;
+        String fB64 = request.fromPhotoB64;
         String fPublicId = request.fromPublicId;
         if (fromUserSnap != null && fromUserSnap.exists()) {
             if (fName.isEmpty()) fName = String.valueOf(fromUserSnap.child("name").getValue() == null ? "" : fromUserSnap.child("name").getValue()).trim();
-            fPhoto = String.valueOf(fromUserSnap.child("photoUrl").getValue() == null ? "" : fromUserSnap.child("photoUrl").getValue()).trim();
+            if (fPhoto.isEmpty()) fPhoto = String.valueOf(fromUserSnap.child("photoUrl").getValue() == null ? "" : fromUserSnap.child("photoUrl").getValue()).trim();
+            if (fB64.isEmpty()) fB64 = String.valueOf(fromUserSnap.child("photoB64").getValue() == null ? "" : fromUserSnap.child("photoB64").getValue()).trim();
             if (fPublicId.isEmpty()) fPublicId = String.valueOf(fromUserSnap.child("publicId").getValue() == null ? "" : fromUserSnap.child("publicId").getValue()).trim();
         }
 
         DataSnapshot currentUserSnap = await(db().child("users").child(cUid).get());
         String cName = String.valueOf(currentName == null ? "" : currentName).trim();
         String cPhoto = "";
+        String cB64 = "";
         String cPublicId = String.valueOf(currentPublicId == null ? "" : currentPublicId).trim();
+        if (context != null) {
+            cB64 = com.example.resqtap.utils.UserPrefs.getPhotoB64(context);
+            cPhoto = com.example.resqtap.utils.UserPrefs.getPhotoUrl(context);
+        }
         if (currentUserSnap != null && currentUserSnap.exists()) {
             if (cName.isEmpty()) cName = String.valueOf(currentUserSnap.child("name").getValue() == null ? "" : currentUserSnap.child("name").getValue()).trim();
-            cPhoto = String.valueOf(currentUserSnap.child("photoUrl").getValue() == null ? "" : currentUserSnap.child("photoUrl").getValue()).trim();
+            if (cPhoto == null || cPhoto.isEmpty()) cPhoto = String.valueOf(currentUserSnap.child("photoUrl").getValue() == null ? "" : currentUserSnap.child("photoUrl").getValue()).trim();
+            if (cB64 == null || cB64.isEmpty()) cB64 = String.valueOf(currentUserSnap.child("photoB64").getValue() == null ? "" : currentUserSnap.child("photoB64").getValue()).trim();
             if (cPublicId.isEmpty()) cPublicId = String.valueOf(currentUserSnap.child("publicId").getValue() == null ? "" : currentUserSnap.child("publicId").getValue()).trim();
         }
 
@@ -243,14 +272,16 @@ public class FirebaseFriendClient {
         friendA.put("uid", fUid);
         friendA.put("name", fName);
         friendA.put("publicId", fPublicId);
-        friendA.put("photoUrl", fPhoto);
+        friendA.put("photoUrl", fPhoto == null ? "" : fPhoto);
+        friendA.put("photoB64", fB64 == null ? "" : fB64);
         friendA.put("addedAt", ServerValue.TIMESTAMP);
 
         Map<String, Object> friendB = new HashMap<>();
         friendB.put("uid", cUid);
         friendB.put("name", cName);
         friendB.put("publicId", cPublicId);
-        friendB.put("photoUrl", cPhoto);
+        friendB.put("photoUrl", cPhoto == null ? "" : cPhoto);
+        friendB.put("photoB64", cB64 == null ? "" : cB64);
         friendB.put("addedAt", ServerValue.TIMESTAMP);
 
         Map<String, Object> updates = new HashMap<>();
@@ -261,10 +292,14 @@ public class FirebaseFriendClient {
         updates.put("sentRequests/" + fUid + "/" + cUid, null);
 
         String notifId = "friend_accepted_" + System.currentTimeMillis();
+        String notifTitle = context != null ? context.getString(R.string.notif_friend_accepted_title) : "Friend Request Accepted";
+        String who = cName.isEmpty() ? (context != null ? context.getString(R.string.friend_user_default) : "User") : cName;
+        String notifMsg = context != null ? context.getString(R.string.notif_friend_accepted_msg, who) : who + " accepted your friend request!";
+
         Map<String, Object> notif = new HashMap<>();
         notif.put("id", notifId);
-        notif.put("title", "Permintaan Rakan Diterima");
-        notif.put("message", (cName.isEmpty() ? "Pengguna" : cName) + " telah menerima permintaan rakan anda!");
+        notif.put("title", notifTitle);
+        notif.put("message", notifMsg);
         notif.put("createdAt", ServerValue.TIMESTAMP);
         updates.put("userNotifications/" + fUid + "/" + notifId, notif);
 
@@ -272,9 +307,28 @@ public class FirebaseFriendClient {
 
         if (context != null) {
             try {
-                NotificationUtils.notifyAdmin(context, "friend_accepted", "Permintaan Rakan Diterima", (cName.isEmpty() ? "Pengguna" : cName) + " telah menerima permintaan rakan anda!");
+                NotificationUtils.notifyAdmin(context, "friend_accepted", notifTitle, notifMsg);
             } catch (Exception ignored) {}
         }
+    }
+
+    /** Simpan atau kemaskini gambar profil kawan dalam userFriends (latar belakang) */
+    public static void backfillFriendPhotoQueued(String currentUid, String friendUid, String photoB64, String photoUrl) {
+        try {
+            String cUid = String.valueOf(currentUid == null ? "" : currentUid).trim();
+            String fUid = String.valueOf(friendUid == null ? "" : friendUid).trim();
+            if (cUid.isEmpty() || fUid.isEmpty()) return;
+            Map<String, Object> updates = new HashMap<>();
+            if (photoB64 != null && !photoB64.trim().isEmpty()) {
+                updates.put("photoB64", photoB64.trim());
+            }
+            if (photoUrl != null && !photoUrl.trim().isEmpty()) {
+                updates.put("photoUrl", photoUrl.trim());
+            }
+            if (!updates.isEmpty()) {
+                db().child("userFriends").child(cUid).child(fUid).updateChildren(updates);
+            }
+        } catch (Exception ignored) {}
     }
 
     /** Fungsi untuk rejectFriendRequest. */
@@ -299,6 +353,67 @@ public class FirebaseFriendClient {
         updates.put("userFriends/" + cUid + "/" + fUid, null);
         updates.put("userFriends/" + fUid + "/" + cUid, null);
         await(db().updateChildren(updates));
+    }
+
+    public static class UserDetail {
+        public String uid = "";
+        public String name = "";
+        public String email = "";
+        public String phone = "";
+        public String bloodType = "";
+        public String allergies = "";
+        public String existingConditions = "";
+        public String gender = "";
+        public String dob = "";
+        public String address = "";
+
+        public static UserDetail from(DataSnapshot snap) {
+            if (snap == null || !snap.exists()) return null;
+            UserDetail d = new UserDetail();
+            d.uid = snap.getKey() == null ? "" : snap.getKey().trim();
+            d.name = String.valueOf(snap.child("name").getValue() == null ? "" : snap.child("name").getValue()).trim();
+            if (d.name.isEmpty()) {
+                d.name = String.valueOf(snap.child("fullName").getValue() == null ? "" : snap.child("fullName").getValue()).trim();
+            }
+            d.email = String.valueOf(snap.child("email").getValue() == null ? "" : snap.child("email").getValue()).trim();
+            d.phone = String.valueOf(snap.child("phone").getValue() == null ? "" : snap.child("phone").getValue()).trim();
+            if (d.phone.isEmpty()) {
+                d.phone = String.valueOf(snap.child("phoneNumber").getValue() == null ? "" : snap.child("phoneNumber").getValue()).trim();
+            }
+            d.bloodType = String.valueOf(snap.child("bloodType").getValue() == null ? "" : snap.child("bloodType").getValue()).trim();
+            d.allergies = String.valueOf(snap.child("allergies").getValue() == null ? "" : snap.child("allergies").getValue()).trim();
+            d.existingConditions = String.valueOf(snap.child("existingConditions").getValue() == null ? "" : snap.child("existingConditions").getValue()).trim();
+            if (d.existingConditions.isEmpty()) {
+                d.existingConditions = String.valueOf(snap.child("medications").getValue() == null ? "" : snap.child("medications").getValue()).trim();
+            }
+            d.gender = String.valueOf(snap.child("gender").getValue() == null ? "" : snap.child("gender").getValue()).trim();
+            d.dob = String.valueOf(snap.child("dob").getValue() == null ? "" : snap.child("dob").getValue()).trim();
+            if (d.dob.isEmpty()) {
+                d.dob = String.valueOf(snap.child("dateOfBirth").getValue() == null ? "" : snap.child("dateOfBirth").getValue()).trim();
+            }
+            d.address = String.valueOf(snap.child("address").getValue() == null ? "" : snap.child("address").getValue()).trim();
+            return d;
+        }
+    }
+
+    public interface UserDetailCallback {
+        void onLoaded(UserDetail detail);
+    }
+
+    /** Muat turun profil kawan daripada users/{uid} untuk paparan kad terperinci */
+    public static void fetchUserDetailQueued(String uid, UserDetailCallback callback) {
+        if (uid == null || uid.trim().isEmpty()) {
+            if (callback != null) callback.onLoaded(null);
+            return;
+        }
+        db().child("users").child(uid.trim()).get().addOnCompleteListener(task -> {
+            if (task.isSuccessful() && task.getResult() != null && task.getResult().exists()) {
+                UserDetail d = UserDetail.from(task.getResult());
+                if (callback != null) callback.onLoaded(d);
+            } else {
+                if (callback != null) callback.onLoaded(null);
+            }
+        });
     }
 }
 

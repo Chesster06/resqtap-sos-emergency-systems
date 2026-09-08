@@ -105,19 +105,17 @@
             android:paddingEnd="14dp"
             android:paddingBottom="12dp">
 
-            <FrameLayout
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_bottom_nav_glass">
-
-                <ImageView
+                <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/iv_found_user_avatar"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="center"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@color/edit_profile_avatar_bg"
+                    android:contentDescription="@null"
+                    android:scaleType="centerCrop"
                     android:src="@drawable/ic_avatar"
-                    app:tint="@color/text_primary" />
-            </FrameLayout>
+                    app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.ResQTap.Circle"
+                    app:strokeColor="@color/edit_profile_avatar_ring"
+                    app:strokeWidth="1dp" />
 
             <LinearLayout
                 android:layout_width="0dp"

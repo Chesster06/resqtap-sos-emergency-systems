@@ -503,10 +503,73 @@ Terms Version: 1.0</string>
 
     <string name="profile_personal_info">Personal Information</string>
     <string name="profile_emergency_contacts">Emergency Contacts</string>
+    <string name="profile_security">Security</string>
+    <string name="profile_security_desc">App lock, biometrics &amp; security</string>
     <string name="profile_app_settings">App Settings</string>
     <string name="profile_language">Language</string>
     <string name="profile_help_support">Help &amp; Support</string>
     <string name="profile_about">About ResQTap</string>
+
+    <!-- Security Settings Activity Strings -->
+    <string name="security_title">Security</string>
+    <string name="security_desc">Configure app lock, PIN, and account protection.</string>
+    <string name="security_section_app_lock">Application Protection</string>
+    <string name="security_app_lock_title">App Lock (PIN)</string>
+    <string name="security_app_lock_desc">Require 4-digit PIN when opening the app.</string>
+    <string name="security_biometric_title">Biometric / Fingerprint</string>
+    <string name="security_biometric_desc">Use fingerprint or face recognition to unlock.</string>
+    <string name="security_change_pin_title">Change App PIN</string>
+    <string name="security_change_pin_desc">Update your 4-digit security passkey.</string>
+    <string name="security_section_account">Account &amp; Access</string>
+    <string name="security_change_password_title">Change Password</string>
+    <string name="security_change_password_desc">Update your account login password.</string>
+    <string name="security_change_password_modal_desc">Enter your current password and set a new one.</string>
+    <string name="security_current_password_hint">Current Password</string>
+    <string name="security_new_password_hint">New Password (min. 6 characters)</string>
+    <string name="security_confirm_password_hint">Confirm New Password</string>
+    <string name="security_password_updated">Password successfully updated!</string>
+    <string name="security_password_incorrect">Current password is incorrect.</string>
+    <string name="security_password_mismatch">New password and confirmation do not match.</string>
+    <string name="security_password_too_short">New password must be at least 6 characters.</string>
+    <string name="security_device_status_title">Device Security Status</string>
+
+    <string name="security_device_status_secure">Protected • Screen lock active</string>
+    <string name="security_device_status_warning">Attention • No device screen lock set</string>
+    <string name="security_section_emergency">Emergency Safeguard</string>
+    <string name="security_duress_safeguard_title">Duress SOS Guard</string>
+    <string name="security_duress_safeguard_desc">Prevent accidental cancellation during an active emergency.</string>
+    <string name="security_pin_dialog_title">Set 4-Digit Security PIN</string>
+    <string name="security_pin_dialog_change_title">Change Security PIN</string>
+    <string name="security_pin_dialog_hint">Enter 4 digits</string>
+    <string name="security_pin_current_hint">Current 4-digit PIN</string>
+    <string name="security_pin_new_hint">New 4-digit PIN</string>
+    <string name="security_pin_confirm_hint">Confirm new 4-digit PIN</string>
+    <string name="security_pin_step_enter_title">Enter New PIN</string>
+    <string name="security_pin_step_enter_desc">Enter a 4-digit new PIN to secure your app</string>
+    <string name="security_pin_step_enter_your_title">Enter Your PIN</string>
+    <string name="security_pin_step_enter_your_desc">Enter a 4-digit PIN to secure your app</string>
+    <string name="security_pin_step_confirm_title">Confirm New PIN</string>
+    <string name="security_pin_step_confirm_desc">Re-enter your 4-digit new PIN to confirm</string>
+    <string name="security_pin_step_confirm_your_title">Confirm Your PIN</string>
+    <string name="security_pin_step_confirm_your_desc">Re-enter your 4-digit PIN to confirm</string>
+    <string name="security_pin_step_current_title">Enter Current PIN</string>
+    <string name="security_pin_step_current_desc">Enter your current 4-digit PIN to proceed</string>
+    <string name="security_pin_saved">Security PIN successfully set!</string>
+    <string name="security_pin_incorrect">Incorrect current PIN. Please try again.</string>
+    <string name="security_pin_mismatch">New PIN and confirmation do not match.</string>
+    <string name="security_pin_length_error">PIN must be exactly 4 digits.</string>
+    <string name="security_password_reset_sent">Password reset email sent to %1$s.</string>
+    <string name="security_password_reset_no_email">No registered email found for this account.</string>
+    <string name="security_app_lock_disabled">App lock disabled.</string>
+    <string name="app_lock_screen_title">Enter Security PIN</string>
+    <string name="app_lock_screen_desc">Please enter your 4-digit PIN to access ResQTap.</string>
+    <string name="app_lock_incorrect_pin">Incorrect PIN. Please try again.</string>
+    <string name="app_lock_use_biometric">Touch sensor or use Biometrics</string>
+    <string name="app_lock_biometric_prompt_title">Unlock ResQTap</string>
+    <string name="app_lock_biometric_prompt_subtitle">Verify your identity to open the app</string>
+    <string name="app_lock_forgot_pin">Forgot PIN?</string>
+
+
 
     <string name="toast_processing">Processing...</string>
     <string name="toast_generic_error">Error. Please try again.</string>
@@ -768,6 +831,14 @@ Terms Version: 1.0</string>
     <string name="friend_incoming_requests_placeholder">Friend requests will appear here</string>
     <string name="friend_no_friends_title">No friends yet</string>
     <string name="friend_no_friends_desc">Tap the add button (+) above to scan a friend\'s QR code</string>
+    <string name="friend_details_loading">Loading details…</string>
+    <string name="friend_details_blood">Blood</string>
+    <string name="friend_details_allergies">Allergies</string>
+    <string name="friend_details_conditions">Conditions</string>
+    <string name="friend_details_call">Call</string>
+    <string name="friend_details_no_phone">No phone number</string>
+    <string name="friend_details_no_email">No email</string>
+    <string name="friend_details_not_provided">None</string>
     <string name="friend_default_name">Friend</string>
     <string name="friend_user_default">User</string>
     <string name="friend_tag_format">ID: #%1$s • Friend</string>
@@ -876,5 +947,29 @@ Terms Version: 1.0</string>
     <string name="rate_service_bad">Bad</string>
     <string name="rate_service_excellent">Excellent</string>
     <string name="rate_service_thanks">Thank you for your rating! ❤️</string>
+
+    <!-- Medical News & Home Localization -->
+    <string name="home_news_section_title">5 Latest News</string>
+    <string name="home_see_all_news">View All News</string>
+    <string name="home_highlights_title">Highlights</string>
+    <string name="medical_news_title">Medical News</string>
+    <string name="medical_news_load_failed">Failed to load latest news. Please try again.</string>
+    <string name="medical_news_source_health">Health</string>
+    <string name="medical_news_latest">Latest</string>
+
+    <!-- Room & Friend Notifications Localization -->
+    <string name="notif_friend_request_title">Friend Request</string>
+    <string name="notif_friend_request_msg">%1$s sent you a friend request.</string>
+    <string name="notif_friend_accepted_title">Friend Request Accepted</string>
+    <string name="notif_friend_accepted_msg">%1$s accepted your friend request!</string>
+    <string name="someone">Someone</string>
+    <string name="notif_room_created_title">Room Created Successfully</string>
+    <string name="notif_room_created_msg">You have successfully created room %1$s.</string>
+    <string name="notif_room_joined_title">Joined Room Successfully</string>
+    <string name="notif_room_joined_msg">You have successfully joined room %1$s.</string>
+    <string name="notif_room_deleted_title">Room Deleted</string>
+    <string name="notif_room_left_title">Left Room</string>
+    <string name="notif_room_deleted_msg">You have deleted room %1$s.</string>
+    <string name="notif_room_left_msg">You have left room %1$s.</string>
 </resources>
 

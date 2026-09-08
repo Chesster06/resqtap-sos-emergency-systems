@@ -146,9 +146,72 @@
     <string name="profile_name_default">பெயர் அமைக்கப்படவில்லை</string>
     <string name="profile_personal_info">தனிப்பட்ட தகவல்</string>
     <string name="profile_emergency_contacts">அவசர தொடர்புகள்</string>
+    <string name="profile_security">பாதுகாப்பு</string>
+    <string name="profile_security_desc">பயன்பாட்டு பூட்டு, பயோமெட்ரிக் &amp; பாதுகாப்பு</string>
     <string name="profile_app_settings">பயன்பாட்டு அமைப்புகள்</string>
     <string name="profile_help_support">உதவி &amp; ஆதரவு</string>
     <string name="profile_about">ResQTap பற்றி</string>
+
+    <!-- Security Settings Strings (Tamil) -->
+    <string name="security_title">பாதுகாப்பு</string>
+    <string name="security_desc">பயன்பாட்டு பூட்டு, பின் மற்றும் கணக்கு பாதுகாப்பை உள்ளமைக்கவும்.</string>
+    <string name="security_section_app_lock">பயன்பாட்டு பாதுகாப்பு</string>
+    <string name="security_app_lock_title">பயன்பாட்டு பூட்டு (PIN)</string>
+    <string name="security_app_lock_desc">பயன்பாட்டைத் திறக்கும்போது 4 இலக்க PIN தேவைப்படுகிறது.</string>
+    <string name="security_biometric_title">பயோமெட்ரிக் / கைரேகை பூட்டு</string>
+    <string name="security_biometric_desc">திறக்க கைரேகை அல்லது முக அங்கீகாரத்தைப் பயன்படுத்தவும்.</string>
+    <string name="security_change_pin_title">பயன்பாட்டு PIN மாற்றவும்</string>
+    <string name="security_change_pin_desc">உங்கள் 4 இலக்க பாதுகாப்பு PIN-ஐ புதுப்பிக்கவும்.</string>
+    <string name="security_section_account">கணக்கு &amp; அணுகல்</string>
+    <string name="security_change_password_title">கடவுச்சொல்லை மாற்றவும்</string>
+    <string name="security_change_password_desc">உங்கள் கணக்கு கடவுச்சொல்லை புதுப்பிக்கவும்.</string>
+    <string name="security_change_password_modal_desc">தற்போதைய கடவுச்சொல்லை உள்ளிட்டு புதிய கடவுச்சொல்லை அமைக்கவும்.</string>
+    <string name="security_current_password_hint">தற்போதைய கடவுச்சொல்</string>
+    <string name="security_new_password_hint">புதிய கடவுச்சொல் (குறைந்தது 6 எழுத்துக்கள்)</string>
+    <string name="security_confirm_password_hint">புதிய கடவுச்சொல்லை உறுதிப்படுத்தவும்</string>
+    <string name="security_password_updated">கடவுச்சொல் வெற்றிகரமாக புதுப்பிக்கப்பட்டது!</string>
+    <string name="security_password_incorrect">தற்போதைய கடவுச்சொல் தவறானது.</string>
+    <string name="security_password_mismatch">புதிய கடவுச்சொல் மற்றும் உறுதிப்படுத்தல் பொருந்தவில்லை.</string>
+    <string name="security_password_too_short">புதிய கடவுச்சொல் குறைந்தது 6 எழுத்துக்களாக இருக்க வேண்டும்.</string>
+    <string name="security_device_status_title">சாதன பாதுகாப்பு நிலை</string>
+
+    <string name="security_device_status_secure">பாதுகாக்கப்பட்டது • திரை பூட்டு செயலில் உள்ளது</string>
+    <string name="security_device_status_warning">கவனம் • சாதன திரை பூட்டு அமைக்கப்படவில்லை</string>
+    <string name="security_section_emergency">அவசர பாதுகாப்பு</string>
+    <string name="security_duress_safeguard_title">அவசர SOS பாதுகாப்பு</string>
+    <string name="security_duress_safeguard_desc">செயலில் உள்ள அவசரநிலையின் போது தற்செயலான ரத்துசெய்வதைத் தடுக்கவும்.</string>
+    <string name="security_pin_dialog_title">4 இலக்க பாதுகாப்பு PIN அமைக்கவும்</string>
+    <string name="security_pin_dialog_change_title">பாதுகாப்பு PIN மாற்றவும்</string>
+    <string name="security_pin_dialog_hint">4 இலக்கங்களை உள்ளிடவும்</string>
+    <string name="security_pin_current_hint">தற்போதைய 4 இலக்க PIN</string>
+    <string name="security_pin_new_hint">புதிய 4 இலக்க PIN</string>
+    <string name="security_pin_confirm_hint">புதிய 4 இலக்க PIN-ஐ உறுதிப்படுத்தவும்</string>
+    <string name="security_pin_step_enter_title">புதிய PIN உள்ளிடவும்</string>
+    <string name="security_pin_step_enter_desc">பயன்பாட்டைப் பாதுகாக்க 4 இலக்க புதிய PIN உள்ளிடவும்</string>
+    <string name="security_pin_step_enter_your_title">உங்கள் PIN உள்ளிடவும்</string>
+    <string name="security_pin_step_enter_your_desc">பயன்பாட்டைப் பாதுகாக்க 4 இலக்க PIN உள்ளிடவும்</string>
+    <string name="security_pin_step_confirm_title">புதிய PIN உறுதிப்படுத்தவும்</string>
+    <string name="security_pin_step_confirm_desc">உறுதிப்படுத்த 4 இலக்க புதிய PIN மீண்டும் உள்ளிடவும்</string>
+    <string name="security_pin_step_confirm_your_title">உங்கள் PIN உறுதிப்படுத்தவும்</string>
+    <string name="security_pin_step_confirm_your_desc">உறுதிப்படுத்த 4 இலக்க PIN மீண்டும் உள்ளிடவும்</string>
+    <string name="security_pin_step_current_title">தற்போதைய PIN உள்ளிடவும்</string>
+    <string name="security_pin_step_current_desc">தொடர தற்போதைய 4 இலக்க PIN உள்ளிடவும்</string>
+    <string name="security_pin_saved">பாதுகாப்பு PIN வெற்றிகரமாக அமைக்கப்பட்டது!</string>
+    <string name="security_pin_incorrect">தவறான தற்போதைய PIN. மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="security_pin_mismatch">புதிய PIN மற்றும் உறுதிப்படுத்தல் பொருந்தவில்லை.</string>
+    <string name="security_pin_length_error">PIN சரியாக 4 இலக்கங்களாக இருக்க வேண்டும்.</string>
+    <string name="security_password_reset_sent">கடவுச்சொல் மீட்டமைப்பு மின்னஞ்சல் %1$s க்கு அனுப்பப்பட்டது.</string>
+    <string name="security_password_reset_no_email">இந்த கணக்கிற்கு பதிவுசெய்யப்பட்ட மின்னஞ்சல் எதுவும் இல்லை.</string>
+    <string name="security_app_lock_disabled">பயன்பாட்டு பூட்டு முடக்கப்பட்டது.</string>
+    <string name="app_lock_screen_title">பாதுகாப்பு PIN உள்ளிடவும்</string>
+    <string name="app_lock_screen_desc">ResQTap ஐ அணுக 4 இலக்க PIN ஐ உள்ளிடவும்.</string>
+    <string name="app_lock_incorrect_pin">தவறான PIN. மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="app_lock_use_biometric">சென்சாரைத் தொடவும் அல்லது பயோமெட்ரிக் பயன்படுத்தவும்</string>
+    <string name="app_lock_biometric_prompt_title">ResQTap ஐ திறக்கவும்</string>
+    <string name="app_lock_biometric_prompt_subtitle">பயன்பாட்டை அணுக உங்கள் அடையாளத்தை சரிபார்க்கவும்</string>
+    <string name="app_lock_forgot_pin">PIN மறந்துவிட்டதா?</string>
+
+
     <string name="personal_info_title">தனிப்பட்ட தகவல்</string>
     <string name="personal_info_subtitle">உங்கள் விவரங்களை புதுப்பித்து வைத்திருங்கள்</string>
     <string name="hint_religion">மதம்</string>
@@ -344,6 +407,39 @@
     <string name="login_create_account_btn">கணக்கை உருவாக்கு</string>
     <string name="gmail_only_warning">@gmail.com மின்னஞ்சலைப் பயன்படுத்தவும்.</string>
     <string name="call_connected">இணைக்கப்பட்டது</string>
-    <string name="ok">சரி</string>
+    <string name="friend_details_loading">விவரங்கள் ஏற்றப்படுகின்றன...</string>
+    <string name="friend_details_blood">இரத்த வகை</string>
+    <string name="friend_details_allergies">ஒவ்வாமை</string>
+    <string name="friend_details_conditions">மருத்துவ நிலை</string>
+    <string name="friend_details_call">அழைக்கவும்</string>
+    <string name="friend_details_no_phone">தொலைபேசி எண் வழங்கப்படவில்லை</string>
+    <string name="friend_details_no_email">மின்னஞ்சல் கிடைக்கவில்லை</string>
+    <string name="friend_details_not_provided">இல்லை</string>
+    <string name="tab_ai_assistant">AI உதவியாளர்</string>
+    <string name="tab_live_support">நேரலை ஆதரவு</string>
+
+    <!-- Medical News & Home Localization -->
+    <string name="home_news_section_title">5 சமீபத்திய செய்திகள்</string>
+    <string name="home_see_all_news">அனைத்து செய்திகளையும் காண்க</string>
+    <string name="home_highlights_title">சிறப்பம்சங்கள்</string>
+    <string name="medical_news_title">மருத்துவ செய்திகள்</string>
+    <string name="medical_news_load_failed">செய்திகளை ஏற்றுவதில் தோல்வி. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="medical_news_source_health">சுகாதாரம்</string>
+    <string name="medical_news_latest">சமீபத்திய</string>
+
+    <!-- Room & Friend Notifications Localization -->
+    <string name="notif_friend_request_title">நண்பர் கோரிக்கை</string>
+    <string name="notif_friend_request_msg">%1$s உங்களுக்கு நண்பர் கோரிக்கையை அனுப்பியுள்ளார்.</string>
+    <string name="notif_friend_accepted_title">நண்பர் கோரிக்கை ஏற்கப்பட்டது</string>
+    <string name="notif_friend_accepted_msg">%1$s உங்கள் நண்பர் கோரிக்கையை ஏற்றுக்கொண்டார்!</string>
+    <string name="someone">யாரோ</string>
+    <string name="notif_room_created_title">அறை வெற்றிகரமாக உருவாக்கப்பட்டது</string>
+    <string name="notif_room_created_msg">நீங்கள் %1$s அறையை வெற்றிகரமாக உருவாக்கியுள்ளீர்கள்.</string>
+    <string name="notif_room_joined_title">வெற்றிகரமாக அறையில் இணைந்தீர்கள்</string>
+    <string name="notif_room_joined_msg">நீங்கள் %1$s அறையில் வெற்றிகரமாக இணைந்துள்ளீர்கள்.</string>
+    <string name="notif_room_deleted_title">அறை நீக்கப்பட்டது</string>
+    <string name="notif_room_left_title">அறையிலிருந்து வெளியேறினார்</string>
+    <string name="notif_room_deleted_msg">நீங்கள் %1$s அறையை நீக்கிவிட்டீர்கள்.</string>
+    <string name="notif_room_left_msg">நீங்கள் %1$s அறையிலிருந்து வெளியேறிவிட்டீர்கள்.</string>
 </resources>
 

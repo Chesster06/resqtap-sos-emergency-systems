@@ -41,7 +41,9 @@ public class ResQTapApp extends Application {
         LocaleUtils.applySavedLocale(this);
 
         ThemeUtils.applySavedNightMode(this);
+        com.example.resqtap.security.AppLockManager.init(this);
         try {
+
 
             FirebaseDatabase db = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL);
             db.setPersistenceEnabled(true);

@@ -4,8 +4,8 @@ import com.example.resqtap.R;
 import com.example.resqtap.app.BaseActivity;
 import com.example.resqtap.auth.LoginActivity;
 import com.example.resqtap.contacts.EmergencyContactsListActivity;
-import com.example.resqtap.map.NearbyHospitalActivity;
 import com.example.resqtap.report.SupportActivity;
+
 import com.example.resqtap.utils.BottomNavUtils;
 import com.example.resqtap.utils.LocaleUtils;
 import com.example.resqtap.utils.ThemeUtils;
@@ -289,15 +289,16 @@ public class ProfileActivity extends BaseActivity {
         );
 
         setupItem(
-                R.id.item_hospital,
-                R.drawable.ic_ios_location,
-                0xFF10B981, // Emerald Green
-                0xFFE6F9F0, // Soft Mint Green Tint
-                getString(R.string.home_nearby_hospital),
-                "Find clinics & emergency care",
+                R.id.item_security,
+                R.drawable.ic_ios_security,
+                0xFF0284C7, // Electric Blue / Steel Cyan
+                0xFFE0F2FE, // Soft Sky/Cyan Tint
+                getString(R.string.profile_security),
+                getString(R.string.profile_security_desc),
                 null,
-                () -> startActivity(new Intent(this, NearbyHospitalActivity.class))
+                () -> startActivity(new Intent(this, SecuritySettingsActivity.class))
         );
+
 
         String lang = getLanguageLabel();
         setupItem(

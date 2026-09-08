@@ -233,8 +233,8 @@ public final class NotificationUtils {
 
         ensureBellChannel(context);
         String code = roomCode == null ? "" : roomCode.trim();
-        String title = "Bilik Berjaya Dicipta";
-        String text = "Anda telah berjaya mencipta bilik " + code + ".";
+        String title = context.getString(R.string.notif_room_created_title);
+        String text = context.getString(R.string.notif_room_created_msg, code);
 
         Intent open = new Intent(context, NotificationsActivity.class);
         open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -272,8 +272,8 @@ public final class NotificationUtils {
 
         ensureBellChannel(context);
         String code = roomCode == null ? "" : roomCode.trim();
-        String title = "Sertai Bilik Berjaya";
-        String text = "Anda telah berjaya menyertai bilik " + code + ".";
+        String title = context.getString(R.string.notif_room_joined_title);
+        String text = context.getString(R.string.notif_room_joined_msg, code);
 
         Intent open = new Intent(context, NotificationsActivity.class);
         open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -311,10 +311,10 @@ public final class NotificationUtils {
 
         ensureBellChannel(context);
         String code = roomCode == null ? "" : roomCode.trim();
-        String title = isCreator ? "Bilik Dipadamkan" : "Meninggalkan Bilik";
+        String title = isCreator ? context.getString(R.string.notif_room_deleted_title) : context.getString(R.string.notif_room_left_title);
         String text = isCreator
-                ? "Anda telah memadamkan bilik " + code + "."
-                : "Anda telah keluar dari bilik " + code + ".";
+                ? context.getString(R.string.notif_room_deleted_msg, code)
+                : context.getString(R.string.notif_room_left_msg, code);
 
         Intent open = new Intent(context, NotificationsActivity.class);
         open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);

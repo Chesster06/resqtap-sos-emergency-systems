@@ -1824,7 +1824,8 @@ public class ChatActivity extends BaseActivity {
                 "suar", "zon", "kawan", "terima", "kasih", "faham", "siapa", "buat")) {
             return "ms";
         }
-        return "en";
+        String savedLang = com.example.resqtap.utils.LocaleUtils.getSavedLanguageTag(this);
+        return (savedLang != null && !savedLang.isEmpty()) ? savedLang : "en";
     }
 
     /** Fungsi untuk containsHangul. */
