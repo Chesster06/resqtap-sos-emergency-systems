@@ -28,6 +28,11 @@
 - **Incident Reports**: Submit and monitor incident details with attachments and descriptions.
 - **Medical and Safety News**: Stay updated with verified health advisories and safety bulletins.
 
+### Security and Application Protection
+- **Biometric & Fingerprint Unlock**: Native biometric authentication with smooth two-stage confirmation and progress animation.
+- **Independent Security PINs**: Dedicated 4-digit passkeys for App Lock and Biometric fallback unlock.
+- **Duress Safeguard**: Covert safety PIN mechanism designed to trigger silent emergency protocol during forced unlock.
+
 ---
 
 ## Architecture and Tech Stack
