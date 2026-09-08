@@ -162,6 +162,8 @@
     <string name="security_biometric_desc">திறக்க கைரேகை அல்லது முக அங்கீகாரத்தைப் பயன்படுத்தவும்.</string>
     <string name="security_change_pin_title">பயன்பாட்டு PIN மாற்றவும்</string>
     <string name="security_change_pin_desc">உங்கள் 4 இலக்க பாதுகாப்பு PIN-ஐ புதுப்பிக்கவும்.</string>
+    <string name="security_change_biometric_pin_title">பயோமெட்ரிக் PIN மாற்றவும்</string>
+    <string name="security_change_biometric_pin_desc">பயோமெட்ரிக் பூட்டிற்கான 4 இலக்க காப்புப் பிரதி PIN-ஐப் புதுப்பிக்கவும்.</string>
     <string name="security_section_account">கணக்கு &amp; அணுகல்</string>
     <string name="security_change_password_title">கடவுச்சொல்லை மாற்றவும்</string>
     <string name="security_change_password_desc">உங்கள் கணக்கு கடவுச்சொல்லை புதுப்பிக்கவும்.</string>

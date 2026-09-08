@@ -162,6 +162,8 @@
     <string name="security_biometric_desc">使用指纹或面部识别解锁应用。</string>
     <string name="security_change_pin_title">修改应用PIN码</string>
     <string name="security_change_pin_desc">更新您的4位数安全通行码。</string>
+    <string name="security_change_biometric_pin_title">修改生物识别PIN码</string>
+    <string name="security_change_biometric_pin_desc">更新生物识别解锁的4位数备用PIN码。</string>
     <string name="security_section_account">账户与访问</string>
     <string name="security_change_password_title">修改密码</string>
     <string name="security_change_password_desc">更新您的账户登录密码。</string>

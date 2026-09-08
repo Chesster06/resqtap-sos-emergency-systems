@@ -520,6 +520,8 @@ Terms Version: 1.0</string>
     <string name="security_biometric_desc">Use fingerprint or face recognition to unlock.</string>
     <string name="security_change_pin_title">Change App PIN</string>
     <string name="security_change_pin_desc">Update your 4-digit security passkey.</string>
+    <string name="security_change_biometric_pin_title">Change Biometric PIN</string>
+    <string name="security_change_biometric_pin_desc">Update your 4-digit backup PIN for biometric unlock.</string>
     <string name="security_section_account">Account &amp; Access</string>
     <string name="security_change_password_title">Change Password</string>
     <string name="security_change_password_desc">Update your account login password.</string>

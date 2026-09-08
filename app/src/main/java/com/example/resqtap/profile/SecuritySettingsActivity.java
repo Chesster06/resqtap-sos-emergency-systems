@@ -78,6 +78,7 @@ public class SecuritySettingsActivity extends BaseActivity {
     private SwitchMaterial toggleBiometric;
     private SwitchMaterial toggleDuressSafeguard;
     private View rowChangePin;
+    private View rowChangeBiometricPin;
     private View rowBiometric;
     private boolean isSyncingUI = false;
 
@@ -125,6 +126,7 @@ public class SecuritySettingsActivity extends BaseActivity {
         toggleBiometric = findViewById(R.id.toggle_biometric);
         toggleDuressSafeguard = findViewById(R.id.toggle_duress_safeguard);
         rowChangePin = findViewById(R.id.row_change_pin);
+        rowChangeBiometricPin = findViewById(R.id.row_change_biometric_pin);
         rowBiometric = findViewById(R.id.row_biometric);
 
         syncSecuritySettingsUI();
@@ -135,6 +137,7 @@ public class SecuritySettingsActivity extends BaseActivity {
         try {
             boolean appLockOn = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
             boolean biometricOn = UserPrefs.isFingerprintEnabled(this);
+            boolean hasBiometricPin = UserPrefs.getBiometricPin(this) != null && UserPrefs.getBiometricPin(this).length() == 4;
             boolean duressOn = UserPrefs.isDuressSafeguardEnabled(this);
 
             if (toggleAppLock != null) {
@@ -176,6 +179,9 @@ public class SecuritySettingsActivity extends BaseActivity {
             }
             if (rowChangePin != null) {
                 rowChangePin.setVisibility(appLockOn ? View.VISIBLE : View.GONE);
+            }
+            if (rowChangeBiometricPin != null) {
+                rowChangeBiometricPin.setVisibility((biometricOn && hasBiometricPin) ? View.VISIBLE : View.GONE);
             }
         } finally {
             isSyncingUI = false;
@@ -253,6 +259,9 @@ public class SecuritySettingsActivity extends BaseActivity {
                 } else {
                     UserPrefs.setFingerprintEnabled(this, false);
                     UserPrefs.setBiometricPin(this, "");
+                    if (rowChangeBiometricPin != null) {
+                        rowChangeBiometricPin.setVisibility(View.GONE);
+                    }
                     Toast.makeText(this, R.string.security_biometric_disabled, Toast.LENGTH_SHORT).show();
                 }
             });
@@ -266,7 +275,11 @@ public class SecuritySettingsActivity extends BaseActivity {
         }
 
         if (rowChangePin != null) {
-            rowChangePin.setOnClickListener(v -> openSetPin(true));
+            rowChangePin.setOnClickListener(v -> openSetPin(true, false));
+        }
+
+        if (rowChangeBiometricPin != null) {
+            rowChangeBiometricPin.setOnClickListener(v -> openSetPin(true, true));
         }
 
         View rowChangePassword = findViewById(R.id.row_change_password);

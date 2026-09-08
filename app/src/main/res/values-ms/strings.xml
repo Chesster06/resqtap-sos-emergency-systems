@@ -323,6 +323,8 @@
     <string name="security_biometric_desc">Gunakan cap jari atau imbasan wajah untuk buka kunci.</string>
     <string name="security_change_pin_title">Tukar PIN Aplikasi</string>
     <string name="security_change_pin_desc">Kemas kini kod keselamatan 4 digit anda.</string>
+    <string name="security_change_biometric_pin_title">Tukar PIN Biometrik</string>
+    <string name="security_change_biometric_pin_desc">Kemas kini PIN sandaran 4 digit untuk kunci biometrik.</string>
     <string name="security_section_account">Akaun &amp; Akses</string>
     <string name="security_change_password_title">Tukar Kata Laluan</string>
     <string name="security_change_password_desc">Kemas kini kata laluan log masuk akaun anda.</string>
