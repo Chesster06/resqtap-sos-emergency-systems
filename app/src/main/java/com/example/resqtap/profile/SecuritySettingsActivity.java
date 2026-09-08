@@ -289,11 +289,11 @@ public class SecuritySettingsActivity extends BaseActivity {
             ImageView ivCheck = sheetView.findViewById(R.id.iv_sheet_check);
             TextView tvHint = sheetView.findViewById(R.id.tv_sheet_hint);
 
-            // Initial UI state matching "gambar kiri": "Lift, then touch again" with 50% red arc
-            if (tvTitle != null) tvTitle.setText(R.string.biometric_confirm_sheet_title);
-            if (tvSubtitle != null) tvSubtitle.setText(R.string.biometric_confirm_sheet_subtitle);
+            // Initial UI state for Touch 1: "Register Fingerprint" / "Touch sensor to register"
+            if (tvTitle != null) tvTitle.setText(R.string.biometric_register_title);
+            if (tvSubtitle != null) tvSubtitle.setText(R.string.biometric_register_subtitle);
             if (progressRing != null) {
-                progressRing.setProgress(50);
+                progressRing.setProgress(0);
                 progressRing.setIndicatorColor(android.graphics.Color.parseColor("#E53935"));
             }
             if (ivFingerprint != null) {
@@ -304,8 +304,8 @@ public class SecuritySettingsActivity extends BaseActivity {
                 ivCheck.setVisibility(View.GONE);
             }
             if (tvHint != null) {
-                tvHint.setText(R.string.biometric_confirm_sheet_hint);
-                tvHint.setTextColor(android.graphics.Color.parseColor("#E53935"));
+                tvHint.setText(R.string.biometric_sheet_touch_sensor);
+                tvHint.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
             }
 
             int[] step = new int[]{1}; // 1 = wait touch 1, 2 = wait touch 2, 3 = completed
@@ -319,7 +319,7 @@ public class SecuritySettingsActivity extends BaseActivity {
             }
             final FingerprintManager finalFm = fm;
 
-            // Touch 2: Second touch -> complete ring from 75 to 100, turn green, show checkmark tick
+            // Touch 2 (Confirm): Complete ring from 50 to 100, turn green, show checkmark tick
             Runnable onTouchTwoSuccess = () -> {
                 if (step[0] != 2 || isTransitioning[0]) return;
                 isTransitioning[0] = true;
@@ -338,8 +338,8 @@ public class SecuritySettingsActivity extends BaseActivity {
                 } catch (Exception ignored) {
                 }
 
-                // Animate progress ring from 75 to 100
-                ValueAnimator animator = ValueAnimator.ofInt(75, 100);
+                // Animate progress ring from 50 to 100
+                ValueAnimator animator = ValueAnimator.ofInt(50, 100);
                 animator.setDuration(350);
                 animator.addUpdateListener(animation -> {
                     if (progressRing != null) {
@@ -386,7 +386,7 @@ public class SecuritySettingsActivity extends BaseActivity {
                 }, 650);
             };
 
-            // Touch 1: First touch -> animate ring from 50 to 75, pulse icon, NO green tick
+            // Touch 1 (Register): Animate ring 0% to 50% (red arc), change title to 'Lift, then touch again', NO green tick!
             Runnable onTouchOneSuccess = () -> {
                 if (step[0] != 1 || isTransitioning[0]) return;
                 isTransitioning[0] = true;
@@ -404,8 +404,8 @@ public class SecuritySettingsActivity extends BaseActivity {
                 } catch (Exception ignored) {
                 }
 
-                // Animate progress smoothly from 50 to 75 (red arc expands)
-                ValueAnimator animator = ValueAnimator.ofInt(50, 75);
+                // Animate progress smoothly from 0 to 50 (forms the red arc from the reference design)
+                ValueAnimator animator = ValueAnimator.ofInt(0, 50);
                 animator.setDuration(350);
                 animator.addUpdateListener(animation -> {
                     if (progressRing != null) {
@@ -413,6 +413,18 @@ public class SecuritySettingsActivity extends BaseActivity {
                     }
                 });
                 animator.start();
+
+                // Transition UI to Step 2 ("Lift, then touch again" with red hint)
+                if (tvTitle != null) {
+                    tvTitle.setText(R.string.biometric_confirm_sheet_title);
+                }
+                if (tvSubtitle != null) {
+                    tvSubtitle.setText(R.string.biometric_confirm_sheet_subtitle);
+                }
+                if (tvHint != null) {
+                    tvHint.setText(R.string.biometric_confirm_sheet_hint);
+                    tvHint.setTextColor(android.graphics.Color.parseColor("#E53935"));
+                }
 
                 // Gentle pulse animation on fingerprint icon to acknowledge 1st touch
                 if (ivFingerprint != null) {
