@@ -22,6 +22,8 @@ import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
+import androidx.biometric.BiometricManager;
+import android.provider.Settings;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -48,6 +50,7 @@ public class SecuritySettingsActivity extends BaseActivity {
     private SwitchMaterial toggleBiometric;
     private SwitchMaterial toggleDuressSafeguard;
     private View rowChangePin;
+    private View rowBiometric;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,6 +96,7 @@ public class SecuritySettingsActivity extends BaseActivity {
         toggleBiometric = findViewById(R.id.toggle_biometric);
         toggleDuressSafeguard = findViewById(R.id.toggle_duress_safeguard);
         rowChangePin = findViewById(R.id.row_change_pin);
+        rowBiometric = findViewById(R.id.row_biometric);
 
         syncSecuritySettingsUI();
     }
@@ -105,10 +109,34 @@ public class SecuritySettingsActivity extends BaseActivity {
         if (toggleAppLock != null) {
             toggleAppLock.setChecked(appLockOn);
         }
-        if (toggleBiometric != null) {
-            toggleBiometric.setChecked(biometricOn);
-            toggleBiometric.setEnabled(appLockOn);
+
+        // Semak sokongan perkakasan biometrik (Fingerprint)
+        BiometricManager biometricManager = BiometricManager.from(this);
+        int canAuth = biometricManager.canAuthenticate(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK
+        );
+
+        if (canAuth == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE ||
+            canAuth == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE) {
+            // Peranti tiada sensor biometrik / tidak disokong - sembunyikan baris
+            if (rowBiometric != null) {
+                rowBiometric.setVisibility(View.GONE);
+            }
+            if (toggleBiometric != null) {
+                toggleBiometric.setChecked(false);
+            }
+            UserPrefs.setFingerprintEnabled(this, false);
+        } else {
+            // Peranti menyokong sensor biometrik
+            if (rowBiometric != null) {
+                rowBiometric.setVisibility(View.VISIBLE);
+            }
+            if (toggleBiometric != null) {
+                toggleBiometric.setChecked(biometricOn);
+                toggleBiometric.setEnabled(appLockOn);
+            }
         }
+
         if (toggleDuressSafeguard != null) {
             toggleDuressSafeguard.setChecked(duressOn);
         }
@@ -123,11 +151,10 @@ public class SecuritySettingsActivity extends BaseActivity {
             rowAppLock.setOnClickListener(v -> toggleAppLock.performClick());
         }
 
-        View rowBiometric = findViewById(R.id.row_biometric);
         if (rowBiometric != null && toggleBiometric != null) {
             rowBiometric.setOnClickListener(v -> {
                 if (toggleBiometric.isEnabled()) {
-                    toggleBiometric.toggle();
+                    toggleBiometric.performClick();
                 } else {
                     Toast.makeText(this, R.string.security_app_lock_desc, Toast.LENGTH_SHORT).show();
                 }
@@ -173,6 +200,31 @@ public class SecuritySettingsActivity extends BaseActivity {
 
         if (toggleBiometric != null) {
             toggleBiometric.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (!buttonView.isPressed()) {
+                    return;
+                }
+                if (isChecked) {
+                    BiometricManager bm = BiometricManager.from(this);
+                    int authResult = bm.canAuthenticate(
+                            BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK
+                    );
+                    if (authResult == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED) {
+                        Toast.makeText(this, R.string.security_biometric_not_enrolled, Toast.LENGTH_LONG).show();
+                        toggleBiometric.setChecked(false);
+                        UserPrefs.setFingerprintEnabled(this, false);
+                        try {
+                            Intent enrollIntent = new Intent(Settings.ACTION_SECURITY_SETTINGS);
+                            startActivity(enrollIntent);
+                        } catch (Exception ignored) {
+                        }
+                        return;
+                    } else if (authResult != BiometricManager.BIOMETRIC_SUCCESS) {
+                        Toast.makeText(this, R.string.security_biometric_unsupported, Toast.LENGTH_SHORT).show();
+                        toggleBiometric.setChecked(false);
+                        UserPrefs.setFingerprintEnabled(this, false);
+                        return;
+                    }
+                }
                 UserPrefs.setFingerprintEnabled(this, isChecked);
             });
         }

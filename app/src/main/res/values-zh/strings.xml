@@ -210,6 +210,8 @@
     <string name="app_lock_biometric_prompt_title">解锁 ResQTap</string>
     <string name="app_lock_biometric_prompt_subtitle">验证您的身份以进入应用</string>
     <string name="app_lock_forgot_pin">忘记PIN码？</string>
+    <string name="security_biometric_not_enrolled">此设备未注册指纹，请在系统设置中添加指纹。</string>
+    <string name="security_biometric_unsupported">此设备不支持生物识别验证。</string>
 
 
     <string name="personal_info_title">个人资料</string>

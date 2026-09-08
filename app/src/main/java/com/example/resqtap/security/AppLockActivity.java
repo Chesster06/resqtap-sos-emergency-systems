@@ -3,10 +3,7 @@ package com.example.resqtap.security;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.hardware.biometrics.BiometricPrompt;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
@@ -17,10 +14,16 @@ import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.biometric.BiometricManager;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+
+import java.util.concurrent.Executor;
 
 import com.example.resqtap.R;
 import com.example.resqtap.auth.LoginActivity;
@@ -41,7 +44,6 @@ public class AppLockActivity extends AppCompatActivity {
     private View dot1, dot2, dot3, dot4;
     private View dotsContainer;
     private View btnBiometricKey;
-    private CancellationSignal cancellationSignal;
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -89,9 +91,14 @@ public class AppLockActivity extends AppCompatActivity {
         btnBiometricKey = findViewById(R.id.btn_biometric_key);
 
         boolean biometricOn = UserPrefs.isFingerprintEnabled(this);
+        BiometricManager bm = BiometricManager.from(this);
+        boolean isSupported = bm.canAuthenticate(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK
+        ) == BiometricManager.BIOMETRIC_SUCCESS;
+
         if (btnBiometricKey != null) {
-            btnBiometricKey.setVisibility(biometricOn ? View.VISIBLE : View.INVISIBLE);
-            if (biometricOn) {
+            btnBiometricKey.setVisibility((biometricOn && isSupported) ? View.VISIBLE : View.INVISIBLE);
+            if (biometricOn && isSupported) {
                 btnBiometricKey.setOnClickListener(v -> authenticateBiometric());
             }
         }
@@ -181,42 +188,44 @@ public class AppLockActivity extends AppCompatActivity {
         }
     }
 
-
     private void authenticateBiometric() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            try {
-                cancellationSignal = new CancellationSignal();
-                BiometricPrompt.Builder builder = new BiometricPrompt.Builder(this)
-                        .setTitle(getString(R.string.app_lock_biometric_prompt_title))
-                        .setSubtitle(getString(R.string.app_lock_biometric_prompt_subtitle))
-                        .setDescription(getString(R.string.security_biometric_desc))
-                        .setNegativeButton(getString(R.string.cancel), getMainExecutor(), new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                // User cancelled biometric prompt
-                            }
-                        });
-
-                BiometricPrompt prompt = builder.build();
-                prompt.authenticate(cancellationSignal, getMainExecutor(), new BiometricPrompt.AuthenticationCallback() {
-                    @Override
-                    public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
-                        super.onAuthenticationSucceeded(result);
-                        unlockSuccess();
-                    }
-
-                    @Override
-                    public void onAuthenticationFailed() {
-                        super.onAuthenticationFailed();
-                    }
-
-                    @Override
-                    public void onAuthenticationError(int errorCode, CharSequence errString) {
-                        super.onAuthenticationError(errorCode, errString);
-                    }
-                });
-            } catch (Exception ignored) {
+        try {
+            BiometricManager biometricManager = BiometricManager.from(this);
+            int canAuth = biometricManager.canAuthenticate(
+                    BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK
+            );
+            if (canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
+                return;
             }
+
+            Executor executor = ContextCompat.getMainExecutor(this);
+            BiometricPrompt prompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
+                @Override
+                public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                    super.onAuthenticationSucceeded(result);
+                    unlockSuccess();
+                }
+
+                @Override
+                public void onAuthenticationFailed() {
+                    super.onAuthenticationFailed();
+                }
+
+                @Override
+                public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                    super.onAuthenticationError(errorCode, errString);
+                }
+            });
+
+            BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                    .setTitle(getString(R.string.app_lock_biometric_prompt_title))
+                    .setSubtitle(getString(R.string.app_lock_biometric_prompt_subtitle))
+                    .setDescription(getString(R.string.security_biometric_desc))
+                    .setNegativeButtonText(getString(R.string.cancel))
+                    .build();
+
+            prompt.authenticate(promptInfo);
+        } catch (Exception ignored) {
         }
     }
 
@@ -246,8 +255,5 @@ public class AppLockActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (cancellationSignal != null && !cancellationSignal.isCanceled()) {
-            cancellationSignal.cancel();
-        }
     }
 }
