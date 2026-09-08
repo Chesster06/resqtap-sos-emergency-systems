@@ -247,16 +247,6 @@ public class LoginActivity extends BaseActivity {
                 return;
             }
 
-            if (!loginEmailKnownRegistered) {
-                emailLayout.setErrorEnabled(true);
-                emailLayout.setError(getString(R.string.toast_email_not_registered));
-                emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
-                emailLayout.setEndIconTintList(null);
-                Toast.makeText(this, R.string.toast_account_not_exist, Toast.LENGTH_SHORT).show();
-                scrollToField(authPanel, emailLayout);
-                return;
-            }
-
             btnLogin.setEnabled(false);
             signInAndLoadProfile(emailValue, passwordValue, btnLogin);
         });
@@ -311,23 +301,59 @@ public class LoginActivity extends BaseActivity {
                     @Override
                     public void onDataChange(DataSnapshot snapshot) {
                         boolean isRegistered = snapshot != null && snapshot.exists() && Boolean.TRUE.equals(snapshot.getValue(Boolean.class));
-                        loginEmailKnownRegistered = isRegistered;
                         if (isRegistered) {
+                            loginEmailKnownRegistered = true;
                             emailLayout.setError(null); emailLayout.setErrorEnabled(false);
                             emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
                             emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(LoginActivity.this, R.color.success_green)));
                             btnLogin.setEnabled(true);
                         } else {
-                            emailLayout.setErrorEnabled(true);
-                            emailLayout.setError(getString(R.string.toast_email_not_registered));
-                            emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
-                            emailLayout.setEndIconTintList(null);
+                            // Fallback semak terus dengan Firebase Auth
+                            FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(task -> {
+                                if (task.isSuccessful() && task.getResult() != null) {
+                                    java.util.List<String> methods = task.getResult().getSignInMethods();
+                                    if (methods != null && !methods.isEmpty()) {
+                                        loginEmailKnownRegistered = true;
+                                        emailLayout.setError(null); emailLayout.setErrorEnabled(false);
+                                        emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
+                                        emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(LoginActivity.this, R.color.success_green)));
+                                        btnLogin.setEnabled(true);
+                                        // Segerakkan registeredEmails di DB
+                                        try {
+                                            FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                                                    .getReference("registeredEmails")
+                                                    .child(sanitized)
+                                                    .setValue(true);
+                                        } catch (Exception ignored) {
+                                        }
+                                        return;
+                                    }
+                                }
+
+                                if (query.endsWith("@resqtap.com")) {
+                                    // Domain rasmi admin ResQTap: benarkan input dan login tanpa blok pra-semakan
+                                    loginEmailKnownRegistered = true;
+                                    emailLayout.setError(null); emailLayout.setErrorEnabled(false);
+                                    emailLayout.setEndIconDrawable(null);
+                                    emailLayout.setEndIconTintList(null);
+                                    btnLogin.setEnabled(true);
+                                    return;
+                                }
+
+                                loginEmailKnownRegistered = false;
+                                emailLayout.setErrorEnabled(true);
+                                emailLayout.setError(getString(R.string.toast_email_not_registered));
+                                emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
+                                emailLayout.setEndIconTintList(null);
+                            });
                         }
                     }
                     @Override
                     public void onCancelled(DatabaseError error) {
+                        loginEmailKnownRegistered = true;
                         emailLayout.setEndIconDrawable(null);
                         emailLayout.setEndIconTintList(null);
+                        btnLogin.setEnabled(true);
                     }
                 });
     }
@@ -516,7 +542,17 @@ public class LoginActivity extends BaseActivity {
                                 startActivity(new Intent(this, MainActivity.class));
                                 finish();
 
-                                // Fire-and-forget: admin check & room fetch di background
+                                // Fire-and-forget: sync registeredEmails, admin check & room fetch di background
+                                String sanitizedEmail = sanitizeEmailForDb(emailValue);
+                                if (!sanitizedEmail.isEmpty()) {
+                                    try {
+                                        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                                                .getReference("registeredEmails")
+                                                .child(sanitizedEmail)
+                                                .setValue(true);
+                                    } catch (Exception ignored) {
+                                    }
+                                }
                                 if (emailValue != null && emailValue.trim().toLowerCase(java.util.Locale.ROOT).endsWith("@resqtap.com")) {
                                     DatabaseReference adminRef = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
                                             .getReference("admins")
@@ -656,11 +692,24 @@ public class LoginActivity extends BaseActivity {
                     public void onDataChange(DataSnapshot snapshot) {
                         boolean exists = snapshot != null && snapshot.exists()
                                 && Boolean.TRUE.equals(snapshot.getValue(Boolean.class));
-                        if (callback != null) callback.onResult(exists);
+                        if (exists) {
+                            if (callback != null) callback.onResult(true);
+                        } else {
+                            FirebaseAuth.getInstance().fetchSignInMethodsForEmail(email.trim().toLowerCase(java.util.Locale.ROOT))
+                                    .addOnCompleteListener(task -> {
+                                        if (task.isSuccessful() && task.getResult() != null
+                                                && task.getResult().getSignInMethods() != null
+                                                && !task.getResult().getSignInMethods().isEmpty()) {
+                                            if (callback != null) callback.onResult(true);
+                                        } else {
+                                            if (callback != null) callback.onResult(email.trim().toLowerCase(java.util.Locale.ROOT).endsWith("@resqtap.com"));
+                                        }
+                                    });
+                        }
                     }
                     @Override
                     public void onCancelled(DatabaseError error) {
-                        if (callback != null) callback.onResult(false);
+                        if (callback != null) callback.onResult(email.trim().toLowerCase(java.util.Locale.ROOT).endsWith("@resqtap.com"));
                     }
                 });
     }
