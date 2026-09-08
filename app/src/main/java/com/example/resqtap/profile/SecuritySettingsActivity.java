@@ -277,47 +277,12 @@ public class SecuritySettingsActivity extends BaseActivity {
 
     private void startBiometricRegistrationFlow() {
         try {
-            Executor executor = ContextCompat.getMainExecutor(this);
-            BiometricPrompt prompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
-                @Override
-                public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
-                    super.onAuthenticationSucceeded(result);
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        startBiometricConfirmationStep();
-                    }, 350);
-                }
-
-                @Override
-                public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
-                    super.onAuthenticationError(errorCode, errString);
-                    if (toggleBiometric != null) {
-                        toggleBiometric.setChecked(false);
-                    }
-                    UserPrefs.setFingerprintEnabled(SecuritySettingsActivity.this, false);
-                }
-            });
-
-            BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
-                    .setTitle(getString(R.string.biometric_register_title))
-                    .setSubtitle(getString(R.string.biometric_register_subtitle))
-                    .setNegativeButtonText(getString(R.string.cancel))
-                    .build();
-
-            prompt.authenticate(promptInfo);
-        } catch (Exception e) {
-            if (toggleBiometric != null) {
-                toggleBiometric.setChecked(false);
-            }
-            UserPrefs.setFingerprintEnabled(this, false);
-        }
-    }
-
-    private void startBiometricConfirmationStep() {
-        try {
             BottomSheetDialog bottomSheet = new BottomSheetDialog(this);
             View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_confirm_fingerprint, null);
             bottomSheet.setContentView(sheetView);
 
+            TextView tvTitle = sheetView.findViewById(R.id.tv_sheet_title);
+            TextView tvSubtitle = sheetView.findViewById(R.id.tv_sheet_subtitle);
             CircularProgressIndicator progressRing = sheetView.findViewById(R.id.progress_fingerprint_ring);
             FrameLayout targetLayout = sheetView.findViewById(R.id.layout_fingerprint_target);
             ImageView ivFingerprint = sheetView.findViewById(R.id.iv_sheet_fingerprint);
@@ -325,14 +290,47 @@ public class SecuritySettingsActivity extends BaseActivity {
             TextView tvHint = sheetView.findViewById(R.id.tv_sheet_hint);
             View btnDoItLater = sheetView.findViewById(R.id.btn_sheet_do_it_later);
 
-            boolean[] isConfirmed = new boolean[]{false};
-            CancellationSignal cancellationSignal = new CancellationSignal();
+            // Initial UI state for touch 1
+            if (tvTitle != null) tvTitle.setText(R.string.biometric_register_title);
+            if (tvSubtitle != null) tvSubtitle.setText(R.string.biometric_register_subtitle);
+            if (progressRing != null) {
+                progressRing.setProgress(0);
+                progressRing.setIndicatorColor(android.graphics.Color.parseColor("#E53935"));
+            }
+            if (ivFingerprint != null) {
+                ivFingerprint.setVisibility(View.VISIBLE);
+                ivFingerprint.setAlpha(1.0f);
+            }
+            if (ivCheck != null) {
+                ivCheck.setVisibility(View.GONE);
+            }
+            if (tvHint != null) {
+                tvHint.setText(R.string.biometric_sheet_touch_sensor);
+                tvHint.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+            }
 
-            Runnable onConfirmedSuccess = () -> {
-                if (isConfirmed[0]) return;
-                isConfirmed[0] = true;
+            int[] step = new int[]{1}; // 1 = wait touch 1 (register), 2 = wait touch 2 (confirm), 3 = completed
+            boolean[] isTransitioning = new boolean[]{false};
+            CancellationSignal[] activeSignal = new CancellationSignal[]{null};
+
+            FingerprintManager fm = null;
+            try {
+                fm = getSystemService(FingerprintManager.class);
+            } catch (Exception ignored) {
+            }
+            final FingerprintManager finalFm = fm;
+
+            // Touch 2: Confirm fingerprint -> Green checkmark, success animation, proceed to PIN
+            Runnable onTouchTwoSuccess = () -> {
+                if (step[0] != 2 || isTransitioning[0]) return;
+                isTransitioning[0] = true;
+                step[0] = 3;
+
                 try {
-                    cancellationSignal.cancel();
+                    if (activeSignal[0] != null) {
+                        activeSignal[0].cancel();
+                        activeSignal[0] = null;
+                    }
                 } catch (Exception ignored) {
                 }
 
@@ -341,7 +339,7 @@ public class SecuritySettingsActivity extends BaseActivity {
                 } catch (Exception ignored) {
                 }
 
-                // Animate progress ring smoothly from 50 to 100
+                // Animate progress ring from 50 to 100
                 ValueAnimator animator = ValueAnimator.ofInt(50, 100);
                 animator.setDuration(400);
                 animator.addUpdateListener(animation -> {
@@ -351,12 +349,12 @@ public class SecuritySettingsActivity extends BaseActivity {
                 });
                 animator.start();
 
-                // Transition colors and icons to success
+                // Turn green and show checkmark
                 if (progressRing != null) {
-                    progressRing.setIndicatorColor(ContextCompat.getColor(this, R.color.success_green));
+                    progressRing.setIndicatorColor(ContextCompat.getColor(SecuritySettingsActivity.this, R.color.success_green));
                 }
                 if (ivFingerprint != null) {
-                    ivFingerprint.animate().alpha(0f).setDuration(220).start();
+                    ivFingerprint.animate().alpha(0f).setDuration(200).start();
                 }
                 if (ivCheck != null) {
                     ivCheck.setVisibility(View.VISIBLE);
@@ -373,7 +371,7 @@ public class SecuritySettingsActivity extends BaseActivity {
                 }
                 if (tvHint != null) {
                     tvHint.setText(R.string.biometric_confirm_sheet_success);
-                    tvHint.setTextColor(ContextCompat.getColor(this, R.color.success_green));
+                    tvHint.setTextColor(ContextCompat.getColor(SecuritySettingsActivity.this, R.color.success_green));
                 }
 
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -386,30 +384,67 @@ public class SecuritySettingsActivity extends BaseActivity {
                         isSettingPinForBiometric = true;
                         openSetPin(false, true);
                     }, 300);
-                }, 600);
+                }, 650);
             };
 
-            // 1. Hardware Fingerprint Sensor Listener
-            try {
-                FingerprintManager fm = getSystemService(FingerprintManager.class);
-                if (fm != null && fm.isHardwareDetected() && fm.hasEnrolledFingerprints()) {
-                    fm.authenticate(null, cancellationSignal, 0, new FingerprintManager.AuthenticationCallback() {
-                        @Override
-                        public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
-                            runOnUiThread(onConfirmedSuccess);
-                        }
+            // Touch 1: Register fingerprint -> Animate ring 0% to 50% (red arc), change title to "Lift, then touch again", NO CHECKMARK
+            Runnable onTouchOneSuccess = () -> {
+                if (step[0] != 1 || isTransitioning[0]) return;
+                isTransitioning[0] = true;
 
-                        @Override
-                        public void onAuthenticationError(int errorCode, CharSequence errString) {
-                        }
-                    }, null);
+                try {
+                    if (activeSignal[0] != null) {
+                        activeSignal[0].cancel();
+                        activeSignal[0] = null;
+                    }
+                } catch (Exception ignored) {
                 }
-            } catch (Exception ignored) {
-            }
 
-            // 2. Tap to confirm directly on screen target
+                try {
+                    sheetView.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+                } catch (Exception ignored) {
+                }
+
+                // Animate progress smoothly from 0 to 50
+                ValueAnimator animator = ValueAnimator.ofInt(0, 50);
+                animator.setDuration(400);
+                animator.addUpdateListener(animation -> {
+                    if (progressRing != null) {
+                        progressRing.setProgress((int) animation.getAnimatedValue());
+                    }
+                });
+                animator.start();
+
+                // Update texts to match reference design: "Lift, then touch again" with red hint
+                if (tvTitle != null) {
+                    tvTitle.setText(R.string.biometric_confirm_sheet_title);
+                }
+                if (tvSubtitle != null) {
+                    tvSubtitle.setText(R.string.biometric_confirm_sheet_subtitle);
+                }
+                if (tvHint != null) {
+                    tvHint.setText(R.string.biometric_confirm_sheet_hint);
+                    tvHint.setTextColor(android.graphics.Color.parseColor("#E53935"));
+                }
+
+                // Give user a moment to lift finger before arming touch 2
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    step[0] = 2;
+                    isTransitioning[0] = false;
+                    listenFingerprintStep(finalFm, activeSignal, onTouchTwoSuccess);
+                }, 500);
+            };
+
+            // Tapping on screen target triggers step
             if (targetLayout != null) {
-                targetLayout.setOnClickListener(v -> onConfirmedSuccess.run());
+                targetLayout.setOnClickListener(v -> {
+                    if (isTransitioning[0]) return;
+                    if (step[0] == 1) {
+                        onTouchOneSuccess.run();
+                    } else if (step[0] == 2) {
+                        onTouchTwoSuccess.run();
+                    }
+                });
             }
 
             if (btnDoItLater != null) {
@@ -418,10 +453,13 @@ public class SecuritySettingsActivity extends BaseActivity {
 
             bottomSheet.setOnDismissListener(dialog -> {
                 try {
-                    cancellationSignal.cancel();
+                    if (activeSignal[0] != null) {
+                        activeSignal[0].cancel();
+                        activeSignal[0] = null;
+                    }
                 } catch (Exception ignored) {
                 }
-                if (!isConfirmed[0]) {
+                if (step[0] != 3) {
                     if (toggleBiometric != null) {
                         toggleBiometric.setChecked(false);
                     }
@@ -430,12 +468,40 @@ public class SecuritySettingsActivity extends BaseActivity {
                 }
             });
 
+            // Start listening for Touch 1
+            listenFingerprintStep(finalFm, activeSignal, onTouchOneSuccess);
+
             bottomSheet.show();
         } catch (Exception e) {
             if (toggleBiometric != null) {
                 toggleBiometric.setChecked(false);
             }
             UserPrefs.setFingerprintEnabled(this, false);
+        }
+    }
+
+    private void listenFingerprintStep(FingerprintManager fm, CancellationSignal[] activeSignal, Runnable onSuccess) {
+        if (fm != null && fm.isHardwareDetected() && fm.hasEnrolledFingerprints()) {
+            try {
+                if (activeSignal[0] != null) {
+                    activeSignal[0].cancel();
+                }
+            } catch (Exception ignored) {
+            }
+            activeSignal[0] = new CancellationSignal();
+            try {
+                fm.authenticate(null, activeSignal[0], 0, new FingerprintManager.AuthenticationCallback() {
+                    @Override
+                    public void onAuthenticationSucceeded(FingerprintManager.AuthenticationResult result) {
+                        runOnUiThread(onSuccess);
+                    }
+
+                    @Override
+                    public void onAuthenticationError(int errorCode, CharSequence errString) {
+                    }
+                }, null);
+            } catch (Exception ignored) {
+            }
         }
     }
 

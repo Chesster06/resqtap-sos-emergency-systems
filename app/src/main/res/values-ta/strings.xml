@@ -222,6 +222,7 @@
     <string name="biometric_confirm_sheet_hint">விரலை எடுத்து மீண்டும் சென்சாரைத் தொடவும்</string>
     <string name="biometric_confirm_sheet_success">கைரேகை சரிபார்க்கப்பட்டது!</string>
     <string name="biometric_confirm_sheet_action">பிறகு செய்யவும்</string>
+    <string name="biometric_sheet_touch_sensor">கைரேகை சென்சாரைத் தொடவும்</string>
     <string name="biometric_prompt_verified_need_pin">கைரேகை உறுதிப்படுத்தப்பட்டது! ஆப் PIN அமைக்கவும்.</string>
     <string name="biometric_and_pin_enabled_success">பயோமெட்ரிக் மற்றும் ஆப் PIN வெற்றிகரமாக இயக்கப்பட்டது!</string>
     <string name="security_biometric_disabled">பயோமெட்ரிக் பூட்டு முடக்கப்பட்டது.</string>

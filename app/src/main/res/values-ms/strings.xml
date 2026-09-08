@@ -383,6 +383,7 @@
     <string name="biometric_confirm_sheet_hint">Angkat jari, kemudian sentuh sensor sekali lagi</string>
     <string name="biometric_confirm_sheet_success">Cap jari berjaya disahkan!</string>
     <string name="biometric_confirm_sheet_action">LAKUKAN KEMUDIAN</string>
+    <string name="biometric_sheet_touch_sensor">Sentuh sensor cap jari</string>
     <string name="biometric_prompt_verified_need_pin">Cap jari disahkan! Sila tetapkan PIN aplikasi sandaran.</string>
     <string name="biometric_and_pin_enabled_success">Biometrik &amp; PIN Aplikasi berjaya diaktifkan!</string>
     <string name="security_biometric_disabled">Kunci biometrik dinyahaktifkan.</string>

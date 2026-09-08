@@ -580,6 +580,7 @@ Terms Version: 1.0</string>
     <string name="biometric_confirm_sheet_hint">Lift finger, then touch sensor again</string>
     <string name="biometric_confirm_sheet_success">Fingerprint verified!</string>
     <string name="biometric_confirm_sheet_action">DO IT LATER</string>
+    <string name="biometric_sheet_touch_sensor">Touch the fingerprint sensor</string>
     <string name="biometric_prompt_verified_need_pin">Fingerprint confirmed! Please set your application backup PIN.</string>
     <string name="biometric_and_pin_enabled_success">Biometric and Application PIN successfully enabled!</string>
     <string name="security_biometric_disabled">Biometric unlock disabled.</string>

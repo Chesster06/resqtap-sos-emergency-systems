@@ -222,6 +222,7 @@
     <string name="biometric_confirm_sheet_hint">抬起手指，然后再次触摸传感器</string>
     <string name="biometric_confirm_sheet_success">指纹验证成功！</string>
     <string name="biometric_confirm_sheet_action">稍后设置</string>
+    <string name="biometric_sheet_touch_sensor">轻触指纹传感器</string>
     <string name="biometric_prompt_verified_need_pin">指纹验证成功！请设置应用备用PIN码。</string>
     <string name="biometric_and_pin_enabled_success">生物识别与应用PIN码已成功开启！</string>
     <string name="security_biometric_disabled">生物识别解锁已关闭。</string>

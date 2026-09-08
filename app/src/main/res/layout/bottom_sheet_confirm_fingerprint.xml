@@ -27,24 +27,24 @@
         android:src="@drawable/ic_lock_outline"
         app:tint="#448AFF" />
 
-    <!-- Title: Lift, then touch again -->
+    <!-- Title: Register Fingerprint / Lift then touch again -->
     <TextView
         android:id="@+id/tv_sheet_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/biometric_confirm_sheet_title"
+        android:text="@string/biometric_register_title"
         android:textColor="@color/text_primary"
         android:textSize="22sp"
         android:textStyle="bold" />
 
-    <!-- Subtitle: Keep lifting your finger... -->
+    <!-- Subtitle: Touch sensor... -->
     <TextView
         android:id="@+id/tv_sheet_subtitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:lineSpacingExtra="2dp"
-        android:text="@string/biometric_confirm_sheet_subtitle"
+        android:text="@string/biometric_register_subtitle"
         android:textColor="@color/text_secondary"
         android:textSize="13sp" />
 
@@ -58,14 +58,14 @@
         android:clickable="true"
         android:focusable="true">
 
-        <!-- Outer Progress Indicator Ring (Starts at 50% like in reference picture) -->
+        <!-- Outer Progress Indicator Ring (Starts at 0% and animates to 50% on first touch, 100% on confirm) -->
         <com.google.android.material.progressindicator.CircularProgressIndicator
             android:id="@+id/progress_fingerprint_ring"
             android:layout_width="200dp"
             android:layout_height="200dp"
             android:layout_gravity="center"
             android:max="100"
-            android:progress="50"
+            android:progress="0"
             app:indicatorColor="#E53935"
             app:indicatorDirectionCircular="clockwise"
             app:indicatorSize="196dp"
@@ -100,7 +100,7 @@
         </FrameLayout>
     </FrameLayout>
 
-    <!-- Instruction hint: Lift finger, then touch sensor again -->
+    <!-- Instruction hint -->
     <TextView
         android:id="@+id/tv_sheet_hint"
         android:layout_width="wrap_content"
@@ -108,8 +108,8 @@
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="18dp"
         android:layout_marginBottom="24dp"
-        android:text="@string/biometric_confirm_sheet_hint"
-        android:textColor="#E53935"
+        android:text="@string/biometric_sheet_touch_sensor"
+        android:textColor="@color/text_secondary"
         android:textSize="14sp"
         android:textStyle="bold" />
 
