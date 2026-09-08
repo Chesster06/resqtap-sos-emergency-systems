@@ -374,6 +374,14 @@
     <string name="security_biometric_not_enrolled">Tiada cap jari didaftarkan pada peranti ini. Sila daftarkan cap jari dalam tetapan telefon.</string>
     <string name="security_biometric_unsupported">Peranti ini tidak menyokong pengesahan biometrik.</string>
     <string name="security_biometric_need_pin">Sila aktifkan Kunci Aplikasi (PIN) terlebih dahulu untuk menggunakan Cap Jari.</string>
+    <string name="biometric_register_title">Daftar Cap Jari</string>
+    <string name="biometric_register_subtitle">Sentuh sensor untuk daftar cap jari</string>
+    <string name="biometric_confirm_title">Sahkan Cap Jari</string>
+    <string name="biometric_confirm_subtitle">Sentuh sensor sekali lagi untuk sahkan</string>
+    <string name="biometric_prompt_verified_need_pin">Cap jari disahkan! Sila tetapkan PIN aplikasi sandaran.</string>
+    <string name="biometric_and_pin_enabled_success">Biometrik &amp; PIN Aplikasi berjaya diaktifkan!</string>
+    <string name="security_biometric_disabled">Kunci biometrik dinyahaktifkan.</string>
+    <string name="app_lock_use_pin_button">Guna PIN Aplikasi</string>
 
 
 

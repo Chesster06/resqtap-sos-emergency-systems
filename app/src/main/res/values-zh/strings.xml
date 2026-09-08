@@ -213,6 +213,14 @@
     <string name="security_biometric_not_enrolled">此设备未注册指纹，请在系统设置中添加指纹。</string>
     <string name="security_biometric_unsupported">此设备不支持生物识别验证。</string>
     <string name="security_biometric_need_pin">请先开启应用锁（PIN码）以使用指纹解锁。</string>
+    <string name="biometric_register_title">注册指纹</string>
+    <string name="biometric_register_subtitle">轻触传感器以注册指纹</string>
+    <string name="biometric_confirm_title">确认指纹</string>
+    <string name="biometric_confirm_subtitle">再次轻触传感器以确认</string>
+    <string name="biometric_prompt_verified_need_pin">指纹验证成功！请设置应用备用PIN码。</string>
+    <string name="biometric_and_pin_enabled_success">生物识别与应用PIN码已成功开启！</string>
+    <string name="security_biometric_disabled">生物识别解锁已关闭。</string>
+    <string name="app_lock_use_pin_button">使用应用PIN码</string>
 
 
     <string name="personal_info_title">个人资料</string>

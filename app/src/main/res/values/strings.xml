@@ -571,6 +571,14 @@ Terms Version: 1.0</string>
     <string name="security_biometric_not_enrolled">No fingerprints registered on this device. Please register a fingerprint in device settings.</string>
     <string name="security_biometric_unsupported">This device does not support biometric authentication.</string>
     <string name="security_biometric_need_pin">Please enable App Lock (PIN) first to use Fingerprint unlock.</string>
+    <string name="biometric_register_title">Register Fingerprint</string>
+    <string name="biometric_register_subtitle">Touch sensor to register fingerprint</string>
+    <string name="biometric_confirm_title">Confirm Fingerprint</string>
+    <string name="biometric_confirm_subtitle">Touch sensor again to confirm</string>
+    <string name="biometric_prompt_verified_need_pin">Fingerprint confirmed! Please set your application backup PIN.</string>
+    <string name="biometric_and_pin_enabled_success">Biometric and Application PIN successfully enabled!</string>
+    <string name="security_biometric_disabled">Biometric unlock disabled.</string>
+    <string name="app_lock_use_pin_button">Use Application PIN</string>
 
 
 

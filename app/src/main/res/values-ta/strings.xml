@@ -213,6 +213,14 @@
     <string name="security_biometric_not_enrolled">இந்த சாதனத்தில் கைரேகை பதிவு செய்யப்படவில்லை. அமைப்புகளில் கைரேகையை பதிவு செய்யவும்.</string>
     <string name="security_biometric_unsupported">இந்த சாதனம் பயோமெட்ரிக் அங்கீகாரத்தை ஆதரிக்கவில்லை.</string>
     <string name="security_biometric_need_pin">கைரேகை பூட்டைப் பயன்படுத்த முதலில் ஆப் லாக் (PIN) இயக்கவும்.</string>
+    <string name="biometric_register_title">கைரேகையை பதிவு செய்யவும்</string>
+    <string name="biometric_register_subtitle">பதிவு செய்ய சென்சாரைத் தொடவும்</string>
+    <string name="biometric_confirm_title">கைரேகையை உறுதிப்படுத்தவும்</string>
+    <string name="biometric_confirm_subtitle">உறுதிப்படுத்த மீண்டும் சென்சாரைத் தொடவும்</string>
+    <string name="biometric_prompt_verified_need_pin">கைரேகை உறுதிப்படுத்தப்பட்டது! ஆப் PIN அமைக்கவும்.</string>
+    <string name="biometric_and_pin_enabled_success">பயோமெட்ரிக் மற்றும் ஆப் PIN வெற்றிகரமாக இயக்கப்பட்டது!</string>
+    <string name="security_biometric_disabled">பயோமெட்ரிக் பூட்டு முடக்கப்பட்டது.</string>
+    <string name="app_lock_use_pin_button">ஆப் PIN பயன்படுத்தவும்</string>
 
 
     <string name="personal_info_title">தனிப்பட்ட தகவல்</string>

@@ -96,15 +96,16 @@ public class AppLockActivity extends AppCompatActivity {
 
         TextView tvTitle = findViewById(R.id.tv_title);
         TextView tvDesc = findViewById(R.id.tv_desc);
-        if (biometricOn && !hasAppLockPin) {
+        if (hasAppLockPin) {
+            if (tvTitle != null) tvTitle.setText(R.string.app_lock_screen_title);
+            if (tvDesc != null) tvDesc.setText(R.string.app_lock_screen_desc);
+        } else if (biometricOn) {
             if (tvTitle != null) tvTitle.setText(R.string.security_biometric_title);
             if (tvDesc != null) tvDesc.setText(R.string.app_lock_use_biometric);
         }
 
         BiometricManager bm = BiometricManager.from(this);
-        int authenticators = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                ? (BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-                : (BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+        int authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK;
 
         boolean isSupported = bm.canAuthenticate(authenticators) == BiometricManager.BIOMETRIC_SUCCESS;
 
@@ -222,9 +223,7 @@ public class AppLockActivity extends AppCompatActivity {
     private void authenticateBiometric() {
         try {
             BiometricManager biometricManager = BiometricManager.from(this);
-            int authenticators = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                    ? (BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-                    : (BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+            int authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK;
 
             int canAuth = biometricManager.canAuthenticate(authenticators);
             if (canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
@@ -247,19 +246,16 @@ public class AppLockActivity extends AppCompatActivity {
                 @Override
                 public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
                     super.onAuthenticationError(errorCode, errString);
+                    // User canceled, tapped outside, or clicked "Guna PIN Aplikasi"
+                    // Biometric prompt closes automatically and leaves keypad active for user to input PIN
                 }
             });
 
             BiometricPrompt.PromptInfo.Builder builder = new BiometricPrompt.PromptInfo.Builder()
                     .setTitle(getString(R.string.app_lock_biometric_prompt_title))
                     .setSubtitle(getString(R.string.app_lock_biometric_prompt_subtitle))
-                    .setDescription(getString(R.string.security_biometric_desc));
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                builder.setAllowedAuthenticators(authenticators);
-            } else {
-                builder.setDeviceCredentialAllowed(true);
-            }
+                    .setDescription(getString(R.string.security_biometric_desc))
+                    .setNegativeButtonText(getString(R.string.app_lock_use_pin_button));
 
             prompt.authenticate(builder.build());
         } catch (Exception ignored) {

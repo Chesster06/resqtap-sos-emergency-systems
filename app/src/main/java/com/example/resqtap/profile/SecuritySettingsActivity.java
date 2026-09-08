@@ -21,13 +21,19 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.biometric.BiometricManager;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import java.util.concurrent.Executor;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -42,8 +48,20 @@ import com.google.firebase.auth.FirebaseUser;
  */
 public class SecuritySettingsActivity extends BaseActivity {
 
+    private boolean isSettingPinForBiometric = false;
+
     private final ActivityResultLauncher<Intent> setPinLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (isSettingPinForBiometric) {
+                    if (result.getResultCode() == RESULT_OK) {
+                        UserPrefs.setFingerprintEnabled(this, true);
+                        UserPrefs.setAppLockEnabled(this, true);
+                        Toast.makeText(this, R.string.biometric_and_pin_enabled_success, Toast.LENGTH_SHORT).show();
+                    } else {
+                        UserPrefs.setFingerprintEnabled(this, false);
+                    }
+                    isSettingPinForBiometric = false;
+                }
                 syncSecuritySettingsUI();
             });
 
@@ -220,8 +238,13 @@ public class SecuritySettingsActivity extends BaseActivity {
                         UserPrefs.setFingerprintEnabled(this, false);
                         return;
                     }
+
+                    // Start step 1: Touch sensor to register fingerprint
+                    startBiometricRegistrationFlow();
+                } else {
+                    UserPrefs.setFingerprintEnabled(this, false);
+                    Toast.makeText(this, R.string.security_biometric_disabled, Toast.LENGTH_SHORT).show();
                 }
-                UserPrefs.setFingerprintEnabled(this, isChecked);
             });
         }
 
@@ -239,6 +262,82 @@ public class SecuritySettingsActivity extends BaseActivity {
         View rowChangePassword = findViewById(R.id.row_change_password);
         if (rowChangePassword != null) {
             rowChangePassword.setOnClickListener(v -> handlePasswordReset());
+        }
+    }
+
+    private void startBiometricRegistrationFlow() {
+        try {
+            Executor executor = ContextCompat.getMainExecutor(this);
+            BiometricPrompt prompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
+                @Override
+                public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                    super.onAuthenticationSucceeded(result);
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        startBiometricConfirmationStep();
+                    }, 350);
+                }
+
+                @Override
+                public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                    super.onAuthenticationError(errorCode, errString);
+                    if (toggleBiometric != null) {
+                        toggleBiometric.setChecked(false);
+                    }
+                    UserPrefs.setFingerprintEnabled(SecuritySettingsActivity.this, false);
+                }
+            });
+
+            BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                    .setTitle(getString(R.string.biometric_register_title))
+                    .setSubtitle(getString(R.string.biometric_register_subtitle))
+                    .setNegativeButtonText(getString(R.string.cancel))
+                    .build();
+
+            prompt.authenticate(promptInfo);
+        } catch (Exception e) {
+            if (toggleBiometric != null) {
+                toggleBiometric.setChecked(false);
+            }
+            UserPrefs.setFingerprintEnabled(this, false);
+        }
+    }
+
+    private void startBiometricConfirmationStep() {
+        try {
+            Executor executor = ContextCompat.getMainExecutor(this);
+            BiometricPrompt prompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
+                @Override
+                public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                    super.onAuthenticationSucceeded(result);
+                    Toast.makeText(SecuritySettingsActivity.this, R.string.biometric_prompt_verified_need_pin, Toast.LENGTH_LONG).show();
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        isSettingPinForBiometric = true;
+                        openSetPin(false);
+                    }, 350);
+                }
+
+                @Override
+                public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                    super.onAuthenticationError(errorCode, errString);
+                    if (toggleBiometric != null) {
+                        toggleBiometric.setChecked(false);
+                    }
+                    UserPrefs.setFingerprintEnabled(SecuritySettingsActivity.this, false);
+                }
+            });
+
+            BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                    .setTitle(getString(R.string.biometric_confirm_title))
+                    .setSubtitle(getString(R.string.biometric_confirm_subtitle))
+                    .setNegativeButtonText(getString(R.string.cancel))
+                    .build();
+
+            prompt.authenticate(promptInfo);
+        } catch (Exception e) {
+            if (toggleBiometric != null) {
+                toggleBiometric.setChecked(false);
+            }
+            UserPrefs.setFingerprintEnabled(this, false);
         }
     }
 
