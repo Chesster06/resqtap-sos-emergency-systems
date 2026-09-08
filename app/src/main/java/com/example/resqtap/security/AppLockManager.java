@@ -54,8 +54,12 @@ public class AppLockManager implements Application.ActivityLifecycleCallbacks {
         Context ctx = activity.getApplicationContext();
         boolean appLockOn = UserPrefs.isAppLockEnabled(ctx);
         String pin = UserPrefs.getAppLockPin(ctx);
+        boolean biometricOn = UserPrefs.isFingerprintEnabled(ctx);
 
-        if (appLockOn && pin != null && pin.trim().length() == 4 && !isUnlockedForSession) {
+        boolean hasAppLockPin = appLockOn && pin != null && pin.trim().length() == 4;
+        boolean needsLock = (hasAppLockPin || biometricOn);
+
+        if (needsLock && !isUnlockedForSession) {
             Intent intent = new Intent(activity, AppLockActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
             activity.startActivity(intent);

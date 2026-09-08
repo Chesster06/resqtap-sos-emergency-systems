@@ -23,6 +23,7 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
 import androidx.biometric.BiometricManager;
+import android.os.Build;
 import android.provider.Settings;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -106,22 +107,24 @@ public class SecuritySettingsActivity extends BaseActivity {
         isSyncingUI = true;
         try {
             boolean appLockOn = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
-            boolean biometricOn = UserPrefs.isFingerprintEnabled(this) && appLockOn;
+            boolean biometricOn = UserPrefs.isFingerprintEnabled(this);
             boolean duressOn = UserPrefs.isDuressSafeguardEnabled(this);
 
             if (toggleAppLock != null) {
                 toggleAppLock.setChecked(appLockOn);
             }
 
-            // Semak sokongan perkakasan biometrik (Fingerprint)
+            // Semak sokongan perkakasan biometrik (Fingerprint / Device PIN)
             BiometricManager biometricManager = BiometricManager.from(this);
-            int canAuth = biometricManager.canAuthenticate(
-                    BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK
-            );
+            int authenticators = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                    ? (BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                    : (BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+
+            int canAuth = biometricManager.canAuthenticate(authenticators);
 
             if (canAuth == BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE ||
                 canAuth == BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE) {
-                // Peranti tiada sensor biometrik / tidak disokong - sembunyikan baris
+                // Peranti tiada sebarang sensor atau kunci peranti - sembunyikan baris
                 if (rowBiometric != null) {
                     rowBiometric.setVisibility(View.GONE);
                 }
@@ -131,7 +134,7 @@ public class SecuritySettingsActivity extends BaseActivity {
                 }
                 UserPrefs.setFingerprintEnabled(this, false);
             } else {
-                // Peranti menyokong sensor biometrik
+                // Peranti menyokong biometrik / kunci peranti
                 if (rowBiometric != null) {
                     rowBiometric.setVisibility(View.VISIBLE);
                 }
@@ -181,10 +184,6 @@ public class SecuritySettingsActivity extends BaseActivity {
                     boolean wasEnabled = UserPrefs.isAppLockEnabled(this);
                     UserPrefs.setAppLockEnabled(this, false);
                     UserPrefs.setAppLockPin(this, "");
-                    if (toggleBiometric != null) {
-                        toggleBiometric.setChecked(false);
-                        UserPrefs.setFingerprintEnabled(this, false);
-                    }
                     if (rowChangePin != null) {
                         rowChangePin.setVisibility(View.GONE);
                     }
@@ -199,18 +198,12 @@ public class SecuritySettingsActivity extends BaseActivity {
             toggleBiometric.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isSyncingUI) return;
                 if (isChecked) {
-                    boolean appLockOn = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
-                    if (!appLockOn) {
-                        Toast.makeText(this, R.string.security_biometric_need_pin, Toast.LENGTH_LONG).show();
-                        toggleBiometric.setChecked(false);
-                        openSetPin(false);
-                        return;
-                    }
-
                     BiometricManager bm = BiometricManager.from(this);
-                    int authResult = bm.canAuthenticate(
-                            BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK
-                    );
+                    int authenticators = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                            ? (BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                            : (BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+
+                    int authResult = bm.canAuthenticate(authenticators);
                     if (authResult == BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED) {
                         Toast.makeText(this, R.string.security_biometric_not_enrolled, Toast.LENGTH_LONG).show();
                         toggleBiometric.setChecked(false);

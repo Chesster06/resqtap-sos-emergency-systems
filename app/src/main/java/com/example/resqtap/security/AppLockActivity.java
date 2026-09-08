@@ -3,6 +3,7 @@ package com.example.resqtap.security;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -91,10 +92,21 @@ public class AppLockActivity extends AppCompatActivity {
         btnBiometricKey = findViewById(R.id.btn_biometric_key);
 
         boolean biometricOn = UserPrefs.isFingerprintEnabled(this);
+        boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
+
+        TextView tvTitle = findViewById(R.id.tv_title);
+        TextView tvDesc = findViewById(R.id.tv_desc);
+        if (biometricOn && !hasAppLockPin) {
+            if (tvTitle != null) tvTitle.setText(R.string.security_biometric_title);
+            if (tvDesc != null) tvDesc.setText(R.string.app_lock_use_biometric);
+        }
+
         BiometricManager bm = BiometricManager.from(this);
-        boolean isSupported = bm.canAuthenticate(
-                BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK
-        ) == BiometricManager.BIOMETRIC_SUCCESS;
+        int authenticators = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                ? (BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                : (BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+
+        boolean isSupported = bm.canAuthenticate(authenticators) == BiometricManager.BIOMETRIC_SUCCESS;
 
         if (btnBiometricKey != null) {
             btnBiometricKey.setVisibility((biometricOn && isSupported) ? View.VISIBLE : View.INVISIBLE);
@@ -105,7 +117,12 @@ public class AppLockActivity extends AppCompatActivity {
 
         View forgotPin = findViewById(R.id.btn_forgot_pin);
         if (forgotPin != null) {
+            forgotPin.setVisibility(hasAppLockPin ? View.VISIBLE : View.GONE);
             forgotPin.setOnClickListener(v -> showForgotPinDialog());
+        }
+
+        if (dotsContainer != null && biometricOn && !hasAppLockPin) {
+            dotsContainer.setOnClickListener(v -> authenticateBiometric());
         }
     }
 
@@ -115,16 +132,30 @@ public class AppLockActivity extends AppCompatActivity {
                 R.id.key_5, R.id.key_6, R.id.key_7, R.id.key_8, R.id.key_9
         };
 
+        boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
+
         for (int id : keyIds) {
             TextView key = findViewById(id);
             if (key != null) {
-                key.setOnClickListener(v -> appendDigit(key.getText().toString()));
+                key.setOnClickListener(v -> {
+                    if (hasAppLockPin) {
+                        appendDigit(key.getText().toString());
+                    } else {
+                        authenticateBiometric();
+                    }
+                });
             }
         }
 
         View backspace = findViewById(R.id.btn_backspace);
         if (backspace != null) {
-            backspace.setOnClickListener(v -> removeDigit());
+            backspace.setOnClickListener(v -> {
+                if (hasAppLockPin) {
+                    removeDigit();
+                } else {
+                    authenticateBiometric();
+                }
+            });
             backspace.setOnLongClickListener(v -> {
                 enteredPin.setLength(0);
                 updateDots();
@@ -191,9 +222,11 @@ public class AppLockActivity extends AppCompatActivity {
     private void authenticateBiometric() {
         try {
             BiometricManager biometricManager = BiometricManager.from(this);
-            int canAuth = biometricManager.canAuthenticate(
-                    BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK
-            );
+            int authenticators = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                    ? (BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+                    : (BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL);
+
+            int canAuth = biometricManager.canAuthenticate(authenticators);
             if (canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
                 return;
             }
@@ -217,14 +250,18 @@ public class AppLockActivity extends AppCompatActivity {
                 }
             });
 
-            BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+            BiometricPrompt.PromptInfo.Builder builder = new BiometricPrompt.PromptInfo.Builder()
                     .setTitle(getString(R.string.app_lock_biometric_prompt_title))
                     .setSubtitle(getString(R.string.app_lock_biometric_prompt_subtitle))
-                    .setDescription(getString(R.string.security_biometric_desc))
-                    .setNegativeButtonText(getString(R.string.cancel))
-                    .build();
+                    .setDescription(getString(R.string.security_biometric_desc));
 
-            prompt.authenticate(promptInfo);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                builder.setAllowedAuthenticators(authenticators);
+            } else {
+                builder.setDeviceCredentialAllowed(true);
+            }
+
+            prompt.authenticate(builder.build());
         } catch (Exception ignored) {
         }
     }
