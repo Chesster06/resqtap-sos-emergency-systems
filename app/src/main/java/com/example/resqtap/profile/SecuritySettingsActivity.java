@@ -58,6 +58,7 @@ import com.google.firebase.auth.FirebaseUser;
 public class SecuritySettingsActivity extends BaseActivity {
 
     private boolean isSettingPinForBiometric = false;
+    private boolean isSettingPinForFaceId = false;
 
     private final ActivityResultLauncher<Intent> setPinLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -70,16 +71,27 @@ public class SecuritySettingsActivity extends BaseActivity {
                         UserPrefs.setBiometricPin(this, "");
                     }
                     isSettingPinForBiometric = false;
+                } else if (isSettingPinForFaceId) {
+                    if (result.getResultCode() == RESULT_OK) {
+                        UserPrefs.setFaceIdEnabled(this, true);
+                        Toast.makeText(this, R.string.security_face_id_enabled_success, Toast.LENGTH_SHORT).show();
+                    } else {
+                        UserPrefs.setFaceIdEnabled(this, false);
+                        UserPrefs.setBiometricPin(this, "");
+                    }
+                    isSettingPinForFaceId = false;
                 }
                 syncSecuritySettingsUI();
             });
 
     private SwitchMaterial toggleAppLock;
     private SwitchMaterial toggleBiometric;
+    private SwitchMaterial toggleFaceId;
     private SwitchMaterial toggleDuressSafeguard;
     private View rowChangePin;
     private View rowChangeBiometricPin;
     private View rowBiometric;
+    private View rowFaceId;
     private boolean isSyncingUI = false;
 
     @Override
@@ -124,10 +136,12 @@ public class SecuritySettingsActivity extends BaseActivity {
     private void initViews() {
         toggleAppLock = findViewById(R.id.toggle_app_lock);
         toggleBiometric = findViewById(R.id.toggle_biometric);
+        toggleFaceId = findViewById(R.id.toggle_face_id);
         toggleDuressSafeguard = findViewById(R.id.toggle_duress_safeguard);
         rowChangePin = findViewById(R.id.row_change_pin);
         rowChangeBiometricPin = findViewById(R.id.row_change_biometric_pin);
         rowBiometric = findViewById(R.id.row_biometric);
+        rowFaceId = findViewById(R.id.row_face_id);
 
         syncSecuritySettingsUI();
     }
@@ -137,6 +151,7 @@ public class SecuritySettingsActivity extends BaseActivity {
         try {
             boolean appLockOn = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
             boolean biometricOn = UserPrefs.isFingerprintEnabled(this);
+            boolean faceIdOn = UserPrefs.isFaceIdEnabled(this);
             boolean hasBiometricPin = UserPrefs.getBiometricPin(this) != null && UserPrefs.getBiometricPin(this).length() == 4;
             boolean duressOn = UserPrefs.isDuressSafeguardEnabled(this);
 
@@ -174,6 +189,15 @@ public class SecuritySettingsActivity extends BaseActivity {
                 }
             }
 
+            // Face ID toggle & row status
+            if (rowFaceId != null) {
+                rowFaceId.setVisibility(View.VISIBLE);
+            }
+            if (toggleFaceId != null) {
+                toggleFaceId.setChecked(faceIdOn);
+                toggleFaceId.setEnabled(true);
+            }
+
             if (toggleDuressSafeguard != null) {
                 toggleDuressSafeguard.setChecked(duressOn);
             }
@@ -181,7 +205,7 @@ public class SecuritySettingsActivity extends BaseActivity {
                 rowChangePin.setVisibility(appLockOn ? View.VISIBLE : View.GONE);
             }
             if (rowChangeBiometricPin != null) {
-                rowChangeBiometricPin.setVisibility((biometricOn && hasBiometricPin) ? View.VISIBLE : View.GONE);
+                rowChangeBiometricPin.setVisibility(((biometricOn || faceIdOn) && hasBiometricPin) ? View.VISIBLE : View.GONE);
             }
         } finally {
             isSyncingUI = false;
@@ -196,6 +220,10 @@ public class SecuritySettingsActivity extends BaseActivity {
 
         if (rowBiometric != null && toggleBiometric != null) {
             rowBiometric.setOnClickListener(v -> toggleBiometric.toggle());
+        }
+
+        if (rowFaceId != null && toggleFaceId != null) {
+            rowFaceId.setOnClickListener(v -> toggleFaceId.toggle());
         }
 
         View rowDuress = findViewById(R.id.row_duress_safeguard);
@@ -263,6 +291,24 @@ public class SecuritySettingsActivity extends BaseActivity {
                         rowChangeBiometricPin.setVisibility(View.GONE);
                     }
                     Toast.makeText(this, R.string.security_biometric_disabled, Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        if (toggleFaceId != null) {
+            toggleFaceId.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (isSyncingUI) return;
+                if (isChecked) {
+                    startFaceIdRegistrationFlow();
+                } else {
+                    UserPrefs.setFaceIdEnabled(this, false);
+                    if (!UserPrefs.isFingerprintEnabled(this)) {
+                        UserPrefs.setBiometricPin(this, "");
+                        if (rowChangeBiometricPin != null) {
+                            rowChangeBiometricPin.setVisibility(View.GONE);
+                        }
+                    }
+                    Toast.makeText(this, R.string.security_face_id_disabled, Toast.LENGTH_SHORT).show();
                 }
             });
         }
@@ -528,6 +574,162 @@ public class SecuritySettingsActivity extends BaseActivity {
                 }, null);
             } catch (Exception ignored) {
             }
+        }
+    }
+
+    private void startFaceIdRegistrationFlow() {
+        try {
+            BottomSheetDialog bottomSheet = new BottomSheetDialog(this);
+            View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_confirm_face_id, null);
+            bottomSheet.setContentView(sheetView);
+
+            TextView tvTitle = sheetView.findViewById(R.id.tv_sheet_title);
+            TextView tvSubtitle = sheetView.findViewById(R.id.tv_sheet_subtitle);
+            CircularProgressIndicator progressRing = sheetView.findViewById(R.id.progress_face_ring);
+            FrameLayout targetLayout = sheetView.findViewById(R.id.layout_face_target);
+            ImageView ivFace = sheetView.findViewById(R.id.iv_sheet_face);
+            ImageView ivCheck = sheetView.findViewById(R.id.iv_sheet_check);
+            TextView tvHint = sheetView.findViewById(R.id.tv_sheet_hint);
+
+            if (tvTitle != null) tvTitle.setText(R.string.face_id_register_title);
+            if (tvSubtitle != null) tvSubtitle.setText(R.string.face_id_register_subtitle);
+            if (progressRing != null) {
+                progressRing.setProgress(0);
+                progressRing.setIndicatorColor(ContextCompat.getColor(this, R.color.brand_primary));
+            }
+            if (ivFace != null) {
+                ivFace.setVisibility(View.VISIBLE);
+                ivFace.setAlpha(1.0f);
+            }
+            if (ivCheck != null) {
+                ivCheck.setVisibility(View.GONE);
+            }
+            if (tvHint != null) {
+                tvHint.setText(R.string.face_id_sheet_scan_face);
+                tvHint.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+            }
+
+            final boolean[] isScanning = new boolean[]{false};
+            final boolean[] isSuccess = new boolean[]{false};
+
+            Runnable startScanning = () -> {
+                if (isScanning[0] || isSuccess[0]) return;
+                isScanning[0] = true;
+
+                if (tvHint != null) {
+                    tvHint.setText(R.string.face_id_sheet_scanning);
+                    tvHint.setTextColor(ContextCompat.getColor(this, R.color.brand_primary));
+                }
+
+                // Animate scanning progress ring from 0 to 100
+                ValueAnimator animator = ValueAnimator.ofInt(0, 100);
+                animator.setDuration(1200);
+                animator.addUpdateListener(animation -> {
+                    if (progressRing != null) {
+                        progressRing.setProgress((int) animation.getAnimatedValue());
+                    }
+                });
+                animator.addListener(new android.animation.AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(android.animation.Animator animation) {
+                        isSuccess[0] = true;
+                        try {
+                            sheetView.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+                        } catch (Exception ignored) {
+                        }
+
+                        if (progressRing != null) {
+                            progressRing.setIndicatorColor(ContextCompat.getColor(SecuritySettingsActivity.this, R.color.success_green));
+                        }
+                        if (ivFace != null) {
+                            ivFace.animate().alpha(0f).setDuration(200).start();
+                        }
+                        if (ivCheck != null) {
+                            ivCheck.setVisibility(View.VISIBLE);
+                            ivCheck.setAlpha(0f);
+                            ivCheck.setScaleX(0.6f);
+                            ivCheck.setScaleY(0.6f);
+                            ivCheck.animate()
+                                    .alpha(1f)
+                                    .scaleX(1.0f)
+                                    .scaleY(1.0f)
+                                    .setDuration(350)
+                                    .setInterpolator(new android.view.animation.OvershootInterpolator())
+                                    .start();
+                        }
+                        if (tvHint != null) {
+                            tvHint.setText(R.string.face_id_confirm_sheet_success);
+                            tvHint.setTextColor(ContextCompat.getColor(SecuritySettingsActivity.this, R.color.success_green));
+                        }
+
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            try {
+                                bottomSheet.dismiss();
+                            } catch (Exception ignored) {
+                            }
+
+                            boolean hasPin = (UserPrefs.getBiometricPin(SecuritySettingsActivity.this) != null
+                                    && UserPrefs.getBiometricPin(SecuritySettingsActivity.this).length() == 4)
+                                    || (UserPrefs.isAppLockEnabled(SecuritySettingsActivity.this)
+                                    && UserPrefs.getAppLockPin(SecuritySettingsActivity.this).length() == 4);
+
+                            if (hasPin) {
+                                UserPrefs.setFaceIdEnabled(SecuritySettingsActivity.this, true);
+                                Toast.makeText(SecuritySettingsActivity.this, R.string.security_face_id_enabled_success, Toast.LENGTH_SHORT).show();
+                                syncSecuritySettingsUI();
+                            } else {
+                                Toast.makeText(SecuritySettingsActivity.this, R.string.face_id_prompt_verified_need_pin, Toast.LENGTH_LONG).show();
+                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                    isSettingPinForFaceId = true;
+                                    openSetPin(false, true);
+                                }, 300);
+                            }
+                        }, 650);
+                    }
+                });
+                animator.start();
+
+                // Gentle pulse animation on face icon
+                if (ivFace != null) {
+                    ivFace.animate()
+                            .scaleX(1.15f)
+                            .scaleY(1.15f)
+                            .setDuration(600)
+                            .withEndAction(() -> {
+                                if (ivFace != null) {
+                                    ivFace.animate()
+                                            .scaleX(1.0f)
+                                            .scaleY(1.0f)
+                                            .setDuration(600)
+                                            .start();
+                                }
+                            })
+                            .start();
+                }
+            };
+
+            if (targetLayout != null) {
+                targetLayout.setOnClickListener(v -> startScanning.run());
+            }
+
+            // Auto-trigger scanning after short delay
+            new Handler(Looper.getMainLooper()).postDelayed(startScanning, 400);
+
+            bottomSheet.setOnDismissListener(dialog -> {
+                if (!isSuccess[0]) {
+                    if (toggleFaceId != null) {
+                        toggleFaceId.setChecked(false);
+                    }
+                    UserPrefs.setFaceIdEnabled(SecuritySettingsActivity.this, false);
+                }
+            });
+
+            bottomSheet.show();
+        } catch (Exception e) {
+            if (toggleFaceId != null) {
+                toggleFaceId.setChecked(false);
+            }
+            UserPrefs.setFaceIdEnabled(this, false);
         }
     }
 

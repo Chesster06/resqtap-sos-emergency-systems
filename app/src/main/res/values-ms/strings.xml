@@ -783,5 +783,17 @@
     <string name="notif_room_left_title">Meninggalkan Bilik</string>
     <string name="notif_room_deleted_msg">Anda telah memadamkan bilik %1$s.</string>
     <string name="notif_room_left_msg">Anda telah keluar dari bilik %1$s.</string>
+
+    <!-- Face ID & Security -->
+    <string name="security_face_id_title">Face ID</string>
+    <string name="security_face_id_desc">Gunakan pengecaman wajah untuk membuka kunci.</string>
+    <string name="security_face_id_disabled">Kunci Face ID dimatikan.</string>
+    <string name="security_face_id_enabled_success">Kunci Face ID berjaya diaktifkan!</string>
+    <string name="face_id_register_title">Daftar Face ID</string>
+    <string name="face_id_register_subtitle">Letakkan wajah anda di dalam bingkai untuk daftar Face ID</string>
+    <string name="face_id_sheet_scan_face">Ketik bingkai untuk imbas wajah</string>
+    <string name="face_id_sheet_scanning">Mengimbas ciri-ciri wajah...</string>
+    <string name="face_id_confirm_sheet_success">Face ID disahkan!</string>
+    <string name="face_id_prompt_verified_need_pin">Face ID disahkan! Sila tetapkan PIN sandaran aplikasi anda.</string>
 </resources>
 

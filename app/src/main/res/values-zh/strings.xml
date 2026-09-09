@@ -461,5 +461,17 @@
     <string name="notif_room_left_title">离开房间</string>
     <string name="notif_room_deleted_msg">您已删除房间 %1$s。</string>
     <string name="notif_room_left_msg">您已离开房间 %1$s。</string>
+
+    <!-- Face ID & Security -->
+    <string name="security_face_id_title">Face ID 面容识别</string>
+    <string name="security_face_id_desc">使用面容识别解锁应用。</string>
+    <string name="security_face_id_disabled">Face ID 解锁已关闭。</string>
+    <string name="security_face_id_enabled_success">Face ID 解锁已成功开启！</string>
+    <string name="face_id_register_title">注册 Face ID</string>
+    <string name="face_id_register_subtitle">请将面部对准取景框以注册 Face ID</string>
+    <string name="face_id_sheet_scan_face">轻触取景框扫描面部</string>
+    <string name="face_id_sheet_scanning">正在扫描面部特征...</string>
+    <string name="face_id_confirm_sheet_success">Face ID 验证成功！</string>
+    <string name="face_id_prompt_verified_need_pin">Face ID 注册成功！请设置应用备用 PIN 码。</string>
 </resources>
 

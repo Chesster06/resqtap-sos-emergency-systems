@@ -518,6 +518,8 @@ Terms Version: 1.0</string>
     <string name="security_app_lock_desc">Require 4-digit PIN when opening the app.</string>
     <string name="security_biometric_title">Biometric / Fingerprint</string>
     <string name="security_biometric_desc">Use fingerprint or face recognition to unlock.</string>
+    <string name="security_face_id_title">Face ID</string>
+    <string name="security_face_id_desc">Use facial recognition to unlock.</string>
     <string name="security_change_pin_title">Change App PIN</string>
     <string name="security_change_pin_desc">Update your 4-digit security passkey.</string>
     <string name="security_change_biometric_pin_title">Change Biometric PIN</string>
@@ -587,6 +589,14 @@ Terms Version: 1.0</string>
     <string name="biometric_and_pin_enabled_success">Biometric and Application PIN successfully enabled!</string>
     <string name="security_biometric_disabled">Biometric unlock disabled.</string>
     <string name="app_lock_use_pin_button">Use Application PIN</string>
+    <string name="security_face_id_disabled">Face ID unlock disabled.</string>
+    <string name="security_face_id_enabled_success">Face ID unlock successfully enabled!</string>
+    <string name="face_id_register_title">Register Face ID</string>
+    <string name="face_id_register_subtitle">Center your face in the frame to register Face ID</string>
+    <string name="face_id_sheet_scan_face">Tap frame to scan face</string>
+    <string name="face_id_sheet_scanning">Scanning facial features...</string>
+    <string name="face_id_confirm_sheet_success">Face ID verified!</string>
+    <string name="face_id_prompt_verified_need_pin">Face ID confirmed! Please set your application backup PIN.</string>
 
 
 

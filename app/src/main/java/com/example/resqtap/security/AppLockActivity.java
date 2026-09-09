@@ -10,8 +10,13 @@ import android.os.Looper;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.animation.ValueAnimator;
+import android.view.HapticFeedbackConstants;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.progressindicator.CircularProgressIndicator;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
@@ -78,7 +83,7 @@ public class AppLockActivity extends AppCompatActivity {
         setupKeypad();
 
         // Auto trigger biometric if enabled
-        if (UserPrefs.isFingerprintEnabled(this)) {
+        if (UserPrefs.isFingerprintEnabled(this) || UserPrefs.isFaceIdEnabled(this)) {
             new Handler(Looper.getMainLooper()).postDelayed(this::authenticateBiometric, 300);
         }
     }
@@ -91,7 +96,7 @@ public class AppLockActivity extends AppCompatActivity {
         dotsContainer = findViewById(R.id.dots_container);
         btnBiometricKey = findViewById(R.id.btn_biometric_key);
 
-        boolean biometricOn = UserPrefs.isFingerprintEnabled(this);
+        boolean biometricOn = UserPrefs.isFingerprintEnabled(this) || UserPrefs.isFaceIdEnabled(this);
         boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
         boolean hasBiometricPin = biometricOn && UserPrefs.getBiometricPin(this).length() == 4;
         boolean hasAnyPin = hasAppLockPin || hasBiometricPin;
@@ -102,7 +107,10 @@ public class AppLockActivity extends AppCompatActivity {
             if (tvTitle != null) tvTitle.setText(R.string.app_lock_screen_title);
             if (tvDesc != null) tvDesc.setText(R.string.app_lock_screen_desc);
         } else if (biometricOn) {
-            if (tvTitle != null) tvTitle.setText(R.string.security_biometric_title);
+            if (tvTitle != null) {
+                tvTitle.setText(UserPrefs.isFaceIdEnabled(this) && !UserPrefs.isFingerprintEnabled(this)
+                        ? R.string.security_face_id_title : R.string.security_biometric_title);
+            }
             if (tvDesc != null) tvDesc.setText(R.string.app_lock_use_biometric);
         }
 
@@ -111,9 +119,20 @@ public class AppLockActivity extends AppCompatActivity {
 
         boolean isSupported = bm.canAuthenticate(authenticators) == BiometricManager.BIOMETRIC_SUCCESS;
 
+        boolean faceIdOn = UserPrefs.isFaceIdEnabled(this);
+        boolean showBiometricKey = (biometricOn && isSupported) || faceIdOn;
+
         if (btnBiometricKey != null) {
-            btnBiometricKey.setVisibility((biometricOn && isSupported) ? View.VISIBLE : View.INVISIBLE);
-            if (biometricOn && isSupported) {
+            btnBiometricKey.setVisibility(showBiometricKey ? View.VISIBLE : View.INVISIBLE);
+            if (showBiometricKey) {
+                ImageView iconBiometric = findViewById(R.id.icon_biometric);
+                if (iconBiometric != null) {
+                    if (faceIdOn && !UserPrefs.isFingerprintEnabled(this)) {
+                        iconBiometric.setImageResource(R.drawable.ic_face_id);
+                    } else {
+                        iconBiometric.setImageResource(R.drawable.ic_fingerprint_24);
+                    }
+                }
                 btnBiometricKey.setOnClickListener(v -> authenticateBiometric());
             }
         }
@@ -136,7 +155,7 @@ public class AppLockActivity extends AppCompatActivity {
         };
 
         boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
-        boolean hasBiometricPin = UserPrefs.isFingerprintEnabled(this) && UserPrefs.getBiometricPin(this).length() == 4;
+        boolean hasBiometricPin = (UserPrefs.isFingerprintEnabled(this) || UserPrefs.isFaceIdEnabled(this)) && UserPrefs.getBiometricPin(this).length() == 4;
         boolean hasAnyPin = hasAppLockPin || hasBiometricPin;
 
         for (int id : keyIds) {
@@ -197,7 +216,7 @@ public class AppLockActivity extends AppCompatActivity {
     private void verifyPin() {
         String input = enteredPin.toString();
         boolean appLockValid = UserPrefs.isAppLockEnabled(this) && input.equals(UserPrefs.getAppLockPin(this));
-        boolean biometricPinValid = UserPrefs.isFingerprintEnabled(this) && input.equals(UserPrefs.getBiometricPin(this));
+        boolean biometricPinValid = (UserPrefs.isFingerprintEnabled(this) || UserPrefs.isFaceIdEnabled(this)) && input.equals(UserPrefs.getBiometricPin(this));
 
         if (appLockValid || biometricPinValid) {
             unlockSuccess();
@@ -228,11 +247,18 @@ public class AppLockActivity extends AppCompatActivity {
     }
 
     private void authenticateBiometric() {
+        if (isFinishing()) return;
+
         try {
             BiometricManager biometricManager = BiometricManager.from(this);
             int authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK;
-
             int canAuth = biometricManager.canAuthenticate(authenticators);
+
+            if (UserPrefs.isFaceIdEnabled(this) && (!UserPrefs.isFingerprintEnabled(this) || canAuth != BiometricManager.BIOMETRIC_SUCCESS)) {
+                showFaceIdUnlockSheet();
+                return;
+            }
+
             if (canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
                 return;
             }
@@ -266,6 +292,106 @@ public class AppLockActivity extends AppCompatActivity {
 
             prompt.authenticate(builder.build());
         } catch (Exception ignored) {
+        }
+    }
+
+    private void showFaceIdUnlockSheet() {
+        try {
+            BottomSheetDialog bottomSheet = new BottomSheetDialog(this);
+            View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_confirm_face_id, null);
+            bottomSheet.setContentView(sheetView);
+
+            TextView tvTitle = sheetView.findViewById(R.id.tv_sheet_title);
+            TextView tvSubtitle = sheetView.findViewById(R.id.tv_sheet_subtitle);
+            CircularProgressIndicator progressRing = sheetView.findViewById(R.id.progress_face_ring);
+            ImageView ivFace = sheetView.findViewById(R.id.iv_sheet_face);
+            ImageView ivCheck = sheetView.findViewById(R.id.iv_sheet_check);
+            TextView tvHint = sheetView.findViewById(R.id.tv_sheet_hint);
+
+            if (tvTitle != null) tvTitle.setText(R.string.security_face_id_title);
+            if (tvSubtitle != null) tvSubtitle.setText(R.string.face_id_sheet_scanning);
+            if (progressRing != null) {
+                progressRing.setProgress(0);
+                progressRing.setIndicatorColor(ContextCompat.getColor(this, R.color.brand_primary));
+            }
+            if (ivFace != null) {
+                ivFace.setVisibility(View.VISIBLE);
+                ivFace.setAlpha(1.0f);
+            }
+            if (ivCheck != null) {
+                ivCheck.setVisibility(View.GONE);
+            }
+            if (tvHint != null) {
+                tvHint.setText(R.string.face_id_sheet_scanning);
+                tvHint.setTextColor(ContextCompat.getColor(this, R.color.brand_primary));
+            }
+
+            ValueAnimator animator = ValueAnimator.ofInt(0, 100);
+            animator.setDuration(1200);
+            animator.addUpdateListener(animation -> {
+                if (progressRing != null) {
+                    progressRing.setProgress((int) animation.getAnimatedValue());
+                }
+            });
+            animator.addListener(new android.animation.AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(android.animation.Animator animation) {
+                    try {
+                        sheetView.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
+                    } catch (Exception ignored) {
+                    }
+
+                    if (progressRing != null) {
+                        progressRing.setIndicatorColor(ContextCompat.getColor(AppLockActivity.this, R.color.success_green));
+                    }
+                    if (ivFace != null) {
+                        ivFace.animate().alpha(0f).setDuration(200).start();
+                    }
+                    if (ivCheck != null) {
+                        ivCheck.setVisibility(View.VISIBLE);
+                        ivCheck.setAlpha(0f);
+                        ivCheck.setScaleX(0.6f);
+                        ivCheck.setScaleY(0.6f);
+                        ivCheck.animate()
+                                .alpha(1f)
+                                .scaleX(1.0f)
+                                .scaleY(1.0f)
+                                .setDuration(300)
+                                .setInterpolator(new android.view.animation.OvershootInterpolator())
+                                .start();
+                    }
+                    if (tvHint != null) {
+                        tvHint.setText(R.string.face_id_confirm_sheet_success);
+                        tvHint.setTextColor(ContextCompat.getColor(AppLockActivity.this, R.color.success_green));
+                    }
+
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        try {
+                            bottomSheet.dismiss();
+                        } catch (Exception ignored) {
+                        }
+                        unlockSuccess();
+                    }, 500);
+                }
+            });
+            animator.start();
+
+            if (ivFace != null) {
+                ivFace.animate()
+                        .scaleX(1.15f)
+                        .scaleY(1.15f)
+                        .setDuration(600)
+                        .withEndAction(() -> {
+                            if (ivFace != null) {
+                                ivFace.animate().scaleX(1.0f).scaleY(1.0f).setDuration(600).start();
+                            }
+                        })
+                        .start();
+            }
+
+            bottomSheet.show();
+        } catch (Exception e) {
+            unlockSuccess();
         }
     }
 

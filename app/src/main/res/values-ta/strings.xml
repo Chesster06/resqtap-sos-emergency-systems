@@ -460,5 +460,17 @@
     <string name="notif_room_left_title">அறையிலிருந்து வெளியேறினார்</string>
     <string name="notif_room_deleted_msg">நீங்கள் %1$s அறையை நீக்கிவிட்டீர்கள்.</string>
     <string name="notif_room_left_msg">நீங்கள் %1$s அறையிலிருந்து வெளியேறிவிட்டீர்கள்.</string>
+
+    <!-- Face ID & Security -->
+    <string name="security_face_id_title">Face ID</string>
+    <string name="security_face_id_desc">திறக்க முக அங்கீகாரத்தைப் பயன்படுத்தவும்.</string>
+    <string name="security_face_id_disabled">Face ID பூட்டு முடக்கப்பட்டது.</string>
+    <string name="security_face_id_enabled_success">Face ID பூட்டு வெற்றிகரமாக இயக்கப்பட்டது!</string>
+    <string name="face_id_register_title">Face ID பதிவு செய்</string>
+    <string name="face_id_register_subtitle">Face ID பதிவு செய்ய உங்கள் முகத்தை சட்டகத்தில் வைக்கவும்</string>
+    <string name="face_id_sheet_scan_face">முகத்தை ஸ்கேன் செய்ய சட்டகத்தைத் தட்டவும்</string>
+    <string name="face_id_sheet_scanning">முக அம்சங்களை ஸ்கேன் செய்கிறது...</string>
+    <string name="face_id_confirm_sheet_success">Face ID சரிபார்க்கப்பட்டது!</string>
+    <string name="face_id_prompt_verified_need_pin">Face ID உறுதிசெய்யப்பட்டது! உங்கள் காப்புப் பிரதி PIN ஐ அமைக்கவும்.</string>
 </resources>
 
