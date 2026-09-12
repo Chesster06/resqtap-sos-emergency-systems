@@ -173,10 +173,10 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <FrameLayout
+                    <com.example.resqtap.report.TouchableFrameLayout
                         android:id="@+id/report_map_holder"
                         android:layout_width="match_parent"
-                        android:layout_height="150dp"
+                        android:layout_height="240dp"
                         android:background="@drawable/bg_report_map_fallback">
 
                         <androidx.fragment.app.FragmentContainerView
@@ -184,7 +184,48 @@
                             android:name="com.google.android.gms.maps.SupportMapFragment"
                             android:layout_width="match_parent"
                             android:layout_height="match_parent" />
-                    </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end|bottom"
+                            android:layout_marginEnd="12dp"
+                            android:layout_marginBottom="12dp"
+                            android:orientation="vertical">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_map_type"
+                                style="@style/Widget.ResQTap.MapControlButton"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:layout_marginBottom="8dp"
+                                android:contentDescription="@string/map_toggle_type"
+                                app:icon="@drawable/ic_layers"
+                                app:iconPadding="0dp"
+                                app:iconSize="18dp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_map_zoom_in"
+                                style="@style/Widget.ResQTap.MapControlButton"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:layout_marginBottom="8dp"
+                                android:contentDescription="@string/map_zoom_in"
+                                app:icon="@drawable/ic_add"
+                                app:iconPadding="0dp"
+                                app:iconSize="18dp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_map_zoom_out"
+                                style="@style/Widget.ResQTap.MapControlButton"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:contentDescription="@string/map_zoom_out"
+                                app:icon="@drawable/ic_remove"
+                                app:iconPadding="0dp"
+                                app:iconSize="18dp" />
+                        </LinearLayout>
+                    </com.example.resqtap.report.TouchableFrameLayout>
 
                     <TextView
                         android:id="@+id/report_address"

@@ -52,8 +52,11 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.example.resqtap.map.MapTypeBottomSheet;
+import com.example.resqtap.utils.UserPrefs;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.ChipGroup;
 import com.google.firebase.auth.FirebaseAuth;
@@ -412,6 +415,27 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
         if (back != null) {
             back.setOnClickListener(v -> handleBackPress());
         }
+        View btnMapType = findViewById(R.id.btn_map_type);
+        View btnZoomIn = findViewById(R.id.btn_map_zoom_in);
+        View btnZoomOut = findViewById(R.id.btn_map_zoom_out);
+        if (btnMapType != null) {
+            btnMapType.setOnClickListener(v -> toggleMapType());
+        }
+        if (btnZoomIn != null) {
+            btnZoomIn.setOnClickListener(v -> {
+                if (map != null) {
+                    map.animateCamera(CameraUpdateFactory.zoomIn());
+                }
+            });
+        }
+        if (btnZoomOut != null) {
+            btnZoomOut.setOnClickListener(v -> {
+                if (map != null) {
+                    map.animateCamera(CameraUpdateFactory.zoomOut());
+                }
+            });
+        }
+
         if (updateLocationButton != null) updateLocationButton.setOnClickListener(v -> requestLocation());
         if (pickMediaButton != null) pickMediaButton.setOnClickListener(v -> pickMedia.launch(new String[]{"image/*", "video/*", "audio/*", "application/pdf"}));
         if (takePhotoButton != null) takePhotoButton.setOnClickListener(v -> launchCamera());
@@ -460,9 +484,75 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
             map.getUiSettings().setMapToolbarEnabled(false);
             map.getUiSettings().setCompassEnabled(false);
             map.getUiSettings().setZoomControlsEnabled(false);
+            map.getUiSettings().setScrollGesturesEnabled(true);
+            map.getUiSettings().setZoomGesturesEnabled(true);
+            map.getUiSettings().setRotateGesturesEnabled(true);
+            map.getUiSettings().setTiltGesturesEnabled(true);
+
+            boolean isSat = UserPrefs.isMapTypeSatellite(this);
+            if (isSat) {
+                map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
+            } else {
+                map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+                boolean night = com.example.resqtap.utils.ThemeUtils.isNightMode(this);
+                map.setMapStyle(night ? MapStyleOptions.loadRawResourceStyle(this, R.raw.resqtap_map_style) : null);
+            }
         } catch (Exception ignored) {
         }
+
+        map.setOnMapClickListener(this::applySelectedLatLng);
+        map.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
+            @Override
+            public void onMarkerDragStart(Marker marker) {}
+
+            @Override
+            public void onMarkerDrag(Marker marker) {}
+
+            @Override
+            public void onMarkerDragEnd(Marker marker) {
+                if (marker != null) {
+                    applySelectedLatLng(marker.getPosition());
+                }
+            }
+        });
+
         requestLocation();
+    }
+
+    /** Memaparkan dialog pemilihan jenis paparan peta (Street/Default atau Realistic/Satellite). */
+    private void toggleMapType() {
+        if (map != null) {
+            MapTypeBottomSheet.show(this, map);
+        }
+    }
+
+    /** Memilih atau memindahkan lokasi insiden mengikut posisi pin baharu. */
+    private void applySelectedLatLng(LatLng latLng) {
+        if (latLng == null) return;
+        incidentLatLng = latLng;
+        incidentAddress = formatLatLng(incidentLatLng);
+        addressView.setText(incidentAddress);
+
+        if (map != null) {
+            if (marker == null) {
+                marker = map.addMarker(new MarkerOptions()
+                        .position(incidentLatLng)
+                        .draggable(true)
+                        .title(getString(R.string.report_location_title)));
+            } else {
+                marker.setPosition(incidentLatLng);
+                marker.setDraggable(true);
+            }
+        }
+
+        geocoderExecutor.execute(() -> {
+            String resolved = resolveAddress(incidentLatLng);
+            if (resolved.isEmpty()) return;
+            runOnUiThread(() -> {
+                incidentAddress = resolved;
+                addressView.setText(resolved);
+            });
+        });
     }
 
     /** Fungsi untuk requestLocation. */
@@ -517,9 +607,11 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
             if (marker == null) {
                 marker = map.addMarker(new MarkerOptions()
                         .position(incidentLatLng)
+                        .draggable(true)
                         .title(getString(R.string.report_location_title)));
             } else {
                 marker.setPosition(incidentLatLng);
+                marker.setDraggable(true);
             }
             map.animateCamera(CameraUpdateFactory.newLatLngZoom(incidentLatLng, 16f));
         }
