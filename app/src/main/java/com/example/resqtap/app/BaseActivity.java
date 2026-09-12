@@ -85,6 +85,9 @@ public abstract class BaseActivity extends AppCompatActivity {
             FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
             if (u == null) return;
             startSupportClaimListener(u);
+            if (com.example.resqtap.call.IncomingCallManager.getInstance() != null) {
+                com.example.resqtap.call.IncomingCallManager.getInstance().startListening(u.getUid());
+            }
             String code = String.valueOf(UserPrefs.getActiveRoomCode(this) == null ? "" : UserPrefs.getActiveRoomCode(this)).trim();
             if (!code.isEmpty()) SosServiceStarter.start(this, code);
         } catch (Exception ignored) {

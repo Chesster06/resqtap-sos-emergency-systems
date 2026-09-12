@@ -77,6 +77,8 @@ public final class UserPrefs {
     private static final String KEY_BATTERY_OPT_PROMPTED = "battery_opt_prompted";
     private static final String KEY_MAP_TYPE_SATELLITE = "map_type_satellite";
     private static final String KEY_MAP_TRAFFIC_ENABLED = "map_traffic_enabled";
+    private static final String KEY_LAST_INCIDENT_REPORT_ID = "last_incident_report_id";
+    private static final String KEY_LAST_INCIDENT_REPORT_STATUS = "last_incident_report_status";
 
     private UserPrefs() {
     }
@@ -1032,6 +1034,31 @@ public final class UserPrefs {
     /** Simpan status penerimaan Terms of Service. */
     public static void setTosAccepted(Context context, boolean accepted) {
         prefs(context).edit().putBoolean(KEY_TOS_ACCEPTED, accepted).apply();
+    }
+
+    /** Simpan ID laporan insiden terkini. */
+    public static void setLastIncidentReportId(Context context, String reportId) {
+        prefs(context).edit().putString(KEY_LAST_INCIDENT_REPORT_ID, reportId).apply();
+    }
+
+    /** Dapatkan ID laporan insiden terkini. */
+    public static String getLastIncidentReportId(Context context) {
+        return prefs(context).getString(KEY_LAST_INCIDENT_REPORT_ID, null);
+    }
+
+    /** Padam rekod ID laporan insiden terkini. */
+    public static void clearLastIncidentReportId(Context context) {
+        prefs(context).edit().remove(KEY_LAST_INCIDENT_REPORT_ID).remove(KEY_LAST_INCIDENT_REPORT_STATUS).apply();
+    }
+
+    /** Simpan status laporan insiden terkini. */
+    public static void setLastIncidentReportStatus(Context context, String status) {
+        prefs(context).edit().putString(KEY_LAST_INCIDENT_REPORT_STATUS, status).apply();
+    }
+
+    /** Dapatkan status laporan insiden terkini. */
+    public static String getLastIncidentReportStatus(Context context) {
+        return prefs(context).getString(KEY_LAST_INCIDENT_REPORT_STATUS, null);
     }
 }
 

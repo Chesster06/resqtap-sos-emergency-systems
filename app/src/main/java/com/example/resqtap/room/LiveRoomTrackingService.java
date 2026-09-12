@@ -577,41 +577,14 @@ public class LiveRoomTrackingService extends Service {
     /** Fungsi untuk startIncomingCallListener. */
     private void startIncomingCallListener() {
         if (uid == null || uid.trim().isEmpty()) return;
-        CallSignalingClient.getInstance().listenForIncomingCalls(uid, new CallSignalingClient.IncomingCallHandler() {
-            /** Fungsi untuk onIncomingCall. */
-    @Override
-    public void onIncomingCall(String callId, String callerName, String callerPhotoUrl, String callType) {
-                try {
-                    android.util.Log.d("SOS_DEBUG", "Incoming call received: " + callId + " type=" + callType);
-                    Intent intent = new Intent(LiveRoomTrackingService.this, IncomingCallActivity.class);
-                    intent.putExtra("callId", callId);
-                    intent.putExtra("callerName", callerName);
-                    intent.putExtra("callerPhotoUrl", callerPhotoUrl);
-                    intent.putExtra("callType", callType);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                    startActivity(intent);
-                } catch (Exception e) {
-                    android.util.Log.e("SOS_DEBUG", "Failed to start IncomingCallActivity", e);
-                }
-            }
-
-            /** Fungsi untuk onCallCancelled. */
-    @Override
-    public void onCallCancelled(String callId) {
-                try {
-                    android.util.Log.d("SOS_DEBUG", "Call cancelled: " + callId);
-                    Intent intent = new Intent("com.example.resqtap.CALL_CANCELLED");
-                    intent.putExtra("callId", callId);
-                    intent.setPackage(getPackageName());
-                    sendBroadcast(intent);
-                } catch (Exception ignored) {}
-            }
-        });
+        if (com.example.resqtap.call.IncomingCallManager.getInstance() != null) {
+            com.example.resqtap.call.IncomingCallManager.getInstance().startListening(uid);
+        }
     }
 
     /** Fungsi untuk stopIncomingCallListener. */
     private void stopIncomingCallListener() {
-        CallSignalingClient.getInstance().stopListeningForIncomingCalls();
+        // Do not stop globally if user is still logged in, IncomingCallManager handles lifecycle
     }
 
     /** Fungsi untuk triggerVibrate. */

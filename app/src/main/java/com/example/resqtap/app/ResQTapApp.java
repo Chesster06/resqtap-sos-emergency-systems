@@ -81,6 +81,10 @@ public class ResQTapApp extends Application {
             com.example.resqtap.chat.RateServiceManager.init(this);
         } catch (Exception ignored) {
         }
+        try {
+            com.example.resqtap.call.IncomingCallManager.init(this);
+        } catch (Exception ignored) {
+        }
 
         try {
             FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();

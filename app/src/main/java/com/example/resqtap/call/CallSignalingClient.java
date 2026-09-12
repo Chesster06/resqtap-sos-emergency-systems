@@ -49,12 +49,17 @@ public class CallSignalingClient {
 
         incomingCallRef = rootRef.child("userCalls").child(myUid).child("currentCall");
         incomingCallListener = new ValueEventListener() {
+            private String lastActiveCallId = null;
+
             /** Callback apabila data Firebase Realtime Database berubah. */
-    @Override
+            @Override
             public void onDataChange(DataSnapshot snapshot) {
                 if (snapshot == null || !snapshot.exists()) {
-
-                    handler.onCallCancelled("");
+                    if (lastActiveCallId != null && !lastActiveCallId.isEmpty()) {
+                        String id = lastActiveCallId;
+                        lastActiveCallId = null;
+                        handler.onCallCancelled(id);
+                    }
                     return;
                 }
 
@@ -62,11 +67,13 @@ public class CallSignalingClient {
                 String callId = getString(snapshot, "callId");
 
                 if ("ringing".equals(status) && !callId.isEmpty()) {
+                    lastActiveCallId = callId;
                     String callerName = getString(snapshot, "callerName");
                     String callerPhotoUrl = getString(snapshot, "callerPhotoUrl");
                     String callType = getString(snapshot, "callType");
                     handler.onIncomingCall(callId, callerName, callerPhotoUrl, callType.isEmpty() ? "video" : callType);
                 } else if ("cancelled".equals(status) || "ended".equals(status)) {
+                    lastActiveCallId = null;
                     handler.onCallCancelled(callId);
                 }
             }

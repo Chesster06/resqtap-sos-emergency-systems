@@ -291,8 +291,8 @@ public class ProfileActivity extends BaseActivity {
         setupItem(
                 R.id.item_security,
                 R.drawable.ic_ios_security,
-                0xFF0284C7, // Electric Blue / Steel Cyan
-                0xFFE0F2FE, // Soft Sky/Cyan Tint
+                0xFF10B981, // Vibrant Emerald Green
+                0xFFD1FAE5, // Soft Emerald Tint
                 getString(R.string.profile_security),
                 getString(R.string.profile_security_desc),
                 null,

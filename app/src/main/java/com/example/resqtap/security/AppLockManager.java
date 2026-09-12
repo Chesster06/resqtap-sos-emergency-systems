@@ -47,7 +47,10 @@ public class AppLockManager implements Application.ActivityLifecycleCallbacks {
             activity instanceof LoginActivity ||
             activity instanceof RegisterActivity ||
             activity instanceof ForgotPasswordActivity ||
-            activity instanceof GetStartedActivity) {
+            activity instanceof GetStartedActivity ||
+            activity instanceof com.example.resqtap.call.IncomingCallActivity ||
+            activity instanceof com.example.resqtap.call.VoiceCallActivity ||
+            activity instanceof com.example.resqtap.call.VideoCallActivity) {
             return;
         }
 

@@ -115,6 +115,7 @@ public class IncomingCallActivity extends BaseActivity {
 
         startRinging();
         listenForCallEnd();
+        CallNotificationHelper.dismissIncomingCallNotification(this);
 
         IntentFilter filter = new IntentFilter("com.example.resqtap.CALL_CANCELLED");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -129,6 +130,7 @@ public class IncomingCallActivity extends BaseActivity {
         if (isHandled) return;
         isHandled = true;
         stopRinging();
+        CallNotificationHelper.dismissIncomingCallNotification(this);
 
         String uid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
         CallSignalingClient.getInstance().acceptCall(uid, callId);
@@ -148,6 +150,7 @@ public class IncomingCallActivity extends BaseActivity {
         if (isHandled) return;
         isHandled = true;
         stopRinging();
+        CallNotificationHelper.dismissIncomingCallNotification(this);
 
         String uid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
         CallSignalingClient.getInstance().rejectCall(uid, callId);
@@ -205,6 +208,7 @@ public class IncomingCallActivity extends BaseActivity {
     protected void onDestroy() {
         super.onDestroy();
         stopRinging();
+        CallNotificationHelper.dismissIncomingCallNotification(this);
 
         if (callStatusListener != null && FirebaseAuth.getInstance().getCurrentUser() != null) {
             String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
