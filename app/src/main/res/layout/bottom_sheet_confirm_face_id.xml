@@ -79,6 +79,22 @@
             android:layout_gravity="center"
             android:background="@drawable/bg_fingerprint_circle">
 
+            <!-- Rounded camera preview -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_camera_preview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:cardBackgroundColor="@android:color/transparent"
+                app:cardCornerRadius="72dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp">
+
+                <TextureView
+                    android:id="@+id/camera_preview_texture"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </com.google.android.material.card.MaterialCardView>
+
             <ImageView
                 android:id="@+id/iv_sheet_face"
                 android:layout_width="72dp"
@@ -105,10 +121,44 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="20dp"
-        android:layout_marginBottom="12dp"
+        android:layout_marginBottom="8dp"
+        android:gravity="center"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
         android:text="@string/face_id_sheet_scan_face"
         android:textColor="@color/text_secondary"
         android:textSize="14sp"
         android:textStyle="bold" />
+
+    <!-- Action Buttons (Use PIN / Retry) -->
+    <LinearLayout
+        android:id="@+id/layout_face_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_sheet_retry"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:layout_marginEnd="8dp"
+            android:text="@string/face_id_retry"
+            android:textSize="13sp"
+            android:visibility="gone"
+            app:cornerRadius="22dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_sheet_use_pin"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text="@string/face_id_use_pin"
+            android:textColor="@color/brand_primary"
+            android:textSize="13sp"
+            app:cornerRadius="22dp" />
+    </LinearLayout>
 
 </LinearLayout>

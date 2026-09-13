@@ -6,12 +6,16 @@ import com.example.resqtap.utils.BottomNavUtils;
 import com.example.resqtap.utils.ThemeUtils;
 import com.example.resqtap.utils.UserPrefs;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.app.ActivityCompat;
+import com.example.resqtap.security.FaceIdVerificationActivity;
 import com.example.resqtap.security.SetPinActivity;
 
 import android.view.LayoutInflater;
@@ -39,16 +43,20 @@ import android.animation.ValueAnimator;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.CancellationSignal;
 import android.view.HapticFeedbackConstants;
+import android.view.TextureView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
+import com.example.resqtap.security.FaceScannerManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.mlkit.vision.face.Face;
 
 /**
  * SecuritySettingsActivity
@@ -59,6 +67,43 @@ public class SecuritySettingsActivity extends BaseActivity {
 
     private boolean isSettingPinForBiometric = false;
     private boolean isSettingPinForFaceId = false;
+
+    private SwitchMaterial toggleAppLock;
+    private SwitchMaterial toggleBiometric;
+    private SwitchMaterial toggleFaceId;
+    private SwitchMaterial toggleDuressSafeguard;
+    private View rowChangePin;
+    private View rowChangeBiometricPin;
+    private View rowChangeFaceIdPin;
+    private View rowBiometric;
+    private View rowFaceId;
+    private boolean isSyncingUI = false;
+
+    private final ActivityResultLauncher<Intent> faceIdVerificationLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK) {
+                    boolean hasFaceIdPin = UserPrefs.getFaceIdPin(this) != null
+                            && UserPrefs.getFaceIdPin(this).length() == 4;
+
+                    if (hasFaceIdPin) {
+                        UserPrefs.setFaceIdEnabled(this, true);
+                        Toast.makeText(this, R.string.security_face_id_enabled_success, Toast.LENGTH_SHORT).show();
+                        syncSecuritySettingsUI();
+                    } else {
+                        Toast.makeText(this, R.string.face_id_prompt_verified_need_pin, Toast.LENGTH_LONG).show();
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            isSettingPinForFaceId = true;
+                            openSetPinForFaceId(false);
+                        }, 300);
+                    }
+                } else {
+                    if (toggleFaceId != null) {
+                        toggleFaceId.setChecked(false);
+                    }
+                    UserPrefs.setFaceIdEnabled(this, false);
+                    syncSecuritySettingsUI();
+                }
+            });
 
     private final ActivityResultLauncher<Intent> setPinLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -77,23 +122,12 @@ public class SecuritySettingsActivity extends BaseActivity {
                         Toast.makeText(this, R.string.security_face_id_enabled_success, Toast.LENGTH_SHORT).show();
                     } else {
                         UserPrefs.setFaceIdEnabled(this, false);
-                        UserPrefs.setBiometricPin(this, "");
+                        UserPrefs.setFaceIdPin(this, "");
                     }
                     isSettingPinForFaceId = false;
                 }
                 syncSecuritySettingsUI();
             });
-
-    private SwitchMaterial toggleAppLock;
-    private SwitchMaterial toggleBiometric;
-    private SwitchMaterial toggleFaceId;
-    private SwitchMaterial toggleDuressSafeguard;
-    private View rowChangePin;
-    private View rowChangeBiometricPin;
-    private View rowBiometric;
-    private View rowFaceId;
-    private boolean isSyncingUI = false;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         ThemeUtils.applySavedNightMode(this);
@@ -140,6 +174,7 @@ public class SecuritySettingsActivity extends BaseActivity {
         toggleDuressSafeguard = findViewById(R.id.toggle_duress_safeguard);
         rowChangePin = findViewById(R.id.row_change_pin);
         rowChangeBiometricPin = findViewById(R.id.row_change_biometric_pin);
+        rowChangeFaceIdPin = findViewById(R.id.row_change_face_id_pin);
         rowBiometric = findViewById(R.id.row_biometric);
         rowFaceId = findViewById(R.id.row_face_id);
 
@@ -153,6 +188,7 @@ public class SecuritySettingsActivity extends BaseActivity {
             boolean biometricOn = UserPrefs.isFingerprintEnabled(this);
             boolean faceIdOn = UserPrefs.isFaceIdEnabled(this);
             boolean hasBiometricPin = UserPrefs.getBiometricPin(this) != null && UserPrefs.getBiometricPin(this).length() == 4;
+            boolean hasFaceIdPin = UserPrefs.getFaceIdPin(this) != null && UserPrefs.getFaceIdPin(this).length() == 4;
             boolean duressOn = UserPrefs.isDuressSafeguardEnabled(this);
 
             if (toggleAppLock != null) {
@@ -205,7 +241,10 @@ public class SecuritySettingsActivity extends BaseActivity {
                 rowChangePin.setVisibility(appLockOn ? View.VISIBLE : View.GONE);
             }
             if (rowChangeBiometricPin != null) {
-                rowChangeBiometricPin.setVisibility(((biometricOn || faceIdOn) && hasBiometricPin) ? View.VISIBLE : View.GONE);
+                rowChangeBiometricPin.setVisibility((biometricOn && hasBiometricPin) ? View.VISIBLE : View.GONE);
+            }
+            if (rowChangeFaceIdPin != null) {
+                rowChangeFaceIdPin.setVisibility((faceIdOn && hasFaceIdPin) ? View.VISIBLE : View.GONE);
             }
         } finally {
             isSyncingUI = false;
@@ -302,11 +341,9 @@ public class SecuritySettingsActivity extends BaseActivity {
                     startFaceIdRegistrationFlow();
                 } else {
                     UserPrefs.setFaceIdEnabled(this, false);
-                    if (!UserPrefs.isFingerprintEnabled(this)) {
-                        UserPrefs.setBiometricPin(this, "");
-                        if (rowChangeBiometricPin != null) {
-                            rowChangeBiometricPin.setVisibility(View.GONE);
-                        }
+                    UserPrefs.setFaceIdPin(this, "");
+                    if (rowChangeFaceIdPin != null) {
+                        rowChangeFaceIdPin.setVisibility(View.GONE);
                     }
                     Toast.makeText(this, R.string.security_face_id_disabled, Toast.LENGTH_SHORT).show();
                 }
@@ -326,6 +363,10 @@ public class SecuritySettingsActivity extends BaseActivity {
 
         if (rowChangeBiometricPin != null) {
             rowChangeBiometricPin.setOnClickListener(v -> openSetPin(true, true));
+        }
+
+        if (rowChangeFaceIdPin != null) {
+            rowChangeFaceIdPin.setOnClickListener(v -> openSetPinForFaceId(true));
         }
 
         View rowChangePassword = findViewById(R.id.row_change_password);
@@ -578,159 +619,19 @@ public class SecuritySettingsActivity extends BaseActivity {
     }
 
     private void startFaceIdRegistrationFlow() {
-        try {
-            BottomSheetDialog bottomSheet = new BottomSheetDialog(this);
-            View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_confirm_face_id, null);
-            bottomSheet.setContentView(sheetView);
+        if (isFinishing() || isDestroyed()) return;
 
-            TextView tvTitle = sheetView.findViewById(R.id.tv_sheet_title);
-            TextView tvSubtitle = sheetView.findViewById(R.id.tv_sheet_subtitle);
-            CircularProgressIndicator progressRing = sheetView.findViewById(R.id.progress_face_ring);
-            FrameLayout targetLayout = sheetView.findViewById(R.id.layout_face_target);
-            ImageView ivFace = sheetView.findViewById(R.id.iv_sheet_face);
-            ImageView ivCheck = sheetView.findViewById(R.id.iv_sheet_check);
-            TextView tvHint = sheetView.findViewById(R.id.tv_sheet_hint);
-
-            if (tvTitle != null) tvTitle.setText(R.string.face_id_register_title);
-            if (tvSubtitle != null) tvSubtitle.setText(R.string.face_id_register_subtitle);
-            if (progressRing != null) {
-                progressRing.setProgress(0);
-                progressRing.setIndicatorColor(ContextCompat.getColor(this, R.color.brand_primary));
-            }
-            if (ivFace != null) {
-                ivFace.setVisibility(View.VISIBLE);
-                ivFace.setAlpha(1.0f);
-            }
-            if (ivCheck != null) {
-                ivCheck.setVisibility(View.GONE);
-            }
-            if (tvHint != null) {
-                tvHint.setText(R.string.face_id_sheet_scan_face);
-                tvHint.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
-            }
-
-            final boolean[] isScanning = new boolean[]{false};
-            final boolean[] isSuccess = new boolean[]{false};
-
-            Runnable startScanning = () -> {
-                if (isScanning[0] || isSuccess[0]) return;
-                isScanning[0] = true;
-
-                if (tvHint != null) {
-                    tvHint.setText(R.string.face_id_sheet_scanning);
-                    tvHint.setTextColor(ContextCompat.getColor(this, R.color.brand_primary));
-                }
-
-                // Animate scanning progress ring from 0 to 100
-                ValueAnimator animator = ValueAnimator.ofInt(0, 100);
-                animator.setDuration(1200);
-                animator.addUpdateListener(animation -> {
-                    if (progressRing != null) {
-                        progressRing.setProgress((int) animation.getAnimatedValue());
-                    }
-                });
-                animator.addListener(new android.animation.AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(android.animation.Animator animation) {
-                        isSuccess[0] = true;
-                        try {
-                            sheetView.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
-                        } catch (Exception ignored) {
-                        }
-
-                        if (progressRing != null) {
-                            progressRing.setIndicatorColor(ContextCompat.getColor(SecuritySettingsActivity.this, R.color.success_green));
-                        }
-                        if (ivFace != null) {
-                            ivFace.animate().alpha(0f).setDuration(200).start();
-                        }
-                        if (ivCheck != null) {
-                            ivCheck.setVisibility(View.VISIBLE);
-                            ivCheck.setAlpha(0f);
-                            ivCheck.setScaleX(0.6f);
-                            ivCheck.setScaleY(0.6f);
-                            ivCheck.animate()
-                                    .alpha(1f)
-                                    .scaleX(1.0f)
-                                    .scaleY(1.0f)
-                                    .setDuration(350)
-                                    .setInterpolator(new android.view.animation.OvershootInterpolator())
-                                    .start();
-                        }
-                        if (tvHint != null) {
-                            tvHint.setText(R.string.face_id_confirm_sheet_success);
-                            tvHint.setTextColor(ContextCompat.getColor(SecuritySettingsActivity.this, R.color.success_green));
-                        }
-
-                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                            try {
-                                bottomSheet.dismiss();
-                            } catch (Exception ignored) {
-                            }
-
-                            boolean hasPin = (UserPrefs.getBiometricPin(SecuritySettingsActivity.this) != null
-                                    && UserPrefs.getBiometricPin(SecuritySettingsActivity.this).length() == 4)
-                                    || (UserPrefs.isAppLockEnabled(SecuritySettingsActivity.this)
-                                    && UserPrefs.getAppLockPin(SecuritySettingsActivity.this).length() == 4);
-
-                            if (hasPin) {
-                                UserPrefs.setFaceIdEnabled(SecuritySettingsActivity.this, true);
-                                Toast.makeText(SecuritySettingsActivity.this, R.string.security_face_id_enabled_success, Toast.LENGTH_SHORT).show();
-                                syncSecuritySettingsUI();
-                            } else {
-                                Toast.makeText(SecuritySettingsActivity.this, R.string.face_id_prompt_verified_need_pin, Toast.LENGTH_LONG).show();
-                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                                    isSettingPinForFaceId = true;
-                                    openSetPin(false, true);
-                                }, 300);
-                            }
-                        }, 650);
-                    }
-                });
-                animator.start();
-
-                // Gentle pulse animation on face icon
-                if (ivFace != null) {
-                    ivFace.animate()
-                            .scaleX(1.15f)
-                            .scaleY(1.15f)
-                            .setDuration(600)
-                            .withEndAction(() -> {
-                                if (ivFace != null) {
-                                    ivFace.animate()
-                                            .scaleX(1.0f)
-                                            .scaleY(1.0f)
-                                            .setDuration(600)
-                                            .start();
-                                }
-                            })
-                            .start();
-                }
-            };
-
-            if (targetLayout != null) {
-                targetLayout.setOnClickListener(v -> startScanning.run());
-            }
-
-            // Auto-trigger scanning after short delay
-            new Handler(Looper.getMainLooper()).postDelayed(startScanning, 400);
-
-            bottomSheet.setOnDismissListener(dialog -> {
-                if (!isSuccess[0]) {
-                    if (toggleFaceId != null) {
-                        toggleFaceId.setChecked(false);
-                    }
-                    UserPrefs.setFaceIdEnabled(SecuritySettingsActivity.this, false);
-                }
-            });
-
-            bottomSheet.show();
-        } catch (Exception e) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, 101);
             if (toggleFaceId != null) {
                 toggleFaceId.setChecked(false);
             }
-            UserPrefs.setFaceIdEnabled(this, false);
+            return;
         }
+
+        Intent intent = new Intent(this, FaceIdVerificationActivity.class);
+        intent.putExtra(FaceIdVerificationActivity.EXTRA_MODE, FaceIdVerificationActivity.MODE_REGISTER);
+        faceIdVerificationLauncher.launch(intent);
     }
 
     private void openSetPin(boolean isChanging) {
@@ -741,6 +642,13 @@ public class SecuritySettingsActivity extends BaseActivity {
         Intent intent = new Intent(this, SetPinActivity.class);
         intent.putExtra(SetPinActivity.EXTRA_IS_CHANGING, isChanging);
         intent.putExtra(SetPinActivity.EXTRA_IS_FOR_BIOMETRIC, isForBiometric);
+        setPinLauncher.launch(intent);
+    }
+
+    private void openSetPinForFaceId(boolean isChanging) {
+        Intent intent = new Intent(this, SetPinActivity.class);
+        intent.putExtra(SetPinActivity.EXTRA_IS_CHANGING, isChanging);
+        intent.putExtra(SetPinActivity.EXTRA_IS_FOR_FACE_ID, true);
         setPinLauncher.launch(intent);
     }
 
@@ -818,5 +726,15 @@ public class SecuritySettingsActivity extends BaseActivity {
         }
 
         dialog.show();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
     }
 }

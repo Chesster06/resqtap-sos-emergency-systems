@@ -1,0 +1,75 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Corner Guide Arcs -->
+    <path
+        android:pathData="M 32,18 A 16,16 0 0,0 18,32"
+        android:strokeColor="#C5C7D0"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"/>
+    <path
+        android:pathData="M 88,18 A 16,16 0 0,1 102,32"
+        android:strokeColor="#C5C7D0"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"/>
+    <path
+        android:pathData="M 18,88 A 16,16 0 0,0 32,102"
+        android:strokeColor="#C5C7D0"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"/>
+    <path
+        android:pathData="M 102,88 A 16,16 0 0,1 88,102"
+        android:strokeColor="#C5C7D0"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"/>
+
+    <!-- Head & Hair Outline -->
+    <path
+        android:pathData="M 38,58 C 38,36 82,36 82,58 C 82,78 68,88 60,88 C 52,88 38,78 38,58 Z"
+        android:strokeColor="#1E2024"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+
+    <!-- Hair Arc -->
+    <path
+        android:pathData="M 40,48 C 45,36 75,36 80,48 C 76,44 68,44 60,49 C 52,44 44,44 40,48 Z"
+        android:fillColor="#1E2024"/>
+
+    <!-- Eyebrows -->
+    <path
+        android:pathData="M 47,51 C 49,49 53,49 55,51"
+        android:strokeColor="#1E2024"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"/>
+    <path
+        android:pathData="M 65,51 C 67,49 71,49 73,51"
+        android:strokeColor="#1E2024"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"/>
+
+    <!-- Eyes -->
+    <path
+        android:pathData="M 50.5,58 A 2,2 0 1,1 50.5,57.9 Z"
+        android:fillColor="#1E2024"/>
+    <path
+        android:pathData="M 69.5,58 A 2,2 0 1,1 69.5,57.9 Z"
+        android:fillColor="#1E2024"/>
+
+    <!-- Nose -->
+    <path
+        android:pathData="M 60,61 L 58.5,67 L 61.5,67"
+        android:strokeColor="#1E2024"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"/>
+
+    <!-- Smile -->
+    <path
+        android:pathData="M 52,74 Q 60,80 68,74"
+        android:strokeColor="#1E2024"
+        android:strokeWidth="2.8"
+        android:strokeLineCap="round"/>
+</vector>

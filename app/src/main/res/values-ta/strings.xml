@@ -164,6 +164,8 @@
     <string name="security_change_pin_desc">உங்கள் 4 இலக்க பாதுகாப்பு PIN-ஐ புதுப்பிக்கவும்.</string>
     <string name="security_change_biometric_pin_title">பயோமெட்ரிக் PIN மாற்றவும்</string>
     <string name="security_change_biometric_pin_desc">பயோமெட்ரிக் பூட்டிற்கான 4 இலக்க காப்புப் பிரதி PIN-ஐப் புதுப்பிக்கவும்.</string>
+    <string name="security_change_face_id_pin_title">Face ID பின்னை மாற்றவும்</string>
+    <string name="security_change_face_id_pin_desc">Face ID க்கான உங்கள் 4-இலக்க தனிப்பட்ட காப்புப் பிரதி பின்னைப் புதுப்பிக்கவும்.</string>
     <string name="security_section_account">கணக்கு &amp; அணுகல்</string>
     <string name="security_change_password_title">கடவுச்சொல்லை மாற்றவும்</string>
     <string name="security_change_password_desc">உங்கள் கணக்கு கடவுச்சொல்லை புதுப்பிக்கவும்.</string>
@@ -471,6 +473,26 @@
     <string name="face_id_sheet_scan_face">முகத்தை ஸ்கேன் செய்ய சட்டகத்தைத் தட்டவும்</string>
     <string name="face_id_sheet_scanning">முக அம்சங்களை ஸ்கேன் செய்கிறது...</string>
     <string name="face_id_confirm_sheet_success">Face ID சரிபார்க்கப்பட்டது!</string>
-    <string name="face_id_prompt_verified_need_pin">Face ID உறுதிசெய்யப்பட்டது! உங்கள் காப்புப் பிரதி PIN ஐ அமைக்கவும்.</string>
+    <string name="face_id_prompt_verified_need_pin">முகம் சரிபார்க்கப்பட்டது! உங்கள் தனிப்பட்ட 4-இலக்க Face ID பின்னை அமைக்கவும்.</string>
+    <string name="face_id_not_detected">முகம் கண்டறியப்படவில்லை. தயவுசெய்து உங்கள் முகத்தை சட்டகத்தில் வைக்கவும்.</string>
+    <string name="face_id_timeout">Face ID நேரம் முடிந்தது. மீண்டும் முயற்சிக்கவும் அல்லது PIN ஐப் பயன்படுத்தவும்.</string>
+    <string name="face_id_camera_error">கேமராவை அணுக முடியவில்லை. அனுமதியைச் சரிபார்க்கவும் அல்லது PIN ஐப் பயன்படுத்தவும்.</string>
+    <string name="face_id_use_pin">PIN ஐப் பயன்படுத்தவும்</string>
+    <string name="face_id_retry">மீண்டும் முயற்சிக்கவும்</string>
+    <string name="face_id_waiting_camera">கேமரா தொடங்குகிறது...</string>
+
+    <!-- 3-Phase Face ID Verification UI -->
+    <string name="face_verify_intro_title">Face ID சரிபார்ப்பு</string>
+    <string name="face_verify_intro_subtitle">நீங்கள் உண்மையான நபர் என்பதை சரிபார்க்க இது உதவுகிறது</string>
+    <string name="face_verify_intro_point1">முதலில், உங்கள் முகத்தை சட்டகத்தில் வைக்கவும்</string>
+    <string name="face_verify_intro_point2">உங்கள் தலையை மெதுவாக இருபுறமும் திருப்பவும்</string>
+    <string name="face_verify_intro_disclaimer">சிறந்த முடிவுகளுக்கு வெளிச்சம் உள்ள இடத்தில் இருப்பதை உறுதிசெய்யவும்.</string>
+    <string name="face_verify_btn_ready">நான் தயார்</string>
+    <string name="face_verify_instruction_position">உங்கள் முகத்தை சட்டகத்தில் வைக்கவும்</string>
+    <string name="face_verify_instruction_steady">முகம் கண்டறியப்பட்டது. நிலையாக இருக்கவும்...</string>
+    <string name="face_verify_instruction_turn_head">உங்கள் தலையை மெதுவாக இருபுறமும் திருப்பவும்</string>
+    <string name="face_verify_instruction_turn_left">உங்கள் தலையை மெதுவாக இடதுபுறம் திருப்பவும்</string>
+    <string name="face_verify_instruction_turn_right">உங்கள் தலையை மெதுவாக வலதுபுறம் திருப்பவும்</string>
+    <string name="face_verify_complete_title">சரிபார்ப்பு முடிந்தது</string>
 </resources>
 

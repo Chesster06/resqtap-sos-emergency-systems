@@ -164,6 +164,8 @@
     <string name="security_change_pin_desc">更新您的4位数安全通行码。</string>
     <string name="security_change_biometric_pin_title">修改生物识别PIN码</string>
     <string name="security_change_biometric_pin_desc">更新生物识别解锁的4位数备用PIN码。</string>
+    <string name="security_change_face_id_pin_title">修改人脸识别PIN码</string>
+    <string name="security_change_face_id_pin_desc">更新用于人脸识别的4位数个人备用PIN码。</string>
     <string name="security_section_account">账户与访问</string>
     <string name="security_change_password_title">修改密码</string>
     <string name="security_change_password_desc">更新您的账户登录密码。</string>
@@ -472,6 +474,26 @@
     <string name="face_id_sheet_scan_face">轻触取景框扫描面部</string>
     <string name="face_id_sheet_scanning">正在扫描面部特征...</string>
     <string name="face_id_confirm_sheet_success">Face ID 验证成功！</string>
-    <string name="face_id_prompt_verified_need_pin">Face ID 注册成功！请设置应用备用 PIN 码。</string>
+    <string name="face_id_prompt_verified_need_pin">人脸验证成功！请设置您的4位个人人脸识别PIN码。</string>
+    <string name="face_id_not_detected">未检测到面部。请将脸部对准取景框中央。</string>
+    <string name="face_id_timeout">面容识别超时。请重试或使用 PIN 码。</string>
+    <string name="face_id_camera_error">无法访问相机。请检查权限或使用 PIN 码。</string>
+    <string name="face_id_use_pin">使用 PIN 码</string>
+    <string name="face_id_retry">重试</string>
+    <string name="face_id_waiting_camera">正在启动相机...</string>
+
+    <!-- 3-Phase Face ID Verification UI -->
+    <string name="face_verify_intro_title">Face ID 身份验证</string>
+    <string name="face_verify_intro_subtitle">此步骤用于验证您是真人用户</string>
+    <string name="face_verify_intro_point1">首先，将您的面部置于取景框内</string>
+    <string name="face_verify_intro_point2">请缓慢向左右两侧转动头部</string>
+    <string name="face_verify_intro_disclaimer">请确保周围光线充足，以便获得最佳识别效果。</string>
+    <string name="face_verify_btn_ready">准备好了</string>
+    <string name="face_verify_instruction_position">请将面部对准取景框</string>
+    <string name="face_verify_instruction_steady">已检测到面部，请保持静止...</string>
+    <string name="face_verify_instruction_turn_head">请缓慢向左右两侧转动头部</string>
+    <string name="face_verify_instruction_turn_left">请缓慢向左转头</string>
+    <string name="face_verify_instruction_turn_right">请缓慢向右转头</string>
+    <string name="face_verify_complete_title">验证完成</string>
 </resources>
 

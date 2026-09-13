@@ -43,6 +43,7 @@ public class AppLockManager implements Application.ActivityLifecycleCallbacks {
         if (activity == null || activity.isFinishing()) return;
         if (activity instanceof AppLockActivity ||
             activity instanceof SetPinActivity ||
+            activity instanceof FaceIdVerificationActivity ||
             activity instanceof SplashActivity ||
             activity instanceof LoginActivity ||
             activity instanceof RegisterActivity ||

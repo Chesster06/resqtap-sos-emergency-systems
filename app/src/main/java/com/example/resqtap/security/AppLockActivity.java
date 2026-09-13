@@ -7,17 +7,22 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
+import android.view.TextureView;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.animation.ValueAnimator;
 import android.view.HapticFeedbackConstants;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
+import com.google.mlkit.vision.face.Face;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
@@ -50,6 +55,13 @@ public class AppLockActivity extends AppCompatActivity {
     private View dot1, dot2, dot3, dot4;
     private View dotsContainer;
     private View btnBiometricKey;
+
+    private final ActivityResultLauncher<Intent> faceUnlockLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK) {
+                    unlockSuccess();
+                }
+            });
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -98,8 +110,9 @@ public class AppLockActivity extends AppCompatActivity {
 
         boolean biometricOn = UserPrefs.isFingerprintEnabled(this) || UserPrefs.isFaceIdEnabled(this);
         boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
-        boolean hasBiometricPin = biometricOn && UserPrefs.getBiometricPin(this).length() == 4;
-        boolean hasAnyPin = hasAppLockPin || hasBiometricPin;
+        boolean hasBiometricPin = UserPrefs.isFingerprintEnabled(this) && UserPrefs.getBiometricPin(this).length() == 4;
+        boolean hasFaceIdPin = UserPrefs.isFaceIdEnabled(this) && UserPrefs.getFaceIdPin(this).length() == 4;
+        boolean hasAnyPin = hasAppLockPin || hasBiometricPin || hasFaceIdPin;
 
         TextView tvTitle = findViewById(R.id.tv_title);
         TextView tvDesc = findViewById(R.id.tv_desc);
@@ -155,8 +168,9 @@ public class AppLockActivity extends AppCompatActivity {
         };
 
         boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
-        boolean hasBiometricPin = (UserPrefs.isFingerprintEnabled(this) || UserPrefs.isFaceIdEnabled(this)) && UserPrefs.getBiometricPin(this).length() == 4;
-        boolean hasAnyPin = hasAppLockPin || hasBiometricPin;
+        boolean hasBiometricPin = UserPrefs.isFingerprintEnabled(this) && UserPrefs.getBiometricPin(this).length() == 4;
+        boolean hasFaceIdPin = UserPrefs.isFaceIdEnabled(this) && UserPrefs.getFaceIdPin(this).length() == 4;
+        boolean hasAnyPin = hasAppLockPin || hasBiometricPin || hasFaceIdPin;
 
         for (int id : keyIds) {
             TextView key = findViewById(id);
@@ -175,7 +189,7 @@ public class AppLockActivity extends AppCompatActivity {
         if (backspace != null) {
             backspace.setOnClickListener(v -> {
                 if (hasAnyPin) {
-                    removeDigit();
+                    deleteDigit();
                 } else {
                     authenticateBiometric();
                 }
@@ -193,12 +207,12 @@ public class AppLockActivity extends AppCompatActivity {
             enteredPin.append(digit);
             updateDots();
             if (enteredPin.length() == 4) {
-                verifyPin();
+                new Handler(Looper.getMainLooper()).postDelayed(this::verifyPin, 150);
             }
         }
     }
 
-    private void removeDigit() {
+    private void deleteDigit() {
         if (enteredPin.length() > 0) {
             enteredPin.deleteCharAt(enteredPin.length() - 1);
             updateDots();
@@ -216,9 +230,10 @@ public class AppLockActivity extends AppCompatActivity {
     private void verifyPin() {
         String input = enteredPin.toString();
         boolean appLockValid = UserPrefs.isAppLockEnabled(this) && input.equals(UserPrefs.getAppLockPin(this));
-        boolean biometricPinValid = (UserPrefs.isFingerprintEnabled(this) || UserPrefs.isFaceIdEnabled(this)) && input.equals(UserPrefs.getBiometricPin(this));
+        boolean biometricPinValid = UserPrefs.isFingerprintEnabled(this) && input.equals(UserPrefs.getBiometricPin(this));
+        boolean faceIdPinValid = UserPrefs.isFaceIdEnabled(this) && input.equals(UserPrefs.getFaceIdPin(this));
 
-        if (appLockValid || biometricPinValid) {
+        if (appLockValid || biometricPinValid || faceIdPinValid) {
             unlockSuccess();
         } else {
             shakeDots();
@@ -255,7 +270,7 @@ public class AppLockActivity extends AppCompatActivity {
             int canAuth = biometricManager.canAuthenticate(authenticators);
 
             if (UserPrefs.isFaceIdEnabled(this) && (!UserPrefs.isFingerprintEnabled(this) || canAuth != BiometricManager.BIOMETRIC_SUCCESS)) {
-                showFaceIdUnlockSheet();
+                launchFaceIdUnlock();
                 return;
             }
 
@@ -295,104 +310,11 @@ public class AppLockActivity extends AppCompatActivity {
         }
     }
 
-    private void showFaceIdUnlockSheet() {
-        try {
-            BottomSheetDialog bottomSheet = new BottomSheetDialog(this);
-            View sheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_confirm_face_id, null);
-            bottomSheet.setContentView(sheetView);
-
-            TextView tvTitle = sheetView.findViewById(R.id.tv_sheet_title);
-            TextView tvSubtitle = sheetView.findViewById(R.id.tv_sheet_subtitle);
-            CircularProgressIndicator progressRing = sheetView.findViewById(R.id.progress_face_ring);
-            ImageView ivFace = sheetView.findViewById(R.id.iv_sheet_face);
-            ImageView ivCheck = sheetView.findViewById(R.id.iv_sheet_check);
-            TextView tvHint = sheetView.findViewById(R.id.tv_sheet_hint);
-
-            if (tvTitle != null) tvTitle.setText(R.string.security_face_id_title);
-            if (tvSubtitle != null) tvSubtitle.setText(R.string.face_id_sheet_scanning);
-            if (progressRing != null) {
-                progressRing.setProgress(0);
-                progressRing.setIndicatorColor(ContextCompat.getColor(this, R.color.brand_primary));
-            }
-            if (ivFace != null) {
-                ivFace.setVisibility(View.VISIBLE);
-                ivFace.setAlpha(1.0f);
-            }
-            if (ivCheck != null) {
-                ivCheck.setVisibility(View.GONE);
-            }
-            if (tvHint != null) {
-                tvHint.setText(R.string.face_id_sheet_scanning);
-                tvHint.setTextColor(ContextCompat.getColor(this, R.color.brand_primary));
-            }
-
-            ValueAnimator animator = ValueAnimator.ofInt(0, 100);
-            animator.setDuration(1200);
-            animator.addUpdateListener(animation -> {
-                if (progressRing != null) {
-                    progressRing.setProgress((int) animation.getAnimatedValue());
-                }
-            });
-            animator.addListener(new android.animation.AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(android.animation.Animator animation) {
-                    try {
-                        sheetView.performHapticFeedback(HapticFeedbackConstants.CONFIRM);
-                    } catch (Exception ignored) {
-                    }
-
-                    if (progressRing != null) {
-                        progressRing.setIndicatorColor(ContextCompat.getColor(AppLockActivity.this, R.color.success_green));
-                    }
-                    if (ivFace != null) {
-                        ivFace.animate().alpha(0f).setDuration(200).start();
-                    }
-                    if (ivCheck != null) {
-                        ivCheck.setVisibility(View.VISIBLE);
-                        ivCheck.setAlpha(0f);
-                        ivCheck.setScaleX(0.6f);
-                        ivCheck.setScaleY(0.6f);
-                        ivCheck.animate()
-                                .alpha(1f)
-                                .scaleX(1.0f)
-                                .scaleY(1.0f)
-                                .setDuration(300)
-                                .setInterpolator(new android.view.animation.OvershootInterpolator())
-                                .start();
-                    }
-                    if (tvHint != null) {
-                        tvHint.setText(R.string.face_id_confirm_sheet_success);
-                        tvHint.setTextColor(ContextCompat.getColor(AppLockActivity.this, R.color.success_green));
-                    }
-
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        try {
-                            bottomSheet.dismiss();
-                        } catch (Exception ignored) {
-                        }
-                        unlockSuccess();
-                    }, 500);
-                }
-            });
-            animator.start();
-
-            if (ivFace != null) {
-                ivFace.animate()
-                        .scaleX(1.15f)
-                        .scaleY(1.15f)
-                        .setDuration(600)
-                        .withEndAction(() -> {
-                            if (ivFace != null) {
-                                ivFace.animate().scaleX(1.0f).scaleY(1.0f).setDuration(600).start();
-                            }
-                        })
-                        .start();
-            }
-
-            bottomSheet.show();
-        } catch (Exception e) {
-            unlockSuccess();
-        }
+    private void launchFaceIdUnlock() {
+        if (isFinishing() || isDestroyed()) return;
+        Intent intent = new Intent(this, FaceIdVerificationActivity.class);
+        intent.putExtra(FaceIdVerificationActivity.EXTRA_MODE, FaceIdVerificationActivity.MODE_UNLOCK);
+        faceUnlockLauncher.launch(intent);
     }
 
     private void showForgotPinDialog() {
@@ -416,6 +338,11 @@ public class AppLockActivity extends AppCompatActivity {
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
     }
 
     @Override

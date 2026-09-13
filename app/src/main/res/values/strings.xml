@@ -524,6 +524,8 @@ Terms Version: 1.0</string>
     <string name="security_change_pin_desc">Update your 4-digit security passkey.</string>
     <string name="security_change_biometric_pin_title">Change Biometric PIN</string>
     <string name="security_change_biometric_pin_desc">Update your 4-digit backup PIN for biometric unlock.</string>
+    <string name="security_change_face_id_pin_title">Change Face ID PIN</string>
+    <string name="security_change_face_id_pin_desc">Update your 4-digit personal backup PIN for Face ID.</string>
     <string name="security_section_account">Account &amp; Access</string>
     <string name="security_change_password_title">Change Password</string>
     <string name="security_change_password_desc">Update your account login password.</string>
@@ -596,7 +598,13 @@ Terms Version: 1.0</string>
     <string name="face_id_sheet_scan_face">Tap frame to scan face</string>
     <string name="face_id_sheet_scanning">Scanning facial features...</string>
     <string name="face_id_confirm_sheet_success">Face ID verified!</string>
-    <string name="face_id_prompt_verified_need_pin">Face ID confirmed! Please set your application backup PIN.</string>
+    <string name="face_id_prompt_verified_need_pin">Face ID verified! Please set your personal 4-digit Face ID PIN.</string>
+    <string name="face_id_not_detected">No face detected. Please position your face in the frame.</string>
+    <string name="face_id_timeout">Face ID timed out. Please try again or use PIN.</string>
+    <string name="face_id_camera_error">Unable to access camera. Please check permissions or use PIN.</string>
+    <string name="face_id_use_pin">Use PIN</string>
+    <string name="face_id_retry">Retry</string>
+    <string name="face_id_waiting_camera">Starting camera...</string>
 
 
 
@@ -1026,5 +1034,19 @@ Terms Version: 1.0</string>
     <string name="notif_room_left_title">Left Room</string>
     <string name="notif_room_deleted_msg">You have deleted room %1$s.</string>
     <string name="notif_room_left_msg">You have left room %1$s.</string>
+
+    <!-- 3-Phase Face ID Verification UI -->
+    <string name="face_verify_intro_title">Face ID Verification</string>
+    <string name="face_verify_intro_subtitle">This is to verify that you\'re a real person</string>
+    <string name="face_verify_intro_point1">First, position your face in the frame</string>
+    <string name="face_verify_intro_point2">Turn your head slowly to both sides</string>
+    <string name="face_verify_intro_disclaimer">Please ensure you are in a well-lit environment for optimal verification.</string>
+    <string name="face_verify_btn_ready">I\'m ready</string>
+    <string name="face_verify_instruction_position">Position your face in the frame</string>
+    <string name="face_verify_instruction_steady">Face detected. Keep steady...</string>
+    <string name="face_verify_instruction_turn_head">Turn your head slowly\nto both sides</string>
+    <string name="face_verify_instruction_turn_left">Turn your head slowly to the left</string>
+    <string name="face_verify_instruction_turn_right">Turn your head slowly to the right</string>
+    <string name="face_verify_complete_title">Verification complete</string>
 </resources>
 

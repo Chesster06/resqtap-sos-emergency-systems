@@ -137,7 +137,7 @@
 
         <activity
             android:name=".profile.SecuritySettingsActivity"
-            android:exported="false"
+            android:exported="true"
             android:windowSoftInputMode="adjustNothing" />
 
         <activity
@@ -149,6 +149,12 @@
         <activity
             android:name=".security.SetPinActivity"
             android:exported="false"
+            android:windowSoftInputMode="adjustNothing" />
+
+        <activity
+            android:name=".security.FaceIdVerificationActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustNothing" />
 
 
