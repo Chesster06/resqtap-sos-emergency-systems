@@ -68,6 +68,57 @@ public final class FirebaseRoomClient {
         }
     }
 
+    public static final class RoomPermissions {
+        public boolean allowSosAlarm = true;
+        public boolean allowTriggerBell = true;
+        public boolean allowLocationSharing = true;
+        public boolean allowMemberInvite = true;
+
+        public RoomPermissions() {}
+
+        public RoomPermissions(boolean allowSosAlarm, boolean allowTriggerBell, boolean allowLocationSharing, boolean allowMemberInvite) {
+            this.allowSosAlarm = allowSosAlarm;
+            this.allowTriggerBell = allowTriggerBell;
+            this.allowLocationSharing = allowLocationSharing;
+            this.allowMemberInvite = allowMemberInvite;
+        }
+
+        public Map<String, Object> toMap() {
+            Map<String, Object> map = new HashMap<>();
+            map.put("allowSosAlarm", allowSosAlarm);
+            map.put("allowTriggerBell", allowTriggerBell);
+            map.put("allowLocationSharing", allowLocationSharing);
+            map.put("allowMemberInvite", allowMemberInvite);
+            return map;
+        }
+
+        public static RoomPermissions fromSnapshot(DataSnapshot snap) {
+            RoomPermissions p = new RoomPermissions();
+            if (snap == null || !snap.exists()) return p;
+            if (snap.hasChild("allowSosAlarm")) {
+                Boolean v = snap.child("allowSosAlarm").getValue(Boolean.class);
+                if (v != null) p.allowSosAlarm = v;
+            }
+            if (snap.hasChild("allowTriggerBell")) {
+                Boolean v = snap.child("allowTriggerBell").getValue(Boolean.class);
+                if (v != null) p.allowTriggerBell = v;
+            }
+            if (snap.hasChild("allowLocationSharing")) {
+                Boolean v = snap.child("allowLocationSharing").getValue(Boolean.class);
+                if (v != null) p.allowLocationSharing = v;
+            }
+            if (snap.hasChild("allowMemberInvite")) {
+                Boolean v = snap.child("allowMemberInvite").getValue(Boolean.class);
+                if (v != null) p.allowMemberInvite = v;
+            }
+            return p;
+        }
+    }
+
+    public interface RoomPermissionsCallback {
+        void onLoaded(RoomPermissions permissions);
+    }
+
     private FirebaseRoomClient() {
     }
 
@@ -302,6 +353,9 @@ public final class FirebaseRoomClient {
         String name = String.valueOf(roomName == null ? "" : roomName).trim();
         if (name.isEmpty()) name = "Safety Room";
 
+        DataSnapshot instanceSnap = await(db().child("rooms").child(code).child("instanceId").get());
+        String instanceId = instanceSnap == null ? "" : String.valueOf(instanceSnap.getValue() == null ? "" : instanceSnap.getValue()).trim();
+
         Map<String, Object> updates = new HashMap<>();
 
         Map<String, Object> memberData = new HashMap<>();
@@ -309,6 +363,9 @@ public final class FirebaseRoomClient {
         memberData.put("name", friendName == null ? "" : friendName.trim());
         memberData.put("role", "member");
         memberData.put("updatedAt", ServerValue.TIMESTAMP);
+        if (!instanceId.isEmpty()) {
+            memberData.put("instanceId", instanceId);
+        }
         updates.put("rooms/" + code + "/members/" + fUid, memberData);
 
         Map<String, Object> friendUserRoom = new HashMap<>();
@@ -1540,6 +1597,99 @@ public final class FirebaseRoomClient {
             String m = String.valueOf(mid == null ? "" : mid).trim();
             if (m.isEmpty()) continue;
             updates.put("userRooms/" + m + "/" + code + "/label", n);
+            updates.put("userRooms/" + m + "/" + code + "/name", n);
+        }
+        await(db().updateChildren(updates));
+    }
+
+    /** Muat turun tetapan kebenaran bilik (RoomPermissions). */
+    public static void fetchRoomPermissions(String roomCode, RoomPermissionsCallback cb) {
+        try {
+            String code = normalizeCode(roomCode);
+            if (code.length() < 4) {
+                if (cb != null) cb.onLoaded(new RoomPermissions());
+                return;
+            }
+            db().child("rooms").child(code).child("settings").get()
+                    .addOnSuccessListener(snap -> {
+                        RoomPermissions p = RoomPermissions.fromSnapshot(snap);
+                        if (cb != null) cb.onLoaded(p);
+                    })
+                    .addOnFailureListener(e -> {
+                        if (cb != null) cb.onLoaded(new RoomPermissions());
+                    });
+        } catch (Exception e) {
+            if (cb != null) cb.onLoaded(new RoomPermissions());
+        }
+    }
+
+    /** Dengar perubahan tetapan kebenaran bilik secara masa nyata. */
+    public static ValueEventListener listenRoomPermissions(String roomCode, RoomPermissionsCallback cb) {
+        try {
+            String code = normalizeCode(roomCode);
+            if (code.length() < 4) return null;
+            ValueEventListener listener = new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot snapshot) {
+                    if (cb != null) cb.onLoaded(RoomPermissions.fromSnapshot(snapshot));
+                }
+
+                @Override
+                public void onCancelled(DatabaseError error) {}
+            };
+            db().child("rooms").child(code).child("settings").addValueEventListener(listener);
+            return listener;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    /** Berhenti mendengar perubahan tetapan bilik. */
+    public static void removeRoomPermissionsListener(String roomCode, ValueEventListener listener) {
+        try {
+            if (listener == null) return;
+            String code = normalizeCode(roomCode);
+            if (code.length() < 4) return;
+            db().child("rooms").child(code).child("settings").removeEventListener(listener);
+        } catch (Exception ignored) {}
+    }
+
+    /** Simpan atau kemas kini nama bilik dan kebenaran ahli sebagai creator. */
+    public static void updateRoomSettingsAndName(String uid, String roomCode, String name, RoomPermissions permissions) throws Exception {
+        String u = String.valueOf(uid == null ? "" : uid).trim();
+        String code = normalizeCode(roomCode);
+        String n = String.valueOf(name == null ? "" : name).trim();
+        if (u.isEmpty()) throw new RuntimeException("invalid_uid");
+        if (code.length() < 4) throw new RuntimeException("invalid_room_code");
+        if (n.isEmpty()) throw new RuntimeException("invalid_name");
+
+        DataSnapshot roleSnap = await(db().child("userRooms").child(u).child(code).child("role").get());
+        String role = roleSnap == null ? "" : String.valueOf(roleSnap.getValue());
+        if (!"creator".equalsIgnoreCase(String.valueOf(role == null ? "" : role).trim())) {
+            throw new RuntimeException("not_creator");
+        }
+
+        DataSnapshot membersSnap = await(db().child("rooms").child(code).child("members").get());
+        java.util.ArrayList<String> memberUids = new java.util.ArrayList<>();
+        if (membersSnap != null && membersSnap.exists()) {
+            for (DataSnapshot child : membersSnap.getChildren()) {
+                String mid = child.getKey() == null ? "" : child.getKey().trim();
+                if (!mid.isEmpty()) memberUids.add(mid);
+            }
+        }
+        if (!memberUids.contains(u)) memberUids.add(u);
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("rooms/" + code + "/name", n);
+        updates.put("rooms/" + code + "/updatedAt", ServerValue.TIMESTAMP);
+        if (permissions != null) {
+            updates.put("rooms/" + code + "/settings", permissions.toMap());
+        }
+        for (String mid : memberUids) {
+            String m = String.valueOf(mid == null ? "" : mid).trim();
+            if (m.isEmpty()) continue;
+            updates.put("userRooms/" + m + "/" + code + "/label", n);
+            updates.put("userRooms/" + m + "/" + code + "/name", n);
         }
         await(db().updateChildren(updates));
     }

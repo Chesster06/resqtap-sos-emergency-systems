@@ -216,7 +216,6 @@ public class ScanQrActivity extends BaseActivity {
                             executor.execute(() -> {
                                 try {
                                     FirebaseFriendClient.sendFriendRequest(this, uid, name, publicId, friend.uid);
-                                    NotificationUtils.playNotificationSound(this);
                                     runOnUiThread(() -> {
                                         if (isFinishing() || isDestroyed()) return;
                                         btnInvite.setText(R.string.friend_request_sent_btn);
@@ -438,7 +437,6 @@ public class ScanQrActivity extends BaseActivity {
         executor.execute(() -> {
             try {
                 FirebaseFriendClient.sendFriendRequest(this, uid, name, publicId, targetUid);
-                NotificationUtils.playNotificationSound(this);
                 runOnUiThread(() -> {
                     Toast.makeText(this, R.string.friend_request_sent, Toast.LENGTH_LONG).show();
                     FriendNavigationHelper.navigate(this, FriendsActivity.class);

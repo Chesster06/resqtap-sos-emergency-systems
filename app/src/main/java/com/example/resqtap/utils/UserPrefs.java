@@ -559,10 +559,12 @@ public final class UserPrefs {
         if (isResqTapEmail(getEmail(context))) {
             return true;
         }
+        // Jika pengguna sudah ada Public ID dan Nama (sudah pernah selesai pendaftaran), anggap profil lengkap
+        if (!getPublicId(context).trim().isEmpty() && !getName(context).trim().isEmpty()) {
+            return true;
+        }
         return !getAddress(context).trim().isEmpty()
                 && !getReligion(context).trim().isEmpty()
-                && !getPhoneNumber(context).trim().isEmpty()
-                && !getDateOfBirth(context).trim().isEmpty()
                 && !getEthnicity(context).trim().isEmpty();
     }
 

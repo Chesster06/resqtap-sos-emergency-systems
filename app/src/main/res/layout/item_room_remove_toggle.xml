@@ -24,8 +24,9 @@
         android:textStyle="bold"
         app:cornerRadius="999dp"
         app:icon="@drawable/ic_person_add"
-        app:iconPadding="6dp"
-        app:iconSize="16dp"
+        app:iconGravity="textStart"
+        app:iconPadding="8dp"
+        app:iconSize="18dp"
         app:iconTint="@color/brand_primary" />
 
     <com.google.android.material.button.MaterialButton
@@ -42,8 +43,9 @@
         android:textStyle="bold"
         app:cornerRadius="999dp"
         app:icon="@drawable/ic_delete"
-        app:iconPadding="6dp"
-        app:iconSize="16dp"
+        app:iconGravity="textStart"
+        app:iconPadding="8dp"
+        app:iconSize="18dp"
         app:iconTint="@color/danger_red" />
 
 </LinearLayout>

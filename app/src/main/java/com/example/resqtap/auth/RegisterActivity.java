@@ -443,6 +443,30 @@ public class RegisterActivity extends BaseActivity {
         if (completeProfileMode) {
             registeredEmail = presetEmail == null ? "" : presetEmail;
             registeredUid = FirebaseAuth.getInstance().getCurrentUser() == null ? completeUid : FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+            // Auto-populate existing user data dari UserPrefs supaya pengguna tidak nampak form kosong
+            if (name != null && !UserPrefs.getName(this).isEmpty()) name.setText(UserPrefs.getName(this));
+            if (icInput != null && !UserPrefs.getIcNumber(this).isEmpty()) icInput.setText(UserPrefs.getIcNumber(this));
+            if (genderInput != null && !UserPrefs.getGender(this).isEmpty()) genderInput.setText(UserPrefs.getGender(this), false);
+            if (phoneInput != null && !UserPrefs.getPhoneNumber(this).isEmpty()) phoneInput.setText(UserPrefs.getPhoneNumber(this));
+            if (addressInput != null && !UserPrefs.getAddress(this).isEmpty()) addressInput.setText(UserPrefs.getAddress(this));
+            if (religionInput != null && !UserPrefs.getReligion(this).isEmpty()) religionInput.setText(UserPrefs.getReligion(this), false);
+            if (dobInput != null && !UserPrefs.getDateOfBirth(this).isEmpty()) dobInput.setText(UserPrefs.getDateOfBirth(this));
+            if (ethnicityInput != null && !UserPrefs.getEthnicity(this).isEmpty()) ethnicityInput.setText(UserPrefs.getEthnicity(this), false);
+
+            if (bloodType != null && !UserPrefs.getBloodType(this).isEmpty()) bloodType.setText(UserPrefs.getBloodType(this), false);
+            if (allergiesInput != null && !UserPrefs.getAllergies(this).isEmpty()) allergiesInput.setText(UserPrefs.getAllergies(this), false);
+            if (medicationsInput != null && !UserPrefs.getMedications(this).isEmpty()) medicationsInput.setText(UserPrefs.getMedications(this), false);
+            if (organDonorInput != null && !UserPrefs.getOrganDonor(this).isEmpty()) organDonorInput.setText(UserPrefs.getOrganDonor(this), false);
+
+            java.util.ArrayList<com.example.resqtap.contacts.EmergencyContact> contacts = UserPrefs.getEmergencyContacts(this);
+            if (!contacts.isEmpty()) {
+                com.example.resqtap.contacts.EmergencyContact firstContact = contacts.get(0);
+                if (emergencyNameInput != null) emergencyNameInput.setText(firstContact.name);
+                if (emergencyPhoneInput != null) emergencyPhoneInput.setText(firstContact.phone);
+                if (emergencyRelationInput != null) emergencyRelationInput.setText(firstContact.relationship, false);
+            }
+
             showStep2PersonalInfo();
         }
 
@@ -459,6 +483,8 @@ public class RegisterActivity extends BaseActivity {
 
                 if (emailDebounce != null) handler.removeCallbacks(emailDebounce);
                 if (value.isEmpty()) {
+                    emailAvailable = true;
+                    btnCreate.setEnabled(true);
                     emailLayout.setError(null); emailLayout.setErrorEnabled(false);
                     emailLayout.setEndIconDrawable(null);
                     emailLayout.setEndIconTintList(null);
@@ -466,6 +492,7 @@ public class RegisterActivity extends BaseActivity {
                 }
 
                 if (!isGmail(value)) {
+                    emailAvailable = false;
                     emailLayout.setErrorEnabled(true);
                     emailLayout.setError(getString(R.string.gmail_only_warning));
                     emailLayout.setEndIconDrawable(R.drawable.ic_error_24);
@@ -480,7 +507,7 @@ public class RegisterActivity extends BaseActivity {
                 emailLayout.setEndIconDrawable(null);
                 emailLayout.setEndIconTintList(null);
                 emailDebounce = () -> checkEmailAvailability(value, emailLayout, btnCreate);
-                handler.postDelayed(emailDebounce, 80);
+                handler.postDelayed(emailDebounce, 200);
             }
         });
 
@@ -520,6 +547,15 @@ public class RegisterActivity extends BaseActivity {
                 emailLayout.setError(getString(R.string.gmail_only_warning));
                 emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
                 emailLayout.setEndIconTintList(null);
+                scrollToField(emailLayout);
+                return;
+            }
+
+            if (!emailAvailable) {
+                emailLayout.setError(getString(R.string.toast_email_already_exists));
+                emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
+                emailLayout.setEndIconTintList(null);
+                showAccountExistsDialog(emailValue);
                 scrollToField(emailLayout);
                 return;
             }
@@ -1085,29 +1121,61 @@ public class RegisterActivity extends BaseActivity {
         String query = email.trim().toLowerCase(java.util.Locale.ROOT);
         if (query.isEmpty() || !isGmail(query)) return;
 
+        TextInputEditText inputEmail = findViewById(R.id.input_email);
+        String currentInput = inputEmail != null && inputEmail.getText() != null ? inputEmail.getText().toString().trim().toLowerCase(java.util.Locale.ROOT) : "";
+        if (!query.equals(currentInput)) return;
+
         String sanitized = sanitizeEmailForDb(query);
         DatabaseReference ref = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
                 .getReference("registeredEmails")
                 .child(sanitized);
 
         ref.get().addOnSuccessListener(snapshot -> {
+            TextInputEditText currentEditText = findViewById(R.id.input_email);
+            String liveInput = currentEditText != null && currentEditText.getText() != null ? currentEditText.getText().toString().trim().toLowerCase(java.util.Locale.ROOT) : "";
+            if (!query.equals(liveInput)) return;
+
             boolean dbExists = snapshot != null && snapshot.exists() && Boolean.TRUE.equals(snapshot.getValue(Boolean.class));
             if (dbExists) {
+                emailAvailable = false;
                 emailLayout.setError(getString(R.string.toast_email_already_exists));
                 emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
                 emailLayout.setEndIconTintList(null);
                 btnCreate.setEnabled(false);
             } else {
-                emailLayout.setError(null); emailLayout.setErrorEnabled(false);
-                emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
-                emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.success_green)));
-                btnCreate.setEnabled(true);
+                FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(task -> {
+                    TextInputEditText innerEditText = findViewById(R.id.input_email);
+                    String innerInput = innerEditText != null && innerEditText.getText() != null ? innerEditText.getText().toString().trim().toLowerCase(java.util.Locale.ROOT) : "";
+                    if (!query.equals(innerInput)) return;
+
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        java.util.List<String> methods = task.getResult().getSignInMethods();
+                        if (methods != null && !methods.isEmpty()) {
+                            emailAvailable = false;
+                            emailLayout.setError(getString(R.string.toast_email_already_exists));
+                            emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
+                            emailLayout.setEndIconTintList(null);
+                            btnCreate.setEnabled(false);
+                            return;
+                        }
+                    }
+                    emailAvailable = true;
+                    emailLayout.setError(null); emailLayout.setErrorEnabled(false);
+                    emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
+                    emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.success_green)));
+                    btnCreate.setEnabled(true);
+                });
             }
         }).addOnFailureListener(e -> {
             FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(task -> {
+                TextInputEditText innerEditText = findViewById(R.id.input_email);
+                String innerInput = innerEditText != null && innerEditText.getText() != null ? innerEditText.getText().toString().trim().toLowerCase(java.util.Locale.ROOT) : "";
+                if (!query.equals(innerInput)) return;
+
                 if (task.isSuccessful() && task.getResult() != null) {
                     java.util.List<String> methods = task.getResult().getSignInMethods();
                     if (methods != null && !methods.isEmpty()) {
+                        emailAvailable = false;
                         emailLayout.setError(getString(R.string.toast_email_already_exists));
                         emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
                         emailLayout.setEndIconTintList(null);
@@ -1115,9 +1183,10 @@ public class RegisterActivity extends BaseActivity {
                         return;
                     }
                 }
+                emailAvailable = true;
                 emailLayout.setError(null); emailLayout.setErrorEnabled(false);
-                emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
-                emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.success_green)));
+                emailLayout.setEndIconDrawable(null);
+                emailLayout.setEndIconTintList(null);
                 btnCreate.setEnabled(true);
             });
         });

@@ -83,6 +83,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import com.example.resqtap.friend.FirebaseFriendClient;
+import com.example.resqtap.sos.SosAudioManager;
 import com.google.android.gms.tasks.Tasks;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -150,6 +151,8 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
     private String myPhotoUrl = "";
     private String myPhotoB64 = "";
     private String creatorUid = "";
+    private FirebaseRoomClient.RoomPermissions roomPermissions = new FirebaseRoomClient.RoomPermissions();
+    private ValueEventListener roomPermissionsListener;
     private Marker myLocationMarker;
     private Marker selectedInfoMarker;
     private boolean suppressSelectedInfoWindow = false;
@@ -160,6 +163,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
     private ValueEventListener forceLeaveListener;
     private ValueEventListener roomDeletedListener;
     private SosBottomSheetController sosSheet;
+    private MaterialButton fabSos;
     private final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private volatile String activeSosUid = "";
     private volatile long activeSosUntilMs = 0L;
@@ -187,8 +191,12 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
         sosSheet = new SosBottomSheetController(this, new SosBottomSheetController.SosCallbacks() {
 
             /** Fungsi untuk onSosStarted. */
-    @Override
+            @Override
             public void onSosStarted() {
+                if (roomPermissions != null && !roomPermissions.allowSosAlarm) {
+                    runOnUiThread(() -> Toast.makeText(RoomMapActivity.this, R.string.sos_disabled_by_room_permission, Toast.LENGTH_LONG).show());
+                    return;
+                }
 
                 setActiveSosBlink(uid, 20_000L);
                 try {
@@ -285,6 +293,33 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
         TextView roomLabel = findViewById(R.id.room_code_label);
         roomLabel.setText(getString(R.string.room_code_label, roomCode));
         if (!roomCode.isEmpty()) {
+            executor.execute(() -> {
+                try {
+                    String c = FirebaseRoomClient.fetchCreatorUid(roomCode);
+                    if (c != null && !c.isEmpty()) {
+                        creatorUid = c;
+                    }
+                } catch (Exception ignored) {}
+            });
+            roomPermissionsListener = FirebaseRoomClient.listenRoomPermissions(roomCode, permissions -> {
+                if (isFinishing() || isDestroyed()) return;
+                runOnUiThread(() -> {
+                    this.roomPermissions = permissions;
+                    updateRoomFooterVisibility();
+                    updateSosFabVisibility();
+                    if (roomPermissions != null && !roomPermissions.allowSosAlarm) {
+                        activeSosUid = "";
+                        activeSosUntilMs = 0L;
+                        if (membersAdapter != null) membersAdapter.setActiveSos("", 0L);
+                        VibrateManager.stopAll(RoomMapActivity.this);
+                        SosAudioManager.stopAll();
+                    }
+                    if (membersAdapter != null) {
+                        membersAdapter.notifyDataSetChanged();
+                    }
+                });
+            });
+
             FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
                     .getReference("rooms").child(roomCode).child("name")
                     .addListenerForSingleValueEvent(new ValueEventListener() {
@@ -342,6 +377,17 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                     }
                 });
             }
+            android.view.View.OnClickListener toggleSheet = v -> {
+                if (membersSheetBehavior != null) {
+                    int state = membersSheetBehavior.getState();
+                    membersSheetBehavior.setState(state == BottomSheetBehavior.STATE_EXPANDED
+                            ? BottomSheetBehavior.STATE_COLLAPSED
+                            : BottomSheetBehavior.STATE_EXPANDED);
+                }
+            };
+            if (sheetTitle != null) sheetTitle.setOnClickListener(toggleSheet);
+            android.view.View handle = findViewById(R.id.sheet_handle);
+            if (handle != null) handle.setOnClickListener(toggleSheet);
         } catch (Exception ignored) {
         }
         if (membersRecycler != null) {
@@ -405,12 +451,17 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
             finish();
         });
 
-        MaterialButton fabSos = findViewById(R.id.fab_sos);
+        fabSos = findViewById(R.id.fab_sos);
         if (fabSos != null) {
             fabSos.setOnClickListener(v -> {
+                if (roomPermissions != null && !roomPermissions.allowSosAlarm) {
+                    Toast.makeText(RoomMapActivity.this, R.string.sos_disabled_by_room_permission, Toast.LENGTH_LONG).show();
+                    return;
+                }
                 if (sosSheet != null) sosSheet.show();
             });
         }
+        updateSosFabVisibility();
 
         android.view.View btnNavClose = findViewById(R.id.btn_nav_close);
         if (btnNavClose != null) {
@@ -868,6 +919,10 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (roomPermissionsListener != null) {
+            FirebaseRoomClient.removeRoomPermissionsListener(roomCode, roomPermissionsListener);
+            roomPermissionsListener = null;
+        }
         stopRoomSosListener();
         stopForceLeaveListener();
         stopRoomDeletedListener();
@@ -960,8 +1015,11 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                 SosPrefs.bumpBaselineAtListenerStart(RoomMapActivity.this, roomCode, baseline);
                 roomSosListener = FirebaseRoomClient.listenRoomSosSince(roomCode, deviceId, baseline, new FirebaseRoomClient.RoomSosHandler() {
                 /** Fungsi untuk onSos. */
-    @Override
+                @Override
                 public void onSos(String senderUid, String senderName, String roomId, long createdAtMs, String alertId, String status) {
+                    if (roomPermissions != null && !roomPermissions.allowSosAlarm) {
+                        return;
+                    }
                     String from = String.valueOf(senderUid == null ? "" : senderUid).trim();
                     String name = String.valueOf(senderName == null ? "" : senderName).trim();
                     String sosId = String.valueOf(alertId == null ? "" : alertId).trim();
@@ -974,7 +1032,6 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                     }
 
                     runOnUiThread(() -> setActiveSosBlink(from, 20_000L));
-
                 }
 
                 /** Fungsi untuk onSosCancelled. */
@@ -1008,6 +1065,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
 
     /** Fungsi untuk setActiveSosBlink. */
     private void setActiveSosBlink(String uid, long durationMs) {
+        if (roomPermissions != null && !roomPermissions.allowSosAlarm) return;
         String u = String.valueOf(uid == null ? "" : uid).trim();
         if (u.isEmpty()) return;
         long until = System.currentTimeMillis() + Math.max(0L, durationMs);
@@ -1132,6 +1190,10 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
 
     /** Simpan atau hantar data BellTo. */
     private void sendBellTo(String targetUid) {
+        if (roomPermissions != null && !roomPermissions.allowTriggerBell) {
+            Toast.makeText(this, R.string.bell_disabled_by_room_permission, Toast.LENGTH_SHORT).show();
+            return;
+        }
         String to = String.valueOf(targetUid == null ? "" : targetUid).trim();
         if (to.isEmpty()) return;
         String fromDev = String.valueOf(deviceId == null ? "" : deviceId).trim();
@@ -1289,7 +1351,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                 creatorUid = FirebaseRoomClient.fetchCreatorUid(roomCode);
                 runOnUiThread(() -> {
                     if (membersAdapter != null) membersAdapter.setCreatorUid(creatorUid);
-                    if (membersAdapter != null) membersAdapter.setRemoveFooterVisible(canUseRemoveMode());
+                    updateRoomFooterVisibility();
                 });
             } catch (Exception ignored) {
             }
@@ -1588,6 +1650,27 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                 && uid.trim().equals(creatorUid.trim());
     }
 
+    private boolean canAddRoomMembers() {
+        boolean isCreator = canUseRemoveMode();
+        return isCreator || (roomPermissions != null && roomPermissions.allowMemberInvite);
+    }
+
+    private boolean shouldShowRoomFooter() {
+        return canUseRemoveMode() || canAddRoomMembers();
+    }
+
+    private void updateRoomFooterVisibility() {
+        if (membersAdapter != null) {
+            membersAdapter.setRemoveFooterVisible(shouldShowRoomFooter());
+        }
+    }
+
+    private void updateSosFabVisibility() {
+        if (fabSos == null) return;
+        boolean canSos = (roomPermissions == null || roomPermissions.allowSosAlarm);
+        fabSos.setVisibility(canSos ? android.view.View.VISIBLE : android.view.View.GONE);
+    }
+
     /** Fungsi untuk setRemoveMode. */
     private void setRemoveMode(boolean enabled) {
         removeMode = enabled && canUseRemoveMode();
@@ -1871,12 +1954,25 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
     @Override
         public void onBindViewHolder(VH h, int position) {
             if (getItemViewType(position) == VT_REMOVE_FOOTER) {
+                boolean isCreator = RoomMapActivity.this.canUseRemoveMode();
+                boolean canAdd = RoomMapActivity.this.canAddRoomMembers();
+
                 if (h.removeFooter != null) {
-                    h.removeFooter.setAlpha(removeMode ? 1f : 0.85f);
-                    h.removeFooter.setOnClickListener(v -> RoomMapActivity.this.setRemoveMode(!removeMode));
+                    if (isCreator) {
+                        h.removeFooter.setVisibility(android.view.View.VISIBLE);
+                        h.removeFooter.setAlpha(removeMode ? 1f : 0.85f);
+                        h.removeFooter.setOnClickListener(v -> RoomMapActivity.this.setRemoveMode(!removeMode));
+                    } else {
+                        h.removeFooter.setVisibility(android.view.View.GONE);
+                    }
                 }
                 if (h.addMemberFooter != null) {
-                    h.addMemberFooter.setOnClickListener(v -> RoomMapActivity.this.showAddRoomMemberDialog());
+                    if (canAdd) {
+                        h.addMemberFooter.setVisibility(android.view.View.VISIBLE);
+                        h.addMemberFooter.setOnClickListener(v -> RoomMapActivity.this.showAddRoomMemberDialog());
+                    } else {
+                        h.addMemberFooter.setVisibility(android.view.View.GONE);
+                    }
                 }
                 return;
             }
@@ -1947,9 +2043,18 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                 }
             }
 
-            android.view.View.OnClickListener bellClick = v -> sendBellTo(m.uid);
-            h.bell.setOnClickListener(bellClick);
-            if (h.bellPill != null) h.bellPill.setOnClickListener(bellClick);
+            boolean canShowBell = (roomPermissions == null || roomPermissions.allowTriggerBell) && !isSelf;
+            if (h.bellPill != null) {
+                h.bellPill.setVisibility(canShowBell ? android.view.View.VISIBLE : android.view.View.GONE);
+            }
+            if (canShowBell) {
+                android.view.View.OnClickListener bellClick = v -> sendBellTo(m.uid);
+                if (h.bell != null) h.bell.setOnClickListener(bellClick);
+                if (h.bellPill != null) h.bellPill.setOnClickListener(bellClick);
+            } else {
+                if (h.bell != null) h.bell.setOnClickListener(null);
+                if (h.bellPill != null) h.bellPill.setOnClickListener(null);
+            }
 
             if (h.directionPill != null) {
                 h.directionPill.setVisibility(isSelf ? android.view.View.GONE : android.view.View.VISIBLE);
@@ -1974,11 +2079,13 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
 
             boolean showSos = false;
             try {
-                String blinkUid = String.valueOf(activeSosUid == null ? "" : activeSosUid).trim();
-                showSos = !blinkUid.isEmpty()
-                        && m.uid != null
-                        && blinkUid.equals(m.uid.trim())
-                        && System.currentTimeMillis() <= activeSosUntilMs;
+                if (roomPermissions == null || roomPermissions.allowSosAlarm) {
+                    String blinkUid = String.valueOf(activeSosUid == null ? "" : activeSosUid).trim();
+                    showSos = !blinkUid.isEmpty()
+                            && m.uid != null
+                            && blinkUid.equals(m.uid.trim())
+                            && System.currentTimeMillis() <= activeSosUntilMs;
+                }
             } catch (Exception ignored) {
             }
             if (h.sosBlink != null) {
@@ -2686,6 +2793,12 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
 
     /** Paparkan AddRoomMemberDialog. */
     private void showAddRoomMemberDialog() {
+        boolean isCreator = (uid != null && !uid.isEmpty() && uid.equals(creatorUid));
+        if (!isCreator && roomPermissions != null && !roomPermissions.allowMemberInvite) {
+            Toast.makeText(this, R.string.invite_disabled_by_room_permission, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_add_room_member, null);
         RecyclerView rvFriends = dialogView.findViewById(R.id.rv_select_friends);
         View tvNoFriends = dialogView.findViewById(R.id.tv_no_friends_prompt);

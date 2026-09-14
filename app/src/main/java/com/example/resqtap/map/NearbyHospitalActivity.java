@@ -51,7 +51,14 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.CancellationTokenSource;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.graphics.Path;
+import android.widget.ImageView;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -98,46 +105,49 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
     private final ArrayList<HospitalItem> hospitals = new ArrayList<>();
     private HospitalAdapter listAdapter;
     private TextView status;
+    private String currentCategory = "all";
 
-    private static final int SEARCH_RADIUS_METERS = 4000;
+    private static final int SEARCH_RADIUS_METERS = 10000;
 
     private static final class HospitalItem {
         final String name;
         final String address;
         final double lat;
         final double lng;
+        final String category;
         double distanceMeters;
 
-        HospitalItem(String name, String address, double lat, double lng) {
+        HospitalItem(String name, String address, double lat, double lng, String category) {
             this.name = name;
             this.address = address;
             this.lat = lat;
             this.lng = lng;
+            this.category = category == null ? "hospital" : category;
             this.distanceMeters = -1d;
         }
     }
 
     private final class HospitalAdapter extends android.widget.BaseAdapter {
         /** Ambil atau muat data Count. */
-    @Override
+        @Override
         public int getCount() {
             return hospitals.size();
         }
 
         /** Ambil atau muat data Item. */
-    @Override
+        @Override
         public Object getItem(int position) {
             return hospitals.get(position);
         }
 
         /** Ambil atau muat data ItemId. */
-    @Override
+        @Override
         public long getItemId(int position) {
             return position;
         }
 
         /** Ambil atau muat data View. */
-    @Override
+        @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             View row = convertView;
             if (row == null) {
@@ -149,11 +159,35 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
             TextView distance = row.findViewById(R.id.hospital_distance);
             TextView address = row.findViewById(R.id.hospital_address);
             MaterialButton direction = row.findViewById(R.id.btn_direction);
+            ImageView imgCategory = row.findViewById(R.id.img_category_icon);
+            View cardCategory = row.findViewById(R.id.card_category_icon);
 
             if (name != null) name.setText(item.name);
             if (distance != null) distance.setText(formatDistance(item.distanceMeters));
             if (address != null) address.setText(item.address == null ? "" : item.address);
             if (direction != null) direction.setOnClickListener(v -> openDirections(item));
+
+            if (imgCategory != null) {
+                if ("police".equalsIgnoreCase(item.category)) {
+                    imgCategory.setImageResource(R.drawable.ic_category_police);
+                    imgCategory.setImageTintList(ColorStateList.valueOf(Color.parseColor("#1E88E5")));
+                    if (cardCategory instanceof MaterialCardView) {
+                        ((MaterialCardView) cardCategory).setCardBackgroundColor(Color.parseColor("#1A1E88E5"));
+                    }
+                } else if ("fire".equalsIgnoreCase(item.category)) {
+                    imgCategory.setImageResource(R.drawable.ic_category_fire);
+                    imgCategory.setImageTintList(ColorStateList.valueOf(Color.parseColor("#FB8C00")));
+                    if (cardCategory instanceof MaterialCardView) {
+                        ((MaterialCardView) cardCategory).setCardBackgroundColor(Color.parseColor("#1AFB8C00"));
+                    }
+                } else {
+                    imgCategory.setImageResource(R.drawable.ic_category_hospital);
+                    imgCategory.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(NearbyHospitalActivity.this, R.color.brand_primary)));
+                    if (cardCategory instanceof MaterialCardView) {
+                        ((MaterialCardView) cardCategory).setCardBackgroundColor(Color.parseColor("#1AE91E63"));
+                    }
+                }
+            }
 
             return row;
         }
@@ -221,6 +255,25 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         MaterialButton btnSearch = findViewById(R.id.btn_search_hospital);
         if (btnSearch != null) {
             btnSearch.setOnClickListener(v -> {
+                pendingSearch = true;
+                fetchNearbyHospitals();
+            });
+        }
+
+        ChipGroup chipGroupFilters = findViewById(R.id.chip_group_filters);
+        if (chipGroupFilters != null) {
+            chipGroupFilters.setOnCheckedStateChangeListener((group, checkedIds) -> {
+                if (checkedIds.isEmpty()) return;
+                int checkedId = checkedIds.get(0);
+                if (checkedId == R.id.chip_hospital) {
+                    currentCategory = "hospital";
+                } else if (checkedId == R.id.chip_police) {
+                    currentCategory = "police";
+                } else if (checkedId == R.id.chip_fire) {
+                    currentCategory = "fire";
+                } else {
+                    currentCategory = "all";
+                }
                 pendingSearch = true;
                 fetchNearbyHospitals();
             });
@@ -461,7 +514,7 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         }
     }
 
-    /** Fungsi untuk doNearbySearch. */
+    /** Fungsi untuk doNearbySearch mengikut kategori kecemasan (Hospital, Polis, Bomba, Semua). */
     private void doNearbySearch(LatLng center) {
         String apiKey = getString(R.string.google_maps_key);
         if (apiKey == null || apiKey.contains("YOUR_GOOGLE_MAPS_API_KEY")) {
@@ -471,24 +524,67 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
             return;
         }
 
+        final String category = currentCategory == null ? "all" : currentCategory;
+
         executor.execute(() -> {
             try {
-                PlacesResponse first = fetchPlacesNearby(center, apiKey, "hospital", null);
-                if (first.isDenied()) {
-                    runOnUiThread(() -> showPlacesDenied(first));
-                    return;
-                }
-                if (first.isOkWithResults()) {
-                    runOnUiThread(() -> applyHospitals(first.items));
-                    return;
-                }
+                ArrayList<HospitalItem> combined = new ArrayList<>();
+                PlacesResponse lastDenied = null;
 
-                PlacesResponse fallback = fetchPlacesNearby(center, apiKey, "health", "hospital");
-                if (fallback.isDenied()) {
-                    runOnUiThread(() -> showPlacesDenied(fallback));
-                    return;
+                if ("all".equalsIgnoreCase(category)) {
+                    // Hospital search
+                    PlacesResponse hResp = fetchPlacesNearby(center, apiKey, "hospital", null, "hospital");
+                    if (hResp.isDenied()) lastDenied = hResp;
+                    else combined.addAll(hResp.items);
+
+                    // Police search - universal type=police
+                    PlacesResponse pResp = fetchPlacesNearby(center, apiKey, "police", null, "police");
+                    if (pResp.isDenied()) lastDenied = pResp;
+                    else combined.addAll(pResp.items);
+
+                    // Fire station search - universal type=fire_station
+                    PlacesResponse fResp = fetchPlacesNearby(center, apiKey, "fire_station", null, "fire");
+                    if (fResp.isDenied()) lastDenied = fResp;
+                    else combined.addAll(fResp.items);
+
+                    if (combined.isEmpty() && lastDenied != null) {
+                        PlacesResponse finalDenied = lastDenied;
+                        runOnUiThread(() -> showPlacesDenied(finalDenied));
+                        return;
+                    }
+                    runOnUiThread(() -> applyHospitals(combined));
+                } else if ("police".equalsIgnoreCase(category)) {
+                    PlacesResponse resp = fetchPlacesNearby(center, apiKey, "police", null, "police");
+                    if (resp.isDenied()) {
+                        runOnUiThread(() -> showPlacesDenied(resp));
+                        return;
+                    }
+                    runOnUiThread(() -> applyHospitals(resp.items));
+                } else if ("fire".equalsIgnoreCase(category)) {
+                    PlacesResponse resp = fetchPlacesNearby(center, apiKey, "fire_station", null, "fire");
+                    if (resp.isDenied()) {
+                        runOnUiThread(() -> showPlacesDenied(resp));
+                        return;
+                    }
+                    runOnUiThread(() -> applyHospitals(resp.items));
+                } else {
+                    // Default hospital
+                    PlacesResponse first = fetchPlacesNearby(center, apiKey, "hospital", null, "hospital");
+                    if (first.isDenied()) {
+                        runOnUiThread(() -> showPlacesDenied(first));
+                        return;
+                    }
+                    if (first.isOkWithResults()) {
+                        runOnUiThread(() -> applyHospitals(first.items));
+                        return;
+                    }
+                    PlacesResponse fallback = fetchPlacesNearby(center, apiKey, "health", null, "hospital");
+                    if (fallback.isDenied()) {
+                        runOnUiThread(() -> showPlacesDenied(fallback));
+                        return;
+                    }
+                    runOnUiThread(() -> applyHospitals(fallback.items));
                 }
-                runOnUiThread(() -> applyHospitals(fallback.items));
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     if (status != null) status.setText(R.string.nearby_hospital_error_failed_load);
@@ -518,8 +614,8 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         }
     }
 
-    /** Ambil atau muat data PlacesNearby. */
-    private PlacesResponse fetchPlacesNearby(LatLng center, String apiKey, String type, String keyword) throws Exception {
+    /** Ambil data PlacesNearby mengikut jenis dan kategori item. */
+    private PlacesResponse fetchPlacesNearby(LatLng center, String apiKey, String type, String keyword, String itemCategory) throws Exception {
         String location = center.latitude + "," + center.longitude;
         StringBuilder url = new StringBuilder("https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=");
         url.append(URLEncoder.encode(location, StandardCharsets.UTF_8.name()));
@@ -557,14 +653,15 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         if (results != null) {
             for (int i = 0; i < results.length() && i < 15; i++) {
                 JSONObject r = results.getJSONObject(i);
-                String name = r.optString("name", "Hospital");
+                String defaultName = "hospital".equals(itemCategory) ? "Hospital" : ("police".equals(itemCategory) ? "Polis" : "Bomba");
+                String name = r.optString("name", defaultName);
                 String address = r.optString("vicinity", "");
                 JSONObject geometry = r.optJSONObject("geometry");
                 JSONObject loc = geometry == null ? null : geometry.optJSONObject("location");
                 if (loc == null) continue;
                 double lat = loc.optDouble("lat", 0);
                 double lng = loc.optDouble("lng", 0);
-                found.add(new HospitalItem(name, address, lat, lng));
+                found.add(new HospitalItem(name, address, lat, lng, itemCategory));
             }
         }
         return new PlacesResponse(status, error, found);
@@ -587,16 +684,23 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         pendingSearch = false;
     }
 
-    /** Fungsi untuk applyHospitals. */
+    /** Fungsi untuk applyHospitals dan paparkan pin berwarna mengikut kategori kecemasan. */
     private void applyHospitals(ArrayList<HospitalItem> found) {
         hospitals.clear();
+        ArrayList<HospitalItem> nearbyOnly = new ArrayList<>();
         if (currentLatLng != null && found != null) {
             for (HospitalItem h : found) {
                 h.distanceMeters = distanceMeters(currentLatLng, h.lat, h.lng);
+                // Hanya terima lokasi dalam jarak munasabah (maksimum 50km) untuk elak isu Places API cari di negara lain
+                if (h.distanceMeters >= 0 && h.distanceMeters <= 50000) {
+                    nearbyOnly.add(h);
+                }
             }
-            Collections.sort(found, Comparator.comparingDouble(a -> a.distanceMeters < 0 ? Double.MAX_VALUE : a.distanceMeters));
+            Collections.sort(nearbyOnly, Comparator.comparingDouble(a -> a.distanceMeters < 0 ? Double.MAX_VALUE : a.distanceMeters));
+        } else if (found != null) {
+            nearbyOnly.addAll(found);
         }
-        if (found != null) hospitals.addAll(found);
+        hospitals.addAll(nearbyOnly);
         if (listAdapter != null) listAdapter.notifyDataSetChanged();
 
         if (hospitals.isEmpty()) {
@@ -612,7 +716,13 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
             clearHospitalMarkers();
             if (currentLatLng != null) upsertMyLocationMarker(currentLatLng);
             for (HospitalItem h : hospitals) {
-                Marker m = map.addMarker(new MarkerOptions().position(new LatLng(h.lat, h.lng)).title(h.name));
+                BitmapDescriptor iconDesc = getServiceMarkerDescriptor(h.category);
+                Marker m = map.addMarker(new MarkerOptions()
+                        .position(new LatLng(h.lat, h.lng))
+                        .title(h.name)
+                        .snippet(h.address)
+                        .icon(iconDesc)
+                        .anchor(0.5f, 0.94f));
                 if (m != null) hospitalMarkers.add(m);
             }
             if (currentLatLng != null) {
@@ -851,6 +961,107 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         canvas.drawBitmap(circle, 0, 0, imagePaint);
         circle.recycle();
         return out;
+    }
+
+    private BitmapDescriptor hospitalMarkerDesc;
+    private BitmapDescriptor policeMarkerDesc;
+    private BitmapDescriptor fireMarkerDesc;
+
+    /** Ambil atau muat BitmapDescriptor untuk pin mengikut kategori (Hospital, Polis, Bomba). */
+    private BitmapDescriptor getServiceMarkerDescriptor(String category) {
+        if ("police".equalsIgnoreCase(category)) {
+            if (policeMarkerDesc == null) {
+                policeMarkerDesc = BitmapDescriptorFactory.fromBitmap(buildServiceMarkerBitmap(this, "police"));
+            }
+            return policeMarkerDesc;
+        } else if ("fire".equalsIgnoreCase(category)) {
+            if (fireMarkerDesc == null) {
+                fireMarkerDesc = BitmapDescriptorFactory.fromBitmap(buildServiceMarkerBitmap(this, "fire"));
+            }
+            return fireMarkerDesc;
+        } else {
+            if (hospitalMarkerDesc == null) {
+                hospitalMarkerDesc = BitmapDescriptorFactory.fromBitmap(buildServiceMarkerBitmap(this, "hospital"));
+            }
+            return hospitalMarkerDesc;
+        }
+    }
+
+    /** Bina Bitmap pin penanda tersuai dengan bentuk teardrop, sempadan putih berkualiti, dan ikon kategori di tengah. */
+    private static Bitmap buildServiceMarkerBitmap(Context ctx, String category) {
+        int widthPx = dp(ctx, 38);
+        int heightPx = dp(ctx, 50);
+        int shadowPx = dp(ctx, 3);
+
+        int totalWidth = widthPx + (shadowPx * 2);
+        int totalHeight = heightPx + (shadowPx * 2);
+
+        Bitmap bitmap = Bitmap.createBitmap(totalWidth, totalHeight, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+
+        float cx = totalWidth / 2f;
+        float radius = widthPx / 2f;
+        float cy = radius + shadowPx;
+        float tipX = cx;
+        float tipY = totalHeight - shadowPx;
+
+        int bgColor;
+        int iconRes;
+        if ("police".equalsIgnoreCase(category)) {
+            bgColor = Color.parseColor("#1565C0"); // Biru Polis
+            iconRes = R.drawable.ic_category_police;
+        } else if ("fire".equalsIgnoreCase(category)) {
+            bgColor = Color.parseColor("#E65100"); // Jingga Bomba
+            iconRes = R.drawable.ic_category_fire;
+        } else {
+            bgColor = Color.parseColor("#E53935"); // Merah Hospital
+            iconRes = R.drawable.ic_category_hospital;
+        }
+
+        // 1. Bayang tanah (Ground shadow) halus di bawah mata pin
+        Paint shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        shadowPaint.setColor(0x35000000);
+        shadowPaint.setStyle(Paint.Style.FILL);
+        canvas.drawOval(new RectF(cx - dp(ctx, 8), tipY - dp(ctx, 2), cx + dp(ctx, 8), tipY + dp(ctx, 3)), shadowPaint);
+
+        // 2. Bentuk teardrop pin map
+        Path pinPath = new Path();
+        float leftX = cx - radius;
+        float rightX = cx + radius;
+        float controlY = cy + radius * 0.45f;
+
+        pinPath.moveTo(tipX, tipY);
+        pinPath.quadTo(cx - radius * 0.85f, controlY, leftX, cy);
+        pinPath.arcTo(new RectF(leftX, cy - radius, rightX, cy + radius), 180, 180, false);
+        pinPath.quadTo(cx + radius * 0.85f, controlY, tipX, tipY);
+        pinPath.close();
+
+        // 3. Warna latar belakang pin
+        Paint fillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fillPaint.setColor(bgColor);
+        fillPaint.setStyle(Paint.Style.FILL);
+        canvas.drawPath(pinPath, fillPaint);
+
+        // 4. Sempadan putih premium
+        Paint strokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        strokePaint.setColor(Color.WHITE);
+        strokePaint.setStyle(Paint.Style.STROKE);
+        strokePaint.setStrokeWidth(dp(ctx, 2));
+        strokePaint.setStrokeJoin(Paint.Join.ROUND);
+        strokePaint.setStrokeCap(Paint.Cap.ROUND);
+        canvas.drawPath(pinPath, strokePaint);
+
+        // 5. Ikon vektor putih di tengah kepala pin
+        int iconSize = dp(ctx, 20);
+        Bitmap icon = bitmapFromDrawable(ctx, iconRes, iconSize, iconSize);
+        if (icon != null) {
+            float iconLeft = cx - (icon.getWidth() / 2f);
+            float iconTop = cy - (icon.getHeight() / 2f);
+            canvas.drawBitmap(icon, iconLeft, iconTop, null);
+            icon.recycle();
+        }
+
+        return bitmap;
     }
 
 }

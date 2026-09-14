@@ -126,7 +126,11 @@
     <string name="nearby_hospital_loading">அருகிலுள்ள மருத்துவமனைகள் ஏற்றப்படுகின்றன...</string>
     <string name="nearby_hospital_no_results">அருகில் மருத்துவமனை இல்லை.</string>
     <string name="nearby_hospital_need_location">இருப்பிட அனுமதி தேவை.</string>
-    <string name="nearby_hospital_search">மருத்துவமனை தேடு</string>
+    <string name="nearby_hospital_search">அவசர சேவைகளைத் தேடு</string>
+    <string name="filter_all">அனைத்தும்</string>
+    <string name="filter_hospital">மருத்துவமனை</string>
+    <string name="filter_police">காவல் நிலையம்</string>
+    <string name="filter_fire">தீயணைப்பு நிலையம்</string>
     <string name="cancel">ரத்து</string>
     <string name="direction">வழிகள்</string>
     <string name="emergency_contacts_title">அவசர தொடர்புகள்</string>

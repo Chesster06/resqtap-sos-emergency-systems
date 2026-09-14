@@ -89,6 +89,91 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Category Filter Chips -->
+        <HorizontalScrollView
+            android:id="@+id/scroll_category_filters"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:clipToPadding="false"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:scrollbars="none"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/search_card">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chip_group_filters"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:singleSelection="true"
+                app:selectionRequired="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_all"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_all"
+                    android:textColor="@color/text_primary"
+                    app:chipIcon="@drawable/ic_category_all"
+                    app:chipIconSize="18dp"
+                    app:chipIconTint="@color/brand_primary"
+                    app:chipCornerRadius="16dp"
+                    app:chipBackgroundColor="@color/panel"
+                    app:chipStrokeColor="@color/divider"
+                    app:chipStrokeWidth="1dp"
+                    android:checked="true" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_hospital"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_hospital"
+                    android:textColor="@color/text_primary"
+                    app:chipIcon="@drawable/ic_category_hospital"
+                    app:chipIconSize="18dp"
+                    app:chipIconTint="@color/brand_primary"
+                    app:chipCornerRadius="16dp"
+                    app:chipBackgroundColor="@color/panel"
+                    app:chipStrokeColor="@color/divider"
+                    app:chipStrokeWidth="1dp" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_police"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_police"
+                    android:textColor="@color/text_primary"
+                    app:chipIcon="@drawable/ic_category_police"
+                    app:chipIconSize="18dp"
+                    app:chipIconTint="@color/brand_primary"
+                    app:chipCornerRadius="16dp"
+                    app:chipBackgroundColor="@color/panel"
+                    app:chipStrokeColor="@color/divider"
+                    app:chipStrokeWidth="1dp" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_fire"
+                    style="@style/Widget.MaterialComponents.Chip.Choice"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_fire"
+                    android:textColor="@color/text_primary"
+                    app:chipIcon="@drawable/ic_category_fire"
+                    app:chipIconSize="18dp"
+                    app:chipIconTint="@color/brand_primary"
+                    app:chipCornerRadius="16dp"
+                    app:chipBackgroundColor="@color/panel"
+                    app:chipStrokeColor="@color/divider"
+                    app:chipStrokeWidth="1dp" />
+
+            </com.google.android.material.chip.ChipGroup>
+        </HorizontalScrollView>
+
         <LinearLayout
             android:id="@+id/map_controls"
             android:layout_width="wrap_content"

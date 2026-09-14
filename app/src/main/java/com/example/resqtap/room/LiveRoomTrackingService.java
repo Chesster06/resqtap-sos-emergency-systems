@@ -83,6 +83,8 @@ public class LiveRoomTrackingService extends Service {
     private ChildEventListener roomSosListener;
     private ValueEventListener forceLeaveListener;
     private ValueEventListener roomDeletedListener;
+    private FirebaseRoomClient.RoomPermissions roomPermissions = new FirebaseRoomClient.RoomPermissions();
+    private ValueEventListener roomPermissionsListener;
     private final android.os.Handler sosHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private volatile Runnable sosStopWatchdog;
     private final android.os.Handler fgHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -195,6 +197,7 @@ public class LiveRoomTrackingService extends Service {
                 stopSelf();
                 return;
             }
+            startRoomPermissionsListener();
             startBellListener();
             startForceLeaveListener();
             startRoomDeletedListener();
@@ -221,6 +224,7 @@ public class LiveRoomTrackingService extends Service {
             }
         } catch (Exception ignored) {
         }
+        stopRoomPermissionsListener();
         stopBellListener();
         stopRoomSosListener();
         super.onDestroy();
@@ -423,6 +427,10 @@ public class LiveRoomTrackingService extends Service {
         if (bellListener != null) return;
         try {
             bellListener = FirebaseRoomClient.listenBells(roomCode, uid, deviceId, (fromUid, fromDeviceId, fromName, atMillis, id) -> {
+                if (roomPermissions != null && !roomPermissions.allowTriggerBell) {
+                    FirebaseRoomClient.ackBell(roomCode, uid, id, deviceId);
+                    return;
+                }
                 String from = String.valueOf(fromUid == null ? "" : fromUid).trim();
                 String fromDev = String.valueOf(fromDeviceId == null ? "" : fromDeviceId).trim();
                 String name = String.valueOf(fromName == null ? "" : fromName).trim();
@@ -447,6 +455,32 @@ public class LiveRoomTrackingService extends Service {
         bellListener = null;
     }
 
+    /** Fungsi untuk startRoomPermissionsListener. */
+    private void startRoomPermissionsListener() {
+        if (roomPermissionsListener != null) return;
+        try {
+            roomPermissionsListener = FirebaseRoomClient.listenRoomPermissions(roomCode, p -> {
+                if (p != null) {
+                    roomPermissions = p;
+                    if (!roomPermissions.allowSosAlarm) {
+                        try {
+                            VibrateManager.stopAll(LiveRoomTrackingService.this);
+                            SosAudioManager.stopAll();
+                        } catch (Exception ignored) {}
+                    }
+                }
+            });
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** Fungsi untuk stopRoomPermissionsListener. */
+    private void stopRoomPermissionsListener() {
+        if (roomPermissionsListener == null) return;
+        FirebaseRoomClient.removeRoomPermissionsListener(roomCode, roomPermissionsListener);
+        roomPermissionsListener = null;
+    }
+
     /** Fungsi untuk startRoomSosListener. */
     private void startRoomSosListener() {
         if (roomSosListener != null) return;
@@ -465,6 +499,9 @@ public class LiveRoomTrackingService extends Service {
                     /** Fungsi untuk onSos. */
     @Override
     public void onSos(String senderUid, String senderName, String roomId, long createdAtMs, String alertId, String status) {
+                        if (roomPermissions != null && !roomPermissions.allowSosAlarm) {
+                            return;
+                        }
                         String from = String.valueOf(senderUid == null ? "" : senderUid).trim();
                         String nameSafe = String.valueOf(senderName == null ? "" : senderName).trim();
                         String sosId = String.valueOf(alertId == null ? "" : alertId).trim();

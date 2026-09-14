@@ -126,7 +126,11 @@
     <string name="nearby_hospital_loading">正在加载附近医院...</string>
     <string name="nearby_hospital_no_results">找不到附近医院。</string>
     <string name="nearby_hospital_need_location">需要位置权限。</string>
-    <string name="nearby_hospital_search">搜索医院</string>
+    <string name="nearby_hospital_search">搜索紧急服务</string>
+    <string name="filter_all">全部</string>
+    <string name="filter_hospital">医院</string>
+    <string name="filter_police">警察局</string>
+    <string name="filter_fire">消防局</string>
     <string name="cancel">取消</string>
     <string name="direction">路线</string>
     <string name="emergency_contacts_title">紧急联系人</string>

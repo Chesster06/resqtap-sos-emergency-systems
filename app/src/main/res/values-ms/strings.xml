@@ -53,7 +53,7 @@
     <string name="home_subtitle_name">Hai %1$s, tekan SOS ketika kecemasan.</string>
     <string name="home_sos">SOS</string>
     <string name="home_quick_message">Mesej Pantas</string>
-    <string name="home_nearby_hospital">Hospital Berdekatan</string>
+    <string name="home_nearby_hospital">Perkhidmatan Kecemasan</string>
     <string name="home_emergency_contacts">Kenalan Kecemasan</string>
     <string name="home_call_police">Hubungi Polis</string>
     <string name="home_call_ambulance">Hubungi Ambulans</string>
@@ -110,17 +110,21 @@
     <string name="share_live_location_desc">Hantar lokasi semasa kepada kenalan yang dipilih.</string>
     <string name="share_live_location_button">Kongsi Lokasi</string>
 
-    <string name="nearby_hospital_title">Hospital Berdekatan</string>
-    <string name="nearby_hospital_desc">Cari hospital berdekatan menggunakan lokasi anda.</string>
+    <string name="nearby_hospital_title">Perkhidmatan Kecemasan</string>
+    <string name="nearby_hospital_desc">Cari perkhidmatan kecemasan berdekatan menggunakan lokasi anda.</string>
     <string name="nearby_hospital_open_maps">Buka Peta</string>
-    <string name="nearby_hospital_show_list">Papar Hospital Berdekatan</string>
-    <string name="nearby_hospital_loading">Memuat hospital berdekatan...</string>
-    <string name="nearby_hospital_no_results">Tiada hospital berdekatan ditemui.</string>
+    <string name="nearby_hospital_show_list">Papar Perkhidmatan Kecemasan</string>
+    <string name="nearby_hospital_loading">Memuat perkhidmatan kecemasan berdekatan...</string>
+    <string name="nearby_hospital_no_results">Tiada perkhidmatan kecemasan berdekatan ditemui.</string>
     <string name="nearby_hospital_need_location">Kebenaran lokasi diperlukan.</string>
-    <string name="nearby_hospital_search">Cari Hospital</string>
+    <string name="nearby_hospital_search">Cari Perkhidmatan Kecemasan</string>
     <string name="nearby_hospital_enable_location_title">Lokasi dimatikan</string>
-    <string name="nearby_hospital_enable_location_msg">Sila hidupkan Lokasi (GPS) untuk mencari hospital berdekatan.</string>
+    <string name="nearby_hospital_enable_location_msg">Sila hidupkan Lokasi (GPS) untuk mencari perkhidmatan kecemasan berdekatan.</string>
     <string name="nearby_hospital_enable_location_action">Buka Tetapan</string>
+    <string name="filter_all">Semua</string>
+    <string name="filter_hospital">Hospital</string>
+    <string name="filter_police">Polis</string>
+    <string name="filter_fire">Bomba</string>
     <string name="cancel">Batal</string>
     <string name="direction">Arah</string>
     <string name="map_type_title">Jenis peta</string>
@@ -410,8 +414,8 @@
     <string name="toast_name_required">Sila masukkan nama.</string>
 
     <string name="home_main_features">Ciri Utama</string>
-    <string name="feature_hospital_title">Hospital Berdekatan</string>
-    <string name="feature_hospital_desc">Cari hospital berdekatan</string>
+    <string name="feature_hospital_title">Perkhidmatan Kecemasan</string>
+    <string name="feature_hospital_desc">Hospital, balai polis &amp; bomba</string>
     <string name="feature_contacts_title">Kenalan Kecemasan</string>
     <string name="feature_contacts_desc">Urus kenalan kecemasan</string>
     <string name="feature_support_title">Bantuan &amp; Sokongan</string>
@@ -567,8 +571,24 @@
     <string name="room_status_live">Langsung</string>
 
     <string name="room_name_hint">Nama bilik</string>
-    <string name="dialog_edit_room_title">Edit Nama Bilik</string>
-    <string name="dialog_edit_room_message">ID Bilik (kod) tidak boleh ditukar. Ini hanya mengemas kini nama bilik.</string>
+    <string name="dialog_edit_room_title">Tetapan &amp; Kebenaran Bilik</string>
+    <string name="dialog_edit_room_message">ID Bilik (kod) tidak boleh ditukar. Ini mengemas kini nama bilik dan kebenaran ahli.</string>
+    <string name="room_settings_title">Tetapan &amp; Kebenaran Bilik</string>
+    <string name="room_settings_desc">Urus pilihan bilik dan kebenaran ahli untuk bilik kecemasan ini.</string>
+    <string name="room_permissions_header">KEBENARAN AHLI BILIK</string>
+    <string name="permission_allow_sos_title">Benarkan Penggera SOS</string>
+    <string name="permission_allow_sos_desc">Benarkan ahli mencetuskan dan menerima siaran/siren kecemasan SOS</string>
+    <string name="permission_allow_bell_title">Benarkan Deringan / Bell</string>
+    <string name="permission_allow_bell_desc">Benarkan ahli menghantar deringan atau amaran loceng kepada ahli lain</string>
+    <string name="permission_allow_location_title">Kongsi Lokasi Langsung</string>
+    <string name="permission_allow_location_desc">Benarkan ahli dalam bilik melihat lokasi langsung masa nyata masing-masing</string>
+    <string name="permission_allow_invites_title">Benarkan Jemputan Ahli</string>
+    <string name="permission_allow_invites_desc">Benarkan ahli menjemput rakan lain masuk ke dalam bilik ini</string>
+    <string name="room_settings_saved_success">Tetapan bilik berjaya dikemas kini</string>
+    <string name="sos_disabled_by_room_permission">Penggera SOS telah dinyahdayakan oleh pencipta bilik.</string>
+    <string name="bell_disabled_by_room_permission">Amaran deringan/loceng dinyahdayakan dalam bilik ini oleh pencipta.</string>
+    <string name="invite_disabled_by_room_permission">Jemputan ahli dihadkan kepada pencipta bilik sahaja.</string>
+    <string name="save_changes">Simpan Perubahan</string>
     <string name="toast_failed_with_reason">Gagal: %1$s</string>
 
     <string name="dialog_discard_changes_title">Buang perubahan?</string>

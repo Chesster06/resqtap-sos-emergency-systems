@@ -187,14 +187,31 @@ public class FirebaseFriendClient {
         if (tUid.isEmpty()) throw new RuntimeException("invalid_target_uid");
         if (fUid.equals(tUid)) throw new RuntimeException("cannot_add_self");
 
-        DataSnapshot friendCheck = await(db().child("userFriends").child(fUid).child(tUid).get());
-        if (friendCheck != null && friendCheck.exists()) {
-            throw new RuntimeException("already_friends");
+        try {
+            DataSnapshot friendCheck = await(db().child("userFriends").child(fUid).child(tUid).get());
+            if (friendCheck != null && friendCheck.exists()) {
+                throw new RuntimeException("already_friends");
+            }
+        } catch (Exception e) {
+            if ("already_friends".equals(e.getMessage())) throw e;
         }
 
-        DataSnapshot pendingCheck = await(db().child("friendRequests").child(tUid).child(fUid).get());
-        if (pendingCheck != null && pendingCheck.exists()) {
-            throw new RuntimeException("request_already_pending");
+        try {
+            DataSnapshot sentCheck = await(db().child("sentRequests").child(fUid).child(tUid).get());
+            if (sentCheck != null && sentCheck.exists()) {
+                throw new RuntimeException("request_already_pending");
+            }
+        } catch (Exception e) {
+            if ("request_already_pending".equals(e.getMessage())) throw e;
+        }
+
+        try {
+            DataSnapshot pendingCheck = await(db().child("friendRequests").child(tUid).child(fUid).get());
+            if (pendingCheck != null && pendingCheck.exists()) {
+                throw new RuntimeException("request_already_pending");
+            }
+        } catch (Exception e) {
+            if ("request_already_pending".equals(e.getMessage())) throw e;
         }
 
         String myB64 = "";
@@ -304,12 +321,6 @@ public class FirebaseFriendClient {
         updates.put("userNotifications/" + fUid + "/" + notifId, notif);
 
         await(db().updateChildren(updates));
-
-        if (context != null) {
-            try {
-                NotificationUtils.notifyAdmin(context, "friend_accepted", notifTitle, notifMsg);
-            } catch (Exception ignored) {}
-        }
     }
 
     /** Simpan atau kemaskini gambar profil kawan dalam userFriends (latar belakang) */

@@ -13,9 +13,13 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 
 import androidx.activity.EdgeToEdge;
 import androidx.core.graphics.Insets;
@@ -122,35 +126,10 @@ public class RoomListActivity extends BaseActivity {
                 startActivity(i);
             }
 
-            /** Fungsi untuk onEdit. */
-    @Override
+            /** Fungsi untuk onEdit (Room Settings & Permissions). */
+            @Override
             public void onEdit(FirebaseRoomClient.RoomInfo info) {
-                if (info == null) return;
-                final String code = info.code == null ? "" : info.code.trim();
-                if (code.isEmpty()) return;
-
-                com.google.android.material.textfield.TextInputLayout layout = new com.google.android.material.textfield.TextInputLayout(RoomListActivity.this);
-                layout.setHint(R.string.room_name_hint);
-                com.google.android.material.textfield.TextInputEditText input = new com.google.android.material.textfield.TextInputEditText(RoomListActivity.this);
-                String initial = info.name == null ? "" : info.name.trim();
-                if (initial.isEmpty()) initial = code;
-                input.setText(initial);
-                layout.addView(input);
-
-                new MaterialAlertDialogBuilder(RoomListActivity.this)
-                        .setTitle(R.string.dialog_edit_room_title)
-                        .setMessage(R.string.dialog_edit_room_message)
-                        .setView(layout)
-                        .setNegativeButton(android.R.string.cancel, (d, w) -> d.dismiss())
-                        .setPositiveButton(android.R.string.ok, (d, w) -> executor.execute(() -> {
-                            String n = input.getText() == null ? "" : input.getText().toString().trim();
-                            try {
-                                FirebaseRoomClient.updateRoomNameAsCreator(uid, code, n);
-                            } catch (Exception ignored) {
-                            }
-                            runOnUiThread(RoomListActivity.this::reloadRooms);
-                        }))
-                        .show();
+                showRoomSettingsDialog(info);
             }
 
             /** Fungsi untuk onDelete. */
@@ -428,6 +407,112 @@ public class RoomListActivity extends BaseActivity {
         } else {
             emptyView.setVisibility(View.GONE);
         }
+    }
+
+    /** Memaparkan dialog tetapan dan kebenaran bilik (Room Settings & Permissions). */
+    private void showRoomSettingsDialog(FirebaseRoomClient.RoomInfo info) {
+        if (info == null) return;
+        final String code = info.code == null ? "" : info.code.trim();
+        if (code.isEmpty()) return;
+
+        View v = LayoutInflater.from(this).inflate(R.layout.dialog_room_settings, null);
+        TextView tvRoomCode = v.findViewById(R.id.tv_settings_room_code);
+        EditText inputName = v.findViewById(R.id.input_settings_room_name);
+        SwitchMaterial swSos = v.findViewById(R.id.sw_allow_sos);
+        SwitchMaterial swBell = v.findViewById(R.id.sw_allow_bell);
+        SwitchMaterial swInvites = v.findViewById(R.id.sw_allow_invites);
+        TextView tvError = v.findViewById(R.id.tv_settings_error);
+        ProgressBar progressLoading = v.findViewById(R.id.progress_settings_loading);
+        View btnCancel = v.findViewById(R.id.btn_cancel_settings);
+        View btnSave = v.findViewById(R.id.btn_save_settings);
+
+        if (tvRoomCode != null) {
+            String roleLabel = "creator".equalsIgnoreCase(info.role) ? "Creator" : "Member";
+            tvRoomCode.setText(roleLabel + " • " + code);
+        }
+
+        String initialName = info.name == null ? "" : info.name.trim();
+        if (initialName.isEmpty()) initialName = code;
+        if (inputName != null) {
+            inputName.setText(initialName);
+            inputName.setSelection(initialName.length());
+        }
+
+        View rowSos = v.findViewById(R.id.row_permission_sos);
+        if (rowSos != null && swSos != null) rowSos.setOnClickListener(click -> swSos.toggle());
+        View rowBell = v.findViewById(R.id.row_permission_bell);
+        if (rowBell != null && swBell != null) rowBell.setOnClickListener(click -> swBell.toggle());
+        View rowInv = v.findViewById(R.id.row_permission_invites);
+        if (rowInv != null && swInvites != null) rowInv.setOnClickListener(click -> swInvites.toggle());
+
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setView(v)
+                .setCancelable(true)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        if (btnCancel != null) {
+            btnCancel.setOnClickListener(click -> dialog.dismiss());
+        }
+
+        if (progressLoading != null) progressLoading.setVisibility(View.VISIBLE);
+        FirebaseRoomClient.fetchRoomPermissions(code, permissions -> {
+            if (isFinishing() || isDestroyed()) return;
+            runOnUiThread(() -> {
+                if (progressLoading != null) progressLoading.setVisibility(View.GONE);
+                if (swSos != null) swSos.setChecked(permissions.allowSosAlarm);
+                if (swBell != null) swBell.setChecked(permissions.allowTriggerBell);
+                if (swInvites != null) swInvites.setChecked(permissions.allowMemberInvite);
+            });
+        });
+
+        if (btnSave != null) {
+            btnSave.setOnClickListener(click -> {
+                String n = inputName != null && inputName.getText() != null ? inputName.getText().toString().trim() : "";
+                if (n.isEmpty()) {
+                    if (tvError != null) {
+                        tvError.setText(R.string.room_name_hint);
+                        tvError.setVisibility(View.VISIBLE);
+                    }
+                    return;
+                }
+
+                boolean allowSos = swSos != null && swSos.isChecked();
+                boolean allowBell = swBell != null && swBell.isChecked();
+                boolean allowInvites = swInvites != null && swInvites.isChecked();
+                FirebaseRoomClient.RoomPermissions p = new FirebaseRoomClient.RoomPermissions(allowSos, allowBell, true, allowInvites);
+
+                if (tvError != null) tvError.setVisibility(View.GONE);
+                if (progressLoading != null) progressLoading.setVisibility(View.VISIBLE);
+                btnSave.setEnabled(false);
+
+                executor.execute(() -> {
+                    try {
+                        FirebaseRoomClient.updateRoomSettingsAndName(uid, code, n, p);
+                        runOnUiThread(() -> {
+                            dialog.dismiss();
+                            Toast.makeText(RoomListActivity.this, R.string.room_settings_saved_success, Toast.LENGTH_SHORT).show();
+                            reloadRooms();
+                        });
+                    } catch (Exception e) {
+                        final String errMsg = e.getMessage() != null ? e.getMessage() : "Update failed";
+                        runOnUiThread(() -> {
+                            if (progressLoading != null) progressLoading.setVisibility(View.GONE);
+                            btnSave.setEnabled(true);
+                            if (tvError != null) {
+                                tvError.setText(getString(R.string.toast_failed_with_reason, errMsg));
+                                tvError.setVisibility(View.VISIBLE);
+                            }
+                        });
+                    }
+                });
+            });
+        }
+
+        dialog.show();
     }
 
     /** Fungsi untuk onBackPressed. */

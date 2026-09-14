@@ -58,7 +58,7 @@
     <string name="home_subtitle_name">Hi %1$s, press SOS in an emergency.</string>
     <string name="home_sos">SOS</string>
     <string name="home_quick_message">Quick Message</string>
-    <string name="home_nearby_hospital">Nearby Hospital</string>
+    <string name="home_nearby_hospital">Nearby Emergency Services</string>
     <string name="home_emergency_contacts">Emergency Contacts</string>
     <string name="home_call_police">Call Police</string>
     <string name="home_call_ambulance">Call Ambulance</string>
@@ -129,17 +129,21 @@
     <string name="share_live_location_desc">Send your current location to selected contacts.</string>
     <string name="share_live_location_button">Share Location</string>
 
-    <string name="nearby_hospital_title">Nearby Hospital</string>
-    <string name="nearby_hospital_desc">Find nearby hospitals using your location.</string>
+    <string name="nearby_hospital_title">Nearby Emergency Services</string>
+    <string name="nearby_hospital_desc">Find nearby emergency services using your location.</string>
     <string name="nearby_hospital_open_maps">Open Map</string>
-    <string name="nearby_hospital_show_list">Show Nearby Hospitals</string>
-    <string name="nearby_hospital_loading">Loading nearby hospitals...</string>
-    <string name="nearby_hospital_no_results">No nearby hospitals found.</string>
+    <string name="nearby_hospital_show_list">Show Emergency Services</string>
+    <string name="nearby_hospital_loading">Loading emergency services...</string>
+    <string name="nearby_hospital_no_results">No emergency services found nearby.</string>
     <string name="nearby_hospital_need_location">Location permission is required.</string>
-    <string name="nearby_hospital_search">Search Hospital</string>
+    <string name="nearby_hospital_search">Search Emergency Services</string>
     <string name="nearby_hospital_enable_location_title">Location is off</string>
-    <string name="nearby_hospital_enable_location_msg">Please turn on Location (GPS) to search for nearby hospitals.</string>
+    <string name="nearby_hospital_enable_location_msg">Please turn on Location (GPS) to search for nearby emergency services.</string>
     <string name="nearby_hospital_enable_location_action">Open Settings</string>
+    <string name="filter_all">All</string>
+    <string name="filter_hospital">Hospital</string>
+    <string name="filter_police">Police</string>
+    <string name="filter_fire">Fire Station</string>
     <string name="cancel">Cancel</string>
     <string name="direction">Directions</string>
     <string name="map_type_title">Map type</string>
@@ -607,8 +611,8 @@ Terms Version: 1.0</string>
     <string name="toast_name_required">Please enter a name.</string>
 
     <string name="home_main_features">Main Features</string>
-    <string name="feature_hospital_title">Nearby Hospital</string>
-    <string name="feature_hospital_desc">Find nearby hospitals</string>
+    <string name="feature_hospital_title">Emergency Services</string>
+    <string name="feature_hospital_desc">Hospitals, police &amp; fire stations</string>
     <string name="feature_contacts_title">Emergency Contact</string>
     <string name="feature_contacts_desc">Manage emergency contacts</string>
     <string name="feature_support_title">Help &amp; Support</string>
@@ -764,8 +768,24 @@ Terms Version: 1.0</string>
     <string name="room_status_live">Live</string>
 
     <string name="room_name_hint">Room name</string>
-    <string name="dialog_edit_room_title">Edit Room Name</string>
-    <string name="dialog_edit_room_message">Room ID (code) cannot be changed. This updates the room name only.</string>
+    <string name="dialog_edit_room_title">Room Settings &amp; Permissions</string>
+    <string name="dialog_edit_room_message">Room ID (code) cannot be changed. This updates the room name and member permissions.</string>
+    <string name="room_settings_title">Room Settings &amp; Permissions</string>
+    <string name="room_settings_desc">Manage preferences and member permissions for this safety room.</string>
+    <string name="room_permissions_header">ROOM PERMISSIONS</string>
+    <string name="permission_allow_sos_title">Allow SOS Alarms</string>
+    <string name="permission_allow_sos_desc">Allow members to trigger and receive SOS emergency siren/broadcasts</string>
+    <string name="permission_allow_bell_title">Allow Ring / Bell Alerts</string>
+    <string name="permission_allow_bell_desc">Allow members to send audible ring or bell alerts to other members</string>
+    <string name="permission_allow_location_title">Live Location Sharing</string>
+    <string name="permission_allow_location_desc">Allow members in the room to view each other\'s real-time location</string>
+    <string name="permission_allow_invites_title">Allow Member Invites</string>
+    <string name="permission_allow_invites_desc">Allow members to invite other friends into this safety room</string>
+    <string name="room_settings_saved_success">Room settings updated successfully</string>
+    <string name="sos_disabled_by_room_permission">SOS Alarms are currently disabled by the room creator.</string>
+    <string name="bell_disabled_by_room_permission">Ring/Bell alerts are disabled in this room by the creator.</string>
+    <string name="invite_disabled_by_room_permission">Member invitations are restricted to the room creator.</string>
+    <string name="save_changes">Save Changes</string>
     <string name="toast_failed_with_reason">Failed: %1$s</string>
 
     <string name="dialog_discard_changes_title">Discard changes?</string>

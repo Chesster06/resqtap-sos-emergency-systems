@@ -138,7 +138,6 @@ public class FriendRequestsActivity extends BaseActivity {
         executor.execute(() -> {
             try {
                 FirebaseFriendClient.acceptFriendRequest(this, uid, name, publicId, request);
-                NotificationUtils.playNotificationSound(this);
                 runOnUiThread(() -> Toast.makeText(this, R.string.friend_request_accepted, Toast.LENGTH_SHORT).show());
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(this, getString(R.string.friend_error_prefix, e.getMessage()), Toast.LENGTH_SHORT).show());

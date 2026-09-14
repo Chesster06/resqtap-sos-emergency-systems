@@ -165,12 +165,12 @@
 
         <activity
             android:name=".room.RoomListActivity"
-            android:exported="false"
+            android:exported="true"
             android:windowSoftInputMode="adjustNothing" />
 
         <activity
             android:name=".room.RoomMapActivity"
-            android:exported="false" />
+            android:exported="true" />
 
         <activity
             android:name=".notification.NotificationsActivity"
