@@ -425,6 +425,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
         MaterialButton btnMyLocation = findViewById(R.id.btn_map_my_location);
         MaterialButton btnMapType = findViewById(R.id.btn_map_type);
         MaterialButton btnRoomInbox = findViewById(R.id.btn_room_inbox);
+        MaterialButton btnRoomChat = findViewById(R.id.btn_room_chat);
         btnZoomIn.setOnClickListener(v -> {
             if (map == null) return;
             map.animateCamera(CameraUpdateFactory.zoomIn());
@@ -439,6 +440,14 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
             btnRoomInbox.setOnClickListener(v -> {
                 try {
                     startActivity(new Intent(this, NotificationsActivity.class));
+                } catch (Exception ignored) {
+                }
+            });
+        }
+        if (btnRoomChat != null) {
+            btnRoomChat.setOnClickListener(v -> {
+                try {
+                    RoomChatActivity.start(this, roomCode, currentRoomName);
                 } catch (Exception ignored) {
                 }
             });

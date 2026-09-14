@@ -76,6 +76,42 @@ public final class NotificationHelper {
         notificationManager.notify((int) (System.currentTimeMillis() % Integer.MAX_VALUE), builder.build());
     }
 
+    /**
+     * Memaparkan notifikasi khas Emergency Check-in Ping.
+     * Apabila ditekan, akan terus membuka aplikasi dan memaparkan dialog 1-ketikan
+     * status keselamatan (Selamat vs Perlukan Bantuan) untuk pengguna / introvert.
+     */
+    public static void showEmergencyCheckinNotification(Context context, String title, String text) {
+        if (context == null) return;
+        createNotificationChannel(context);
+
+        String safeTitle = title == null || title.trim().isEmpty() ? context.getString(R.string.checkin_title) : title.trim();
+        String safeText = text == null || text.trim().isEmpty() ? context.getString(R.string.checkin_desc) : text.trim();
+
+        Intent openIntent = new Intent(context, MainActivity.class);
+        openIntent.putExtra("trigger_checkin", true);
+        openIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent openPendingIntent = PendingIntent.getActivity(
+                context,
+                401,
+                openIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0)
+        );
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID_LOCAL)
+                .setSmallIcon(R.drawable.ic_bell)
+                .setContentTitle(safeTitle)
+                .setContentText(safeText)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(safeText))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(openPendingIntent);
+
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+        if (!notificationManager.areNotificationsEnabled()) return;
+        notificationManager.notify(9911, builder.build());
+    }
+
     /** Fungsi untuk ensureSosChannel. */
     public static void ensureSosChannel(Context context) {
         if (context == null) return;

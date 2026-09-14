@@ -11,11 +11,14 @@ import com.example.resqtap.utils.UserPrefs;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -133,47 +136,9 @@ public class RoomListActivity extends BaseActivity {
             }
 
             /** Fungsi untuk onDelete. */
-    @Override
+            @Override
             public void onDelete(FirebaseRoomClient.RoomInfo info) {
-                final boolean isCreator = info != null && "creator".equalsIgnoreCase(info.role);
-                new MaterialAlertDialogBuilder(RoomListActivity.this)
-                        .setMessage(isCreator ? R.string.room_delete_confirm : R.string.room_leave_confirm)
-                        .setNegativeButton(android.R.string.cancel, (d, w) -> d.dismiss())
-                        .setPositiveButton(android.R.string.ok, (d, w) -> executor.execute(() -> {
-                            String err = "";
-                            try {
-                                if (isCreator) {
-                                    FirebaseRoomClient.deleteRoomAsCreator(uid, info.code);
-                                } else {
-                                    FirebaseRoomClient.deleteUserRoom(uid, info.code);
-                                }
-                                try {
-                                    com.example.resqtap.notification.NotificationUtils.notifyRoomDeleted(RoomListActivity.this, info.code, isCreator);
-                                } catch (Exception ignored) {
-                                }
-                            } catch (Exception e) {
-                                err = String.valueOf(e.getMessage() == null ? "" : e.getMessage()).trim();
-                            }
-                            try {
-                                String active = String.valueOf(UserPrefs.getActiveRoomCode(RoomListActivity.this) == null ? "" : UserPrefs.getActiveRoomCode(RoomListActivity.this)).trim().toUpperCase(java.util.Locale.ROOT);
-                                String code = info == null ? "" : String.valueOf(info.code == null ? "" : info.code).trim().toUpperCase(java.util.Locale.ROOT);
-                                if (!code.isEmpty() && code.equals(active)) {
-                                    UserPrefs.setActiveRoomCode(RoomListActivity.this, "");
-                                    SosServiceStarter.stop(RoomListActivity.this);
-                                }
-                            } catch (Exception ignored) {
-                            }
-                            String finalErr = err;
-                            if (!finalErr.isEmpty()) {
-                                runOnUiThread(() -> android.widget.Toast.makeText(
-                                        RoomListActivity.this,
-                                        getString(R.string.toast_failed_with_reason, finalErr),
-                                        android.widget.Toast.LENGTH_LONG
-                                ).show());
-                            }
-                            runOnUiThread(RoomListActivity.this::reloadRooms);
-                        }))
-                        .show();
+                confirmDeleteRoom(info, null);
             }
         });
         rv.setAdapter(adapter);
@@ -423,11 +388,12 @@ public class RoomListActivity extends BaseActivity {
         SwitchMaterial swInvites = v.findViewById(R.id.sw_allow_invites);
         TextView tvError = v.findViewById(R.id.tv_settings_error);
         ProgressBar progressLoading = v.findViewById(R.id.progress_settings_loading);
-        View btnCancel = v.findViewById(R.id.btn_cancel_settings);
-        View btnSave = v.findViewById(R.id.btn_save_settings);
+        ImageButton btnClose = v.findViewById(R.id.btn_close_settings);
+        Handler autoSaveHandler = new Handler(Looper.getMainLooper());
+        final boolean isCreator = "creator".equalsIgnoreCase(info.role);
 
         if (tvRoomCode != null) {
-            String roleLabel = "creator".equalsIgnoreCase(info.role) ? "Creator" : "Member";
+            String roleLabel = isCreator ? "Creator" : "Member";
             tvRoomCode.setText(roleLabel + " • " + code);
         }
 
@@ -438,13 +404,6 @@ public class RoomListActivity extends BaseActivity {
             inputName.setSelection(initialName.length());
         }
 
-        View rowSos = v.findViewById(R.id.row_permission_sos);
-        if (rowSos != null && swSos != null) rowSos.setOnClickListener(click -> swSos.toggle());
-        View rowBell = v.findViewById(R.id.row_permission_bell);
-        if (rowBell != null && swBell != null) rowBell.setOnClickListener(click -> swBell.toggle());
-        View rowInv = v.findViewById(R.id.row_permission_invites);
-        if (rowInv != null && swInvites != null) rowInv.setOnClickListener(click -> swInvites.toggle());
-
         androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setView(v)
                 .setCancelable(true)
@@ -454,8 +413,98 @@ public class RoomListActivity extends BaseActivity {
             dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
         }
 
-        if (btnCancel != null) {
-            btnCancel.setOnClickListener(click -> dialog.dismiss());
+        if (btnClose != null) {
+            btnClose.setOnClickListener(click -> dialog.dismiss());
+        }
+        dialog.setOnDismissListener(d -> autoSaveHandler.removeCallbacksAndMessages(null));
+
+        final boolean[] isInitialLoading = {true};
+
+        Runnable triggerAutoSave = () -> {
+            if (isFinishing() || isDestroyed()) return;
+            String n = inputName != null && inputName.getText() != null ? inputName.getText().toString().trim() : "";
+            if (n.isEmpty()) {
+                if (tvError != null) {
+                    tvError.setText(R.string.room_name_hint);
+                    tvError.setVisibility(View.VISIBLE);
+                }
+                return;
+            }
+
+            boolean allowSos = swSos != null && swSos.isChecked();
+            boolean allowBell = swBell != null && swBell.isChecked();
+            boolean allowInvites = swInvites != null && swInvites.isChecked();
+            FirebaseRoomClient.RoomPermissions p = new FirebaseRoomClient.RoomPermissions(allowSos, allowBell, true, allowInvites);
+
+            if (tvError != null) tvError.setVisibility(View.GONE);
+            if (progressLoading != null) progressLoading.setVisibility(View.VISIBLE);
+
+            executor.execute(() -> {
+                try {
+                    FirebaseRoomClient.updateRoomSettingsAndName(uid, code, n, p);
+                    runOnUiThread(() -> {
+                        if (isFinishing() || isDestroyed()) return;
+                        if (progressLoading != null) progressLoading.setVisibility(View.GONE);
+                        reloadRooms();
+                    });
+                } catch (Exception e) {
+                    final String errMsg = e.getMessage() != null ? e.getMessage() : "Update failed";
+                    runOnUiThread(() -> {
+                        if (isFinishing() || isDestroyed()) return;
+                        if (progressLoading != null) progressLoading.setVisibility(View.GONE);
+                        if (tvError != null) {
+                            tvError.setText(getString(R.string.toast_failed_with_reason, errMsg));
+                            tvError.setVisibility(View.VISIBLE);
+                        }
+                    });
+                }
+            });
+        };
+
+        if (!isCreator) {
+            if (inputName != null) {
+                inputName.setEnabled(false);
+                inputName.setFocusable(false);
+            }
+            if (swSos != null) swSos.setEnabled(false);
+            if (swBell != null) swBell.setEnabled(false);
+            if (swInvites != null) swInvites.setEnabled(false);
+        } else {
+            if (swSos != null) {
+                swSos.setOnCheckedChangeListener((btn, isChecked) -> {
+                    if (!isInitialLoading[0]) triggerAutoSave.run();
+                });
+            }
+            if (swBell != null) {
+                swBell.setOnCheckedChangeListener((btn, isChecked) -> {
+                    if (!isInitialLoading[0]) triggerAutoSave.run();
+                });
+            }
+            if (swInvites != null) {
+                swInvites.setOnCheckedChangeListener((btn, isChecked) -> {
+                    if (!isInitialLoading[0]) triggerAutoSave.run();
+                });
+            }
+
+            View rowSos = v.findViewById(R.id.row_permission_sos);
+            if (rowSos != null && swSos != null) rowSos.setOnClickListener(click -> swSos.toggle());
+            View rowBell = v.findViewById(R.id.row_permission_bell);
+            if (rowBell != null && swBell != null) rowBell.setOnClickListener(click -> swBell.toggle());
+            View rowInv = v.findViewById(R.id.row_permission_invites);
+            if (rowInv != null && swInvites != null) rowInv.setOnClickListener(click -> swInvites.toggle());
+
+            if (inputName != null) {
+                inputName.addTextChangedListener(new TextWatcher() {
+                    @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                    @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                    @Override
+                    public void afterTextChanged(Editable s) {
+                        if (isInitialLoading[0]) return;
+                        autoSaveHandler.removeCallbacksAndMessages(null);
+                        autoSaveHandler.postDelayed(triggerAutoSave, 600);
+                    }
+                });
+            }
         }
 
         if (progressLoading != null) progressLoading.setVisibility(View.VISIBLE);
@@ -466,53 +515,135 @@ public class RoomListActivity extends BaseActivity {
                 if (swSos != null) swSos.setChecked(permissions.allowSosAlarm);
                 if (swBell != null) swBell.setChecked(permissions.allowTriggerBell);
                 if (swInvites != null) swInvites.setChecked(permissions.allowMemberInvite);
+                isInitialLoading[0] = false;
             });
         });
 
-        if (btnSave != null) {
-            btnSave.setOnClickListener(click -> {
-                String n = inputName != null && inputName.getText() != null ? inputName.getText().toString().trim() : "";
-                if (n.isEmpty()) {
+        View btnDeleteRoom = v.findViewById(R.id.btn_delete_room_dialog);
+        if (btnDeleteRoom != null) {
+            if (btnDeleteRoom instanceof com.google.android.material.button.MaterialButton) {
+                com.google.android.material.button.MaterialButton mb = (com.google.android.material.button.MaterialButton) btnDeleteRoom;
+                mb.setText(isCreator ? R.string.room_delete_room : R.string.room_leave);
+                mb.setIconResource(isCreator ? R.drawable.ic_delete : R.drawable.ic_leave);
+            }
+            btnDeleteRoom.setOnClickListener(click -> confirmDeleteRoom(info, dialog));
+        }
+
+        dialog.show();
+    }
+
+    /**
+     * Pengesahan padam atau keluar dari bilik.
+     * Jika pembuat bilik (creator), pengguna wajib menaip nama bilik untuk mengesahkan pemadaman.
+     * Jika ahli biasa (member), paparkan dialog pengesahan keluar bilik.
+     */
+    private void confirmDeleteRoom(FirebaseRoomClient.RoomInfo info, androidx.appcompat.app.AlertDialog parentDialog) {
+        if (info == null) return;
+        final boolean isCreator = "creator".equalsIgnoreCase(info.role);
+        final String roomName = (info.name != null && !info.name.trim().isEmpty()) ? info.name.trim() : (info.code != null ? info.code.trim() : "");
+
+        if (!isCreator) {
+            new MaterialAlertDialogBuilder(RoomListActivity.this)
+                    .setMessage(R.string.room_leave_confirm)
+                    .setNegativeButton(android.R.string.cancel, (d, w) -> d.dismiss())
+                    .setPositiveButton(android.R.string.ok, (d, w) -> {
+                        if (parentDialog != null) {
+                            try { parentDialog.dismiss(); } catch (Exception ignored) {}
+                        }
+                        executeRoomDeletion(info, false);
+                    })
+                    .show();
+            return;
+        }
+
+        View confirmView = LayoutInflater.from(this).inflate(R.layout.dialog_confirm_delete_room, null);
+        TextView tvTargetName = confirmView.findViewById(R.id.tv_delete_target_name);
+        TextView tvPrompt = confirmView.findViewById(R.id.tv_delete_prompt);
+        EditText inputConfirmName = confirmView.findViewById(R.id.input_confirm_room_name);
+        TextView tvError = confirmView.findViewById(R.id.tv_confirm_delete_error);
+        MaterialButton btnCancel = confirmView.findViewById(R.id.btn_cancel_delete_confirm);
+        MaterialButton btnDelete = confirmView.findViewById(R.id.btn_action_delete_confirm);
+
+        if (tvTargetName != null) {
+            tvTargetName.setText(roomName);
+        }
+        if (tvPrompt != null) {
+            tvPrompt.setText(getString(R.string.room_delete_confirm_prompt, roomName));
+        }
+
+        androidx.appcompat.app.AlertDialog confirmDialog = new MaterialAlertDialogBuilder(this)
+                .setView(confirmView)
+                .setCancelable(true)
+                .create();
+
+        if (confirmDialog.getWindow() != null) {
+            confirmDialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        if (btnCancel != null) {
+            btnCancel.setOnClickListener(v -> confirmDialog.dismiss());
+        }
+
+        if (btnDelete != null) {
+            btnDelete.setOnClickListener(v -> {
+                String typed = inputConfirmName != null && inputConfirmName.getText() != null
+                        ? inputConfirmName.getText().toString().trim() : "";
+                if (!typed.equalsIgnoreCase(roomName)) {
                     if (tvError != null) {
-                        tvError.setText(R.string.room_name_hint);
+                        tvError.setText(R.string.room_delete_name_mismatch);
                         tvError.setVisibility(View.VISIBLE);
                     }
                     return;
                 }
 
-                boolean allowSos = swSos != null && swSos.isChecked();
-                boolean allowBell = swBell != null && swBell.isChecked();
-                boolean allowInvites = swInvites != null && swInvites.isChecked();
-                FirebaseRoomClient.RoomPermissions p = new FirebaseRoomClient.RoomPermissions(allowSos, allowBell, true, allowInvites);
-
                 if (tvError != null) tvError.setVisibility(View.GONE);
-                if (progressLoading != null) progressLoading.setVisibility(View.VISIBLE);
-                btnSave.setEnabled(false);
-
-                executor.execute(() -> {
-                    try {
-                        FirebaseRoomClient.updateRoomSettingsAndName(uid, code, n, p);
-                        runOnUiThread(() -> {
-                            dialog.dismiss();
-                            Toast.makeText(RoomListActivity.this, R.string.room_settings_saved_success, Toast.LENGTH_SHORT).show();
-                            reloadRooms();
-                        });
-                    } catch (Exception e) {
-                        final String errMsg = e.getMessage() != null ? e.getMessage() : "Update failed";
-                        runOnUiThread(() -> {
-                            if (progressLoading != null) progressLoading.setVisibility(View.GONE);
-                            btnSave.setEnabled(true);
-                            if (tvError != null) {
-                                tvError.setText(getString(R.string.toast_failed_with_reason, errMsg));
-                                tvError.setVisibility(View.VISIBLE);
-                            }
-                        });
-                    }
-                });
+                confirmDialog.dismiss();
+                if (parentDialog != null) {
+                    try { parentDialog.dismiss(); } catch (Exception ignored) {}
+                }
+                executeRoomDeletion(info, true);
             });
         }
 
-        dialog.show();
+        confirmDialog.show();
+    }
+
+    /** Pelaksanaan padam atau keluar bilik di latar belakang. */
+    private void executeRoomDeletion(FirebaseRoomClient.RoomInfo info, boolean isCreator) {
+        executor.execute(() -> {
+            String err = "";
+            try {
+                if (isCreator) {
+                    FirebaseRoomClient.deleteRoomAsCreator(uid, info.code);
+                } else {
+                    FirebaseRoomClient.deleteUserRoom(uid, info.code);
+                }
+                try {
+                    com.example.resqtap.notification.NotificationUtils.notifyRoomDeleted(RoomListActivity.this, info.code, isCreator);
+                } catch (Exception ignored) {
+                }
+            } catch (Exception e) {
+                err = String.valueOf(e.getMessage() == null ? "" : e.getMessage()).trim();
+            }
+            try {
+                String active = String.valueOf(UserPrefs.getActiveRoomCode(RoomListActivity.this) == null ? "" : UserPrefs.getActiveRoomCode(RoomListActivity.this)).trim().toUpperCase(java.util.Locale.ROOT);
+                String code = String.valueOf(info.code == null ? "" : info.code).trim().toUpperCase(java.util.Locale.ROOT);
+                if (!code.isEmpty() && code.equals(active)) {
+                    UserPrefs.setActiveRoomCode(RoomListActivity.this, "");
+                    SosServiceStarter.stop(RoomListActivity.this);
+                }
+            } catch (Exception ignored) {
+            }
+            String finalErr = err;
+            if (!finalErr.isEmpty()) {
+                runOnUiThread(() -> android.widget.Toast.makeText(
+                        RoomListActivity.this,
+                        getString(R.string.toast_failed_with_reason, finalErr),
+                        android.widget.Toast.LENGTH_LONG
+                ).show());
+            }
+            runOnUiThread(RoomListActivity.this::reloadRooms);
+        });
     }
 
     /** Fungsi untuk onBackPressed. */

@@ -115,6 +115,30 @@ public final class FirebaseRoomClient {
         }
     }
 
+    public static final class RoomMessage {
+        public String id;
+        public String senderUid;
+        public String senderName;
+        public String senderPhotoUrl;
+        public String text;
+        public long timestamp;
+
+        public RoomMessage() {}
+
+        public RoomMessage(String id, String senderUid, String senderName, String senderPhotoUrl, String text, long timestamp) {
+            this.id = id;
+            this.senderUid = senderUid == null ? "" : senderUid;
+            this.senderName = senderName == null ? "" : senderName;
+            this.senderPhotoUrl = senderPhotoUrl == null ? "" : senderPhotoUrl;
+            this.text = text == null ? "" : text;
+            this.timestamp = timestamp;
+        }
+    }
+
+    public interface RoomMessagesCallback {
+        void onMessagesUpdated(ArrayList<RoomMessage> messages);
+    }
+
     public interface RoomPermissionsCallback {
         void onLoaded(RoomPermissions permissions);
     }
@@ -2108,6 +2132,90 @@ public final class FirebaseRoomClient {
             });
         } catch (Exception e) {
             android.util.Log.e("RTDB_CLEAN", "Gagal memadam users dari RTDB", e);
+        }
+    }
+
+    public interface SendMessageCallback {
+        void onResult(boolean ok, String error);
+    }
+
+    /** Hantar mesej dalam perbualan bilik (Room Chat) */
+    public static void sendRoomMessage(String roomCode, String senderUid, String senderName, String senderPhotoUrl, String text, SendMessageCallback cb) {
+        String code = normalizeCode(roomCode);
+        String uid = String.valueOf(senderUid == null ? "" : senderUid).trim();
+        String msg = String.valueOf(text == null ? "" : text).trim();
+        if (code.length() < 4 || uid.isEmpty() || msg.isEmpty()) {
+            if (cb != null) cb.onResult(false, "invalid_params");
+            return;
+        }
+
+        try {
+            DatabaseReference chatRef = db().child("rooms").child(code).child("messages").push();
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("id", chatRef.getKey());
+            payload.put("senderUid", uid);
+            payload.put("senderName", senderName == null || senderName.trim().isEmpty() ? "User" : senderName.trim());
+            payload.put("senderPhotoUrl", senderPhotoUrl == null ? "" : senderPhotoUrl.trim());
+            payload.put("text", msg);
+            payload.put("timestamp", ServerValue.TIMESTAMP);
+
+            chatRef.setValue(payload).addOnCompleteListener(task -> {
+                if (cb != null) {
+                    cb.onResult(task.isSuccessful(), task.isSuccessful() ? "" : (task.getException() != null ? task.getException().getMessage() : "failed"));
+                }
+            });
+        } catch (Exception e) {
+            if (cb != null) cb.onResult(false, e.getMessage());
+        }
+    }
+
+    /** Dengar senarai mesej dalam Room Chat secara realtime */
+    public static ValueEventListener listenRoomMessages(String roomCode, RoomMessagesCallback callback) {
+        String code = normalizeCode(roomCode);
+        if (code.length() < 4 || callback == null) return null;
+
+        Query query = db().child("rooms").child(code).child("messages").orderByChild("timestamp").limitToLast(100);
+        ValueEventListener listener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                ArrayList<RoomMessage> list = new ArrayList<>();
+                if (snapshot.exists()) {
+                    for (DataSnapshot child : snapshot.getChildren()) {
+                        try {
+                            String id = child.getKey();
+                            String senderUid = child.child("senderUid").getValue(String.class);
+                            String senderName = child.child("senderName").getValue(String.class);
+                            String senderPhoto = child.child("senderPhotoUrl").getValue(String.class);
+                            String text = child.child("text").getValue(String.class);
+                            Long ts = child.child("timestamp").getValue(Long.class);
+                            long timestamp = ts == null ? 0L : ts;
+                            if (text != null && !text.isEmpty()) {
+                                list.add(new RoomMessage(id, senderUid, senderName, senderPhoto, text, timestamp));
+                            }
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
+                callback.onMessagesUpdated(list);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+            }
+        };
+
+        query.addValueEventListener(listener);
+        return listener;
+    }
+
+    /** Berhenti dengar mesej bilik */
+    public static void stopListeningRoomMessages(String roomCode, ValueEventListener listener) {
+        if (listener == null) return;
+        String code = normalizeCode(roomCode);
+        if (code.length() < 4) return;
+        try {
+            db().child("rooms").child(code).child("messages").removeEventListener(listener);
+        } catch (Exception ignored) {
         }
     }
 }

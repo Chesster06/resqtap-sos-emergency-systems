@@ -174,7 +174,43 @@
                 style="@style/Widget.ResQTap.MapControlButton"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:contentDescription="Inbox"
+                android:contentDescription="Notifications"
+                app:backgroundTint="@color/panel"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp"
+                app:icon="@drawable/ic_bell"
+                app:iconPadding="0dp"
+                app:iconSize="20dp"
+                app:iconTint="@color/text_primary" />
+
+            <View
+                android:id="@+id/inbox_unread_dot"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="4dp"
+                android:background="@drawable/bg_unread_dot"
+                android:elevation="4dp"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/room_chat_container"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginTop="10dp"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            app:layout_constraintEnd_toEndOf="@id/map_controls"
+            app:layout_constraintTop_toBottomOf="@id/room_inbox_container">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_room_chat"
+                style="@style/Widget.ResQTap.MapControlButton"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@string/room_chat_btn_desc"
                 app:backgroundTint="@color/panel"
                 app:strokeColor="@color/divider"
                 app:strokeWidth="1dp"
@@ -184,7 +220,7 @@
                 app:iconTint="@color/text_primary" />
 
             <View
-                android:id="@+id/inbox_unread_dot"
+                android:id="@+id/chat_unread_dot"
                 android:layout_width="10dp"
                 android:layout_height="10dp"
                 android:layout_gravity="top|end"

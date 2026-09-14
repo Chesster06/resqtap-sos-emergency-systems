@@ -42,10 +42,32 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/caller_name" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_silent_chat"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_marginBottom="32dp"
+        android:backgroundTint="#26FFFFFF"
+        android:text="@string/call_decline_with_chat"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        app:cornerRadius="24dp"
+        app:icon="@drawable/ic_email"
+        app:iconPadding="8dp"
+        app:iconSize="18dp"
+        app:iconTint="#FFFFFF"
+        app:layout_constraintBottom_toTopOf="@id/layout_call_actions"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:strokeColor="#40FFFFFF"
+        app:strokeWidth="1dp" />
+
     <LinearLayout
+        android:id="@+id/layout_call_actions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="80dp"
+        android:layout_marginBottom="60dp"
         android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"

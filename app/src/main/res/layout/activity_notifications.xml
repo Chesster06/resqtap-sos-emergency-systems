@@ -209,6 +209,24 @@
                         android:visibility="gone"
                         tools:text="Source: https://example.com"
                         tools:visibility="visible" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_detail_checkin"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="24dp"
+                        android:text="@string/checkin_title"
+                        android:textColor="@color/brand_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        app:cornerRadius="14dp"
+                        app:icon="@drawable/ic_verified_user_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="8dp"
+                        app:iconSize="18dp"
+                        app:iconTint="@color/brand_primary" />
                 </LinearLayout>
             </ScrollView>
         </com.google.android.material.card.MaterialCardView>

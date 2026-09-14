@@ -175,6 +175,22 @@
     "highlights": {
       ".read": "true",
       ".write": "auth != null"
+    },
+    "userCalls": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "calls": {
+      "$callId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "registeredEmails": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }

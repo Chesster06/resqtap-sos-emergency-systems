@@ -50,6 +50,7 @@ public class NotificationsActivity extends BaseActivity {
     private TextView detailTime;
     private TextView detailMessage;
     private TextView detailSource;
+    private MaterialButton btnDetailCheckin;
     private DatabaseReference notificationsRef;
     private ValueEventListener notificationsListener;
     private DatabaseReference userNotifRef;
@@ -91,6 +92,10 @@ public class NotificationsActivity extends BaseActivity {
         detailTime = findViewById(R.id.notification_detail_time);
         detailMessage = findViewById(R.id.notification_detail_message);
         detailSource = findViewById(R.id.notification_detail_source);
+        btnDetailCheckin = findViewById(R.id.btn_detail_checkin);
+        if (btnDetailCheckin != null) {
+            btnDetailCheckin.setOnClickListener(v -> com.example.resqtap.utils.EmergencyCheckinHelper.showCheckInDialog(this));
+        }
         notificationsList = findViewById(R.id.notifications_list);
         notificationsScroll = findViewById(R.id.notifications_scroll);
         empty = findViewById(R.id.empty);
@@ -373,6 +378,11 @@ public class NotificationsActivity extends BaseActivity {
                 detailSource.setText(getString(R.string.notification_detail_source, item.imageUrl));
                 detailSource.setVisibility(View.VISIBLE);
             }
+        }
+        if (btnDetailCheckin != null) {
+            String combined = ((item.title != null ? item.title : "") + " " + (item.message != null ? item.message : "")).toLowerCase(Locale.ROOT);
+            boolean isEmergencyRelated = combined.contains("sos") || combined.contains("kecemasan") || combined.contains("emergency") || combined.contains("check-in") || combined.contains("checkin") || combined.contains("bantuan") || combined.contains("alert");
+            btnDetailCheckin.setVisibility(isEmergencyRelated ? View.VISIBLE : View.GONE);
         }
         showingDetail = true;
         if (listContent != null) listContent.setVisibility(View.GONE);

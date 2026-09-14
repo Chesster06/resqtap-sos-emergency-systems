@@ -254,6 +254,10 @@
     <string name="room_password">அறை கடவுச்சொல்</string>
     <string name="room_edit">திருத்து</string>
     <string name="room_delete">நீக்கு</string>
+    <string name="room_delete_room">அறையை நீக்கு</string>
+    <string name="room_delete_confirm_title">அறையை நீக்கு</string>
+    <string name="room_delete_confirm_prompt">இந்த செயலை செயல்தவிர்க்க முடியாது. அறை தரவு மற்றும் உறுப்பினர்கள் நீக்கப்படுவர்.\n\nஉறுதிப்படுத்த \"%1$s\" என தட்டச்சு செய்க:</string>
+    <string name="room_delete_name_mismatch">அறை பெயர் பொருந்தவில்லை.</string>
     <string name="room_leave">வெளியேறு</string>
     <string name="room_empty">இன்னும் அறைகள் இல்லை.</string>
     <string name="room_list_subtitle">பாதுகாப்பு அறைகள் மற்றும் உறுப்பினர்களை நிர்வகி</string>

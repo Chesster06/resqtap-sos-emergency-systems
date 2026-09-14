@@ -254,6 +254,9 @@
     <string name="room_leave">Keluar</string>
     <string name="room_edit_title">Edit Bilik</string>
     <string name="room_delete_confirm">Padam bilik ini daripada senarai anda?</string>
+    <string name="room_delete_confirm_title">Padam Bilik</string>
+    <string name="room_delete_confirm_prompt">Tindakan ini tidak boleh dibatalkan. Semua data bilik dan ahli akan dipadamkan.\n\nSila taip \"%1$s\" untuk sahkan:</string>
+    <string name="room_delete_name_mismatch">Nama bilik tidak sepadan.</string>
     <string name="room_leave_confirm">Keluar dari bilik ini?</string>
     <string name="room_code_exists">ID Bilik sudah wujud.</string>
     <string name="room_already_joined">Anda sudah sertai!</string>
@@ -589,6 +592,7 @@
     <string name="bell_disabled_by_room_permission">Amaran deringan/loceng dinyahdayakan dalam bilik ini oleh pencipta.</string>
     <string name="invite_disabled_by_room_permission">Jemputan ahli dihadkan kepada pencipta bilik sahaja.</string>
     <string name="save_changes">Simpan Perubahan</string>
+    <string name="room_delete_room">Padam Bilik</string>
     <string name="toast_failed_with_reason">Gagal: %1$s</string>
 
     <string name="dialog_discard_changes_title">Buang perubahan?</string>
@@ -831,6 +835,34 @@
     <string name="notif_room_left_msg">Anda telah keluar dari bilik %1$s.</string>
     <string name="ai_feedback_thanks">Terima kasih atas maklum balas anda</string>
     <string name="ai_feedback_improve">Maklum balas diterima. Kami akan perbaiki ini</string>
+
+    <!-- Room Chat -->
+    <string name="room_chat_title">Mesej Bilik</string>
+    <string name="room_chat_subtitle">Perbualan langsung ahli bilik</string>
+    <string name="room_chat_hint">Taip mesej...</string>
+    <string name="room_chat_send">Hantar</string>
+    <string name="room_chat_empty_title">Tiada mesej lagi</string>
+    <string name="room_chat_empty_desc">Mulakan perbualan atau selaraskan bantuan bersama ahli grup anda di sini!</string>
+    <string name="room_chat_today">Hari ini</string>
+    <string name="room_chat_yesterday">Semalam</string>
+    <string name="room_chat_btn_desc">Mesej Bilik</string>
+
+    <!-- Quick Emergency Preset Chips -->
+    <string name="chip_emergency_danger">🚨 Tolong! Saya dalam bahaya</string>
+    <string name="chip_emergency_medical">🚑 Perlukan bantuan perubatan</string>
+    <string name="chip_emergency_location">📍 Sila semak lokasi semasa saya</string>
+    <string name="chip_emergency_safe">🟢 Saya sudah selamat sekarang</string>
+    <string name="chip_emergency_help_coming">🏃 Jangan risau, saya sedang menuju ke sana</string>
+
+    <!-- Introvert / Silent Emergency Response Features -->
+    <string name="call_decline_with_chat">Tak boleh bercakap? Balas teks</string>
+    <string name="call_declined_silent_reason">Pengguna tidak dapat bercakap. Dialihkan ke perbualan teks senyap.</string>
+    <string name="checkin_status_safe">Saya selamat (Tersalah tekan)</string>
+    <string name="checkin_status_danger">Saya perlukan bantuan segera!</string>
+    <string name="checkin_title">Semakan Keselamatan</string>
+    <string name="checkin_desc">Adakah anda berada dalam keadaan selamat sekarang?</string>
+    <string name="toast_checkin_safe">Status dikemaskini: Anda selamat.</string>
+    <string name="toast_checkin_danger">Amaran kecemasan diperbaharui!</string>
 
 </resources>
 

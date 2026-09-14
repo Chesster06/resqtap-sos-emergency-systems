@@ -173,6 +173,11 @@
             android:exported="true" />
 
         <activity
+            android:name=".room.RoomChatActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".notification.NotificationsActivity"
             android:exported="false" />
 

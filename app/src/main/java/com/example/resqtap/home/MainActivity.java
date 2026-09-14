@@ -415,6 +415,7 @@ public class MainActivity extends BaseActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        checkCheckinTrigger(intent);
     }
 
     // =========================================================================
@@ -487,6 +488,43 @@ public class MainActivity extends BaseActivity {
         try { BatteryOptimizationHelper.promptOnce(this); } catch (Exception ignored) {}
         ensureActiveRoomTracking();
         startSosRingPulse();
+        checkCheckinTrigger(getIntent());
+    }
+
+    private void checkCheckinTrigger(Intent intent) {
+        if (intent != null && (intent.getBooleanExtra("trigger_checkin", false) || intent.hasExtra("checkin"))) {
+            intent.removeExtra("trigger_checkin");
+            intent.removeExtra("checkin");
+            com.example.resqtap.utils.EmergencyCheckinHelper.showCheckInDialog(this, new com.example.resqtap.utils.EmergencyCheckinHelper.CheckinCallback() {
+                @Override
+                public void onSafeSelected() {
+                    cancelActiveSosIfAny();
+                }
+
+                @Override
+                public void onDangerSelected() {
+                    triggerSosFlow();
+                }
+            });
+        }
+    }
+
+    private void cancelActiveSosIfAny() {
+        String code = String.valueOf(UserPrefs.getActiveRoomCode(MainActivity.this) == null ? "" : UserPrefs.getActiveRoomCode(MainActivity.this)).trim();
+        String id = String.valueOf(myActiveSosId == null ? "" : myActiveSosId).trim();
+        if (!code.isEmpty() && !id.isEmpty()) {
+            String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
+            FirebaseRoomClient.cancelRoomSosQueued(code, id, dev);
+        } else if (!code.isEmpty()) {
+            cancelMySosWhenIdArrives = true;
+        }
+        myActiveSosId = "";
+        if (sosSheet != null) {
+            try {
+                sosSheet.cancel();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     /** Fungsi untuk triggerSosFlow. */

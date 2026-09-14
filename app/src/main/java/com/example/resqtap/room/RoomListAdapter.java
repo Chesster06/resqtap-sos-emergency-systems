@@ -69,24 +69,13 @@ public class RoomListAdapter extends RecyclerView.Adapter<RoomListAdapter.VH> {
         h.role.setText(code.isEmpty() ? roleLabel : (roleLabel + " • " + code));
 
         boolean isCreator = "creator".equalsIgnoreCase(role);
-        h.edit.setVisibility(isCreator ? View.VISIBLE : View.GONE);
-        h.delete.setVisibility(View.VISIBLE);
-        if (isCreator) {
-            h.delete.setImageResource(R.drawable.ic_delete);
-            h.delete.setContentDescription(h.itemView.getContext().getString(R.string.room_delete));
-        } else {
-            h.delete.setImageResource(R.drawable.ic_leave);
-            h.delete.setContentDescription(h.itemView.getContext().getString(R.string.room_leave));
-        }
+        h.edit.setVisibility(View.VISIBLE);
 
         h.itemView.setOnClickListener(v -> {
             if (listener != null && info != null) listener.onView(info);
         });
         h.edit.setOnClickListener(v -> {
             if (listener != null && info != null) listener.onEdit(info);
-        });
-        h.delete.setOnClickListener(v -> {
-            if (listener != null && info != null) listener.onDelete(info);
         });
     }
 
@@ -101,7 +90,6 @@ public class RoomListAdapter extends RecyclerView.Adapter<RoomListAdapter.VH> {
         final TextView role;
         final TextView memberChip;
         final ImageButton edit;
-        final ImageButton delete;
 
         VH(@NonNull View itemView) {
             super(itemView);
@@ -109,7 +97,6 @@ public class RoomListAdapter extends RecyclerView.Adapter<RoomListAdapter.VH> {
             role = itemView.findViewById(R.id.room_code);
             memberChip = itemView.findViewById(R.id.tv_member_chip);
             edit = itemView.findViewById(R.id.btn_edit);
-            delete = itemView.findViewById(R.id.btn_delete);
         }
     }
 }

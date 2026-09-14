@@ -109,9 +109,13 @@ public class IncomingCallActivity extends BaseActivity {
 
         FloatingActionButton btnAccept = findViewById(R.id.btn_accept_call);
         FloatingActionButton btnReject = findViewById(R.id.btn_reject_call);
+        com.google.android.material.button.MaterialButton btnSilentChat = findViewById(R.id.btn_silent_chat);
 
         btnAccept.setOnClickListener(v -> acceptCall());
         btnReject.setOnClickListener(v -> rejectCall());
+        if (btnSilentChat != null) {
+            btnSilentChat.setOnClickListener(v -> declineWithSilentChat());
+        }
 
         startRinging();
         listenForCallEnd();
@@ -123,6 +127,30 @@ public class IncomingCallActivity extends BaseActivity {
         } else {
             registerReceiver(cancelReceiver, filter);
         }
+    }
+
+    /** Fungsi untuk tolak panggilan dan buka perbualan teks senyap (Discreet / Introvert response) */
+    private void declineWithSilentChat() {
+        if (isHandled) return;
+        isHandled = true;
+        stopRinging();
+        CallNotificationHelper.dismissIncomingCallNotification(this);
+
+        String uid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
+        CallSignalingClient.getInstance().rejectCall(uid, callId);
+
+        // Hantar mesej automatik atau buka perbualan terus
+        try {
+            String activeRoomCode = com.example.resqtap.utils.UserPrefs.getActiveRoomCode(this);
+            if (activeRoomCode != null && !activeRoomCode.trim().isEmpty()) {
+                com.example.resqtap.room.RoomChatActivity.start(this, activeRoomCode, "");
+            } else {
+                startActivity(new Intent(this, com.example.resqtap.chat.LivechatActivity.class));
+            }
+        } catch (Exception ignored) {
+        }
+
+        finishAndRemoveTask();
     }
 
     /** Fungsi untuk acceptCall. */
