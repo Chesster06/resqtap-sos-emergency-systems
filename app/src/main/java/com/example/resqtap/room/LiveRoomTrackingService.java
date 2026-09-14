@@ -178,14 +178,30 @@ public class LiveRoomTrackingService extends Service {
             android.util.Log.d("SOS_DEBUG", "LiveRoomTrackingService started");
         } catch (Exception ignored) {
         }
-        logServiceEnvOnce("onStartCommand");
+        if (roomCode.isEmpty() || uid.isEmpty()) {
+            stopTracking();
+            stopForegroundNotificationWatchdog();
+            stopForeground(true);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
 
-        startBellListener();
-        startForceLeaveListener();
-        startRoomDeletedListener();
-        startRoomSosListener();
-        startIncomingCallListener();
-        startTracking();
+        FirebaseRoomClient.verifyUserInRoom(uid, roomCode, isInRoom -> {
+            if (!isInRoom) {
+                UserPrefs.setActiveRoomCode(LiveRoomTrackingService.this, "");
+                stopTracking();
+                stopForegroundNotificationWatchdog();
+                stopForeground(true);
+                stopSelf();
+                return;
+            }
+            startBellListener();
+            startForceLeaveListener();
+            startRoomDeletedListener();
+            startRoomSosListener();
+            startIncomingCallListener();
+            startTracking();
+        });
         return START_STICKY;
     }
 

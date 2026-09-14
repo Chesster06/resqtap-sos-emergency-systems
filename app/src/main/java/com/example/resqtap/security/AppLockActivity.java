@@ -19,10 +19,7 @@ import android.widget.Toast;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
-import com.google.mlkit.vision.face.Face;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
@@ -56,13 +53,6 @@ public class AppLockActivity extends AppCompatActivity {
     private View dotsContainer;
     private View btnBiometricKey;
 
-    private final ActivityResultLauncher<Intent> faceUnlockLauncher =
-            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (result.getResultCode() == RESULT_OK) {
-                    unlockSuccess();
-                }
-            });
-
     @Override
     protected void attachBaseContext(Context newBase) {
         Context wrapped = LocaleUtils.wrap(newBase);
@@ -95,7 +85,7 @@ public class AppLockActivity extends AppCompatActivity {
         setupKeypad();
 
         // Auto trigger biometric if enabled
-        if (UserPrefs.isFingerprintEnabled(this) || UserPrefs.isFaceIdEnabled(this)) {
+        if (UserPrefs.isFingerprintEnabled(this)) {
             new Handler(Looper.getMainLooper()).postDelayed(this::authenticateBiometric, 300);
         }
     }
@@ -108,11 +98,10 @@ public class AppLockActivity extends AppCompatActivity {
         dotsContainer = findViewById(R.id.dots_container);
         btnBiometricKey = findViewById(R.id.btn_biometric_key);
 
-        boolean biometricOn = UserPrefs.isFingerprintEnabled(this) || UserPrefs.isFaceIdEnabled(this);
+        boolean biometricOn = UserPrefs.isFingerprintEnabled(this);
         boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
         boolean hasBiometricPin = UserPrefs.isFingerprintEnabled(this) && UserPrefs.getBiometricPin(this).length() == 4;
-        boolean hasFaceIdPin = UserPrefs.isFaceIdEnabled(this) && UserPrefs.getFaceIdPin(this).length() == 4;
-        boolean hasAnyPin = hasAppLockPin || hasBiometricPin || hasFaceIdPin;
+        boolean hasAnyPin = hasAppLockPin || hasBiometricPin;
 
         TextView tvTitle = findViewById(R.id.tv_title);
         TextView tvDesc = findViewById(R.id.tv_desc);
@@ -121,8 +110,7 @@ public class AppLockActivity extends AppCompatActivity {
             if (tvDesc != null) tvDesc.setText(R.string.app_lock_screen_desc);
         } else if (biometricOn) {
             if (tvTitle != null) {
-                tvTitle.setText(UserPrefs.isFaceIdEnabled(this) && !UserPrefs.isFingerprintEnabled(this)
-                        ? R.string.security_face_id_title : R.string.security_biometric_title);
+                tvTitle.setText(R.string.security_biometric_title);
             }
             if (tvDesc != null) tvDesc.setText(R.string.app_lock_use_biometric);
         }
@@ -131,20 +119,14 @@ public class AppLockActivity extends AppCompatActivity {
         int authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK;
 
         boolean isSupported = bm.canAuthenticate(authenticators) == BiometricManager.BIOMETRIC_SUCCESS;
-
-        boolean faceIdOn = UserPrefs.isFaceIdEnabled(this);
-        boolean showBiometricKey = (biometricOn && isSupported) || faceIdOn;
+        boolean showBiometricKey = biometricOn && isSupported;
 
         if (btnBiometricKey != null) {
             btnBiometricKey.setVisibility(showBiometricKey ? View.VISIBLE : View.INVISIBLE);
             if (showBiometricKey) {
                 ImageView iconBiometric = findViewById(R.id.icon_biometric);
                 if (iconBiometric != null) {
-                    if (faceIdOn && !UserPrefs.isFingerprintEnabled(this)) {
-                        iconBiometric.setImageResource(R.drawable.ic_face_id);
-                    } else {
-                        iconBiometric.setImageResource(R.drawable.ic_fingerprint_24);
-                    }
+                    iconBiometric.setImageResource(R.drawable.ic_fingerprint_24);
                 }
                 btnBiometricKey.setOnClickListener(v -> authenticateBiometric());
             }
@@ -169,8 +151,7 @@ public class AppLockActivity extends AppCompatActivity {
 
         boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
         boolean hasBiometricPin = UserPrefs.isFingerprintEnabled(this) && UserPrefs.getBiometricPin(this).length() == 4;
-        boolean hasFaceIdPin = UserPrefs.isFaceIdEnabled(this) && UserPrefs.getFaceIdPin(this).length() == 4;
-        boolean hasAnyPin = hasAppLockPin || hasBiometricPin || hasFaceIdPin;
+        boolean hasAnyPin = hasAppLockPin || hasBiometricPin;
 
         for (int id : keyIds) {
             TextView key = findViewById(id);
@@ -231,9 +212,8 @@ public class AppLockActivity extends AppCompatActivity {
         String input = enteredPin.toString();
         boolean appLockValid = UserPrefs.isAppLockEnabled(this) && input.equals(UserPrefs.getAppLockPin(this));
         boolean biometricPinValid = UserPrefs.isFingerprintEnabled(this) && input.equals(UserPrefs.getBiometricPin(this));
-        boolean faceIdPinValid = UserPrefs.isFaceIdEnabled(this) && input.equals(UserPrefs.getFaceIdPin(this));
 
-        if (appLockValid || biometricPinValid || faceIdPinValid) {
+        if (appLockValid || biometricPinValid) {
             unlockSuccess();
         } else {
             shakeDots();
@@ -269,11 +249,6 @@ public class AppLockActivity extends AppCompatActivity {
             int authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG | BiometricManager.Authenticators.BIOMETRIC_WEAK;
             int canAuth = biometricManager.canAuthenticate(authenticators);
 
-            if (UserPrefs.isFaceIdEnabled(this) && (!UserPrefs.isFingerprintEnabled(this) || canAuth != BiometricManager.BIOMETRIC_SUCCESS)) {
-                launchFaceIdUnlock();
-                return;
-            }
-
             if (canAuth != BiometricManager.BIOMETRIC_SUCCESS) {
                 return;
             }
@@ -308,13 +283,6 @@ public class AppLockActivity extends AppCompatActivity {
             prompt.authenticate(builder.build());
         } catch (Exception ignored) {
         }
-    }
-
-    private void launchFaceIdUnlock() {
-        if (isFinishing() || isDestroyed()) return;
-        Intent intent = new Intent(this, FaceIdVerificationActivity.class);
-        intent.putExtra(FaceIdVerificationActivity.EXTRA_MODE, FaceIdVerificationActivity.MODE_UNLOCK);
-        faceUnlockLauncher.launch(intent);
     }
 
     private void showForgotPinDialog() {

@@ -99,7 +99,13 @@ public final class AccountDeletionUtils {
             if (uid.isEmpty()) uid = UserPrefs.getUid(activity);
             final String finalUid = uid;
 
-            // 2. RTDB wipe dahulu (auth token masih valid, belum signOut)
+            // 2. Hentikan tracking bilik segera supaya service tidak hantar presence/lokasi lagi
+            try {
+                com.example.resqtap.sos.SosServiceStarter.stop(activity);
+            } catch (Exception ignored) {}
+            UserPrefs.setActiveRoomCode(activity, "");
+
+            // 3. RTDB wipe dahulu (auth token masih valid, belum signOut)
             if (finalUid != null && !finalUid.isEmpty()) {
                 try {
                     FirebaseRoomClient.deleteAccountData(finalUid);
@@ -109,7 +115,7 @@ public final class AccountDeletionUtils {
                 }
             }
 
-            // 3. Auth delete (token masih sah selepas re-auth)
+            // 4. Auth delete (token masih sah selepas re-auth)
             try {
                 Tasks.await(user.delete(), 15, TimeUnit.SECONDS);
                 Log.i(TAG, "Firebase Auth account deleted");
@@ -117,7 +123,7 @@ public final class AccountDeletionUtils {
                 Log.e(TAG, "Auth user.delete() failed", e);
             }
 
-            // 4. Baru stop services + clear local + redirect ke login
+            // 5. Baru stop services + clear local + redirect ke login
             try {
                 com.example.resqtap.sos.SosServiceStarter.stop(activity);
             } catch (Exception ignored) {}

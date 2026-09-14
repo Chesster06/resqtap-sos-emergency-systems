@@ -88,7 +88,7 @@
             android:ellipsize="end"
             android:fontFamily="sans-serif"
             android:maxLines="2"
-            android:textColor="#9CA3AF"
+            android:textColor="@color/text_secondary"
             android:textSize="12sp"
             tools:text="Pediatrician" />
 
@@ -141,7 +141,7 @@
                 android:textColor="@color/white"
                 android:textSize="13sp"
                 android:textStyle="bold"
-                app:backgroundTint="#18181B"
+                app:backgroundTint="@color/brand_primary"
                 app:cornerRadius="999dp"
                 app:icon="@drawable/ic_phone"
                 app:iconGravity="textStart"

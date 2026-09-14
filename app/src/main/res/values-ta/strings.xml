@@ -9,9 +9,9 @@
     <string name="settings_dark_mode_desc">குறைந்த வெளிச்சத்தில் இருண்ட இடைமுகத்தைப் பயன்படுத்தவும்.</string>
     <string name="settings_light_mode">ஒளி முறை</string>
     <string name="language">மொழி</string>
-    <string name="lang_ms">மலாய்</string>
-    <string name="lang_en">ஆங்கிலம்</string>
-    <string name="lang_zh">சீனம்</string>
+    <string name="lang_ms">Bahasa Melayu</string>
+    <string name="lang_en">English</string>
+    <string name="lang_zh">Chinese (Mandarin)</string>
     <string name="lang_ta">தமிழ்</string>
     <string name="language_title">மொழி</string>
     <string name="language_choose">மொழியைத் தேர்ந்தெடுக்கவும்</string>
@@ -164,8 +164,6 @@
     <string name="security_change_pin_desc">உங்கள் 4 இலக்க பாதுகாப்பு PIN-ஐ புதுப்பிக்கவும்.</string>
     <string name="security_change_biometric_pin_title">பயோமெட்ரிக் PIN மாற்றவும்</string>
     <string name="security_change_biometric_pin_desc">பயோமெட்ரிக் பூட்டிற்கான 4 இலக்க காப்புப் பிரதி PIN-ஐப் புதுப்பிக்கவும்.</string>
-    <string name="security_change_face_id_pin_title">Face ID பின்னை மாற்றவும்</string>
-    <string name="security_change_face_id_pin_desc">Face ID க்கான உங்கள் 4-இலக்க தனிப்பட்ட காப்புப் பிரதி பின்னைப் புதுப்பிக்கவும்.</string>
     <string name="security_section_account">கணக்கு &amp; அணுகல்</string>
     <string name="security_change_password_title">கடவுச்சொல்லை மாற்றவும்</string>
     <string name="security_change_password_desc">உங்கள் கணக்கு கடவுச்சொல்லை புதுப்பிக்கவும்.</string>
@@ -462,37 +460,8 @@
     <string name="notif_room_left_title">அறையிலிருந்து வெளியேறினார்</string>
     <string name="notif_room_deleted_msg">நீங்கள் %1$s அறையை நீக்கிவிட்டீர்கள்.</string>
     <string name="notif_room_left_msg">நீங்கள் %1$s அறையிலிருந்து வெளியேறிவிட்டீர்கள்.</string>
+    <string name="ai_feedback_thanks">உங்கள் கருத்துக்கு நன்றி</string>
+    <string name="ai_feedback_improve">கருத்து பதிவு செய்யப்பட்டது. இதை நாங்கள் மேம்படுத்துவோம்</string>
 
-    <!-- Face ID & Security -->
-    <string name="security_face_id_title">Face ID</string>
-    <string name="security_face_id_desc">திறக்க முக அங்கீகாரத்தைப் பயன்படுத்தவும்.</string>
-    <string name="security_face_id_disabled">Face ID பூட்டு முடக்கப்பட்டது.</string>
-    <string name="security_face_id_enabled_success">Face ID பூட்டு வெற்றிகரமாக இயக்கப்பட்டது!</string>
-    <string name="face_id_register_title">Face ID பதிவு செய்</string>
-    <string name="face_id_register_subtitle">Face ID பதிவு செய்ய உங்கள் முகத்தை சட்டகத்தில் வைக்கவும்</string>
-    <string name="face_id_sheet_scan_face">முகத்தை ஸ்கேன் செய்ய சட்டகத்தைத் தட்டவும்</string>
-    <string name="face_id_sheet_scanning">முக அம்சங்களை ஸ்கேன் செய்கிறது...</string>
-    <string name="face_id_confirm_sheet_success">Face ID சரிபார்க்கப்பட்டது!</string>
-    <string name="face_id_prompt_verified_need_pin">முகம் சரிபார்க்கப்பட்டது! உங்கள் தனிப்பட்ட 4-இலக்க Face ID பின்னை அமைக்கவும்.</string>
-    <string name="face_id_not_detected">முகம் கண்டறியப்படவில்லை. தயவுசெய்து உங்கள் முகத்தை சட்டகத்தில் வைக்கவும்.</string>
-    <string name="face_id_timeout">Face ID நேரம் முடிந்தது. மீண்டும் முயற்சிக்கவும் அல்லது PIN ஐப் பயன்படுத்தவும்.</string>
-    <string name="face_id_camera_error">கேமராவை அணுக முடியவில்லை. அனுமதியைச் சரிபார்க்கவும் அல்லது PIN ஐப் பயன்படுத்தவும்.</string>
-    <string name="face_id_use_pin">PIN ஐப் பயன்படுத்தவும்</string>
-    <string name="face_id_retry">மீண்டும் முயற்சிக்கவும்</string>
-    <string name="face_id_waiting_camera">கேமரா தொடங்குகிறது...</string>
-
-    <!-- 3-Phase Face ID Verification UI -->
-    <string name="face_verify_intro_title">Face ID சரிபார்ப்பு</string>
-    <string name="face_verify_intro_subtitle">நீங்கள் உண்மையான நபர் என்பதை சரிபார்க்க இது உதவுகிறது</string>
-    <string name="face_verify_intro_point1">முதலில், உங்கள் முகத்தை சட்டகத்தில் வைக்கவும்</string>
-    <string name="face_verify_intro_point2">உங்கள் தலையை மெதுவாக இருபுறமும் திருப்பவும்</string>
-    <string name="face_verify_intro_disclaimer">சிறந்த முடிவுகளுக்கு வெளிச்சம் உள்ள இடத்தில் இருப்பதை உறுதிசெய்யவும்.</string>
-    <string name="face_verify_btn_ready">நான் தயார்</string>
-    <string name="face_verify_instruction_position">உங்கள் முகத்தை சட்டகத்தில் வைக்கவும்</string>
-    <string name="face_verify_instruction_steady">முகம் கண்டறியப்பட்டது. நிலையாக இருக்கவும்...</string>
-    <string name="face_verify_instruction_turn_head">உங்கள் தலையை மெதுவாக இருபுறமும் திருப்பவும்</string>
-    <string name="face_verify_instruction_turn_left">உங்கள் தலையை மெதுவாக இடதுபுறம் திருப்பவும்</string>
-    <string name="face_verify_instruction_turn_right">உங்கள் தலையை மெதுவாக வலதுபுறம் திருப்பவும்</string>
-    <string name="face_verify_complete_title">சரிபார்ப்பு முடிந்தது</string>
 </resources>
 

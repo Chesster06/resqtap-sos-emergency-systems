@@ -23,6 +23,9 @@
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
         <item name="android:windowAnimationStyle">@style/Animation.ResQTap.Slide</item>
+        <item name="textInputStyle">@style/Widget.ResQTap.TextInputLayout</item>
+        <item name="editTextStyle">@style/Widget.ResQTap.TextInputEditText</item>
+        <item name="android:windowBackground">@color/bg</item>
     </style>
 
     <style name="Animation.ResQTap.BottomSheet" parent="@android:style/Animation.Activity">

@@ -442,22 +442,26 @@ public final class FirebaseRoomClient {
             if (code.length() < 4) return;
             if (u.isEmpty()) return;
 
-            db().child("rooms").child(code).child("instanceId").get().addOnSuccessListener(snap -> {
-                String instanceId = snap == null ? "" : String.valueOf(snap.getValue() == null ? "" : snap.getValue()).trim();
-                if (instanceId.isEmpty()) return;
+            db().child("userRooms").child(u).child(code).get().addOnSuccessListener(userRoomSnap -> {
+                if (userRoomSnap == null || !userRoomSnap.exists()) return;
+                db().child("rooms").child(code).child("instanceId").get().addOnSuccessListener(snap -> {
+                    String instanceId = snap == null ? "" : String.valueOf(snap.getValue() == null ? "" : snap.getValue()).trim();
+                    if (instanceId.isEmpty()) return;
 
-                Map<String, Object> member = new HashMap<>();
-                member.put("uid", u);
-                member.put("name", name == null ? "" : name.trim());
-                member.put("instanceId", instanceId);
-                member.put("photoUrl", photoUrl == null ? "" : photoUrl.trim());
-                member.put("photoB64", photoB64 == null ? "" : photoB64.trim());
-                member.put("lat", lat);
-                member.put("lng", lng);
-                if (batteryPct >= 0 && batteryPct <= 100) member.put("batteryPct", batteryPct);
-                member.put("updatedAt", ServerValue.TIMESTAMP);
+                    Map<String, Object> member = new HashMap<>();
+                    member.put("uid", u);
+                    member.put("name", name == null ? "" : name.trim());
+                    member.put("instanceId", instanceId);
+                    member.put("photoUrl", photoUrl == null ? "" : photoUrl.trim());
+                    member.put("photoB64", photoB64 == null ? "" : photoB64.trim());
+                    member.put("lat", lat);
+                    member.put("lng", lng);
+                    if (batteryPct >= 0 && batteryPct <= 100) member.put("batteryPct", batteryPct);
+                    member.put("updatedAt", ServerValue.TIMESTAMP);
 
-                db().child("rooms").child(code).child("members").child(u).updateChildren(member);
+                    db().child("rooms").child(code).child("members").child(u).updateChildren(member);
+                }).addOnFailureListener(e -> {
+                });
             }).addOnFailureListener(e -> {
             });
         } catch (Exception ignored) {
@@ -510,18 +514,22 @@ public final class FirebaseRoomClient {
             if (code.length() < 4) return;
             if (u.isEmpty()) return;
 
-            db().child("rooms").child(code).child("instanceId").get().addOnSuccessListener(snap -> {
-                String instanceId = snap == null ? "" : String.valueOf(snap.getValue() == null ? "" : snap.getValue()).trim();
-                if (instanceId.isEmpty()) return;
-                Map<String, Object> member = new HashMap<>();
-                member.put("uid", u);
-                member.put("name", name == null ? "" : name.trim());
-                member.put("instanceId", instanceId);
-                member.put("photoUrl", photoUrl == null ? "" : photoUrl.trim());
-                member.put("photoB64", photoB64 == null ? "" : photoB64.trim());
-                if (batteryPct >= 0 && batteryPct <= 100) member.put("batteryPct", batteryPct);
-                member.put("updatedAt", ServerValue.TIMESTAMP);
-                db().child("rooms").child(code).child("members").child(u).updateChildren(member);
+            db().child("userRooms").child(u).child(code).get().addOnSuccessListener(userRoomSnap -> {
+                if (userRoomSnap == null || !userRoomSnap.exists()) return;
+                db().child("rooms").child(code).child("instanceId").get().addOnSuccessListener(snap -> {
+                    String instanceId = snap == null ? "" : String.valueOf(snap.getValue() == null ? "" : snap.getValue()).trim();
+                    if (instanceId.isEmpty()) return;
+                    Map<String, Object> member = new HashMap<>();
+                    member.put("uid", u);
+                    member.put("name", name == null ? "" : name.trim());
+                    member.put("instanceId", instanceId);
+                    member.put("photoUrl", photoUrl == null ? "" : photoUrl.trim());
+                    member.put("photoB64", photoB64 == null ? "" : photoB64.trim());
+                    if (batteryPct >= 0 && batteryPct <= 100) member.put("batteryPct", batteryPct);
+                    member.put("updatedAt", ServerValue.TIMESTAMP);
+                    db().child("rooms").child(code).child("members").child(u).updateChildren(member);
+                }).addOnFailureListener(e -> {
+                });
             }).addOnFailureListener(e -> {
             });
         } catch (Exception ignored) {
@@ -1476,6 +1484,30 @@ public final class FirebaseRoomClient {
         }
     }
 
+    public interface BooleanCallback {
+        void onResult(boolean result);
+    }
+
+    /** Sahkan sama ada pengguna benar-benar berdaftar dalam bilik ini di userRooms/{uid}/{roomCode}. */
+    public static void verifyUserInRoom(String uid, String roomCode, BooleanCallback cb) {
+        String u = String.valueOf(uid == null ? "" : uid).trim();
+        String code = normalizeCode(roomCode);
+        if (u.isEmpty() || code.length() < 4) {
+            if (cb != null) cb.onResult(false);
+            return;
+        }
+        try {
+            db().child("userRooms").child(u).child(code).get().addOnSuccessListener(snap -> {
+                boolean exists = snap != null && snap.exists();
+                if (cb != null) cb.onResult(exists);
+            }).addOnFailureListener(e -> {
+                if (cb != null) cb.onResult(false);
+            });
+        } catch (Exception e) {
+            if (cb != null) cb.onResult(false);
+        }
+    }
+
     /** Simpan atau hantar data RoomNameAsCreator. */
     public static void updateRoomNameAsCreator(String uid, String roomCode, String name) throws Exception {
         String u = String.valueOf(uid == null ? "" : uid).trim();
@@ -1793,36 +1825,17 @@ public final class FirebaseRoomClient {
             }
         } catch (Exception ignored) {}
 
-        // 1. Padam data milik sendiri (user-level write rules: auth.uid === $uid)
-        String[] ownedPaths = {
-            "users/" + u,
-            "admins/" + u,
-            "supportChats/" + u,
-            "aiChats/" + u,
-            "userNotifications/" + u,
-            "notifications/" + u,
-            "sos_history/" + u,
-            "sos_alerts/" + u,
-            "sos_status/" + u,
-            "live_locations/" + u,
-            "userFriends/" + u,
-            "friendRequests/" + u,
-            "sentRequests/" + u,
-            "userRooms/" + u
-        };
-        for (String path : ownedPaths) {
-            try { await(db().child(path).removeValue()); } catch (Exception ignored) {}
-        }
+        try {
+            android.content.Context ctx = com.example.resqtap.app.ResQTapApp.getInstance();
+            if (ctx != null) {
+                String activeCode = String.valueOf(com.example.resqtap.utils.UserPrefs.getActiveRoomCode(ctx) == null ? "" : com.example.resqtap.utils.UserPrefs.getActiveRoomCode(ctx)).trim().toUpperCase(java.util.Locale.ROOT);
+                if (!activeCode.isEmpty() && !roomRoles.containsKey(activeCode)) {
+                    roomRoles.put(activeCode, "joiner");
+                }
+            }
+        } catch (Exception ignored) {}
 
-        // 2. Padam registeredEmails & publicIds (auth != null write rules)
-        if (sanitizedEmail != null) {
-            try { await(db().child("registeredEmails").child(sanitizedEmail).removeValue()); } catch (Exception ignored) {}
-        }
-        if (publicIdKey != null) {
-            try { await(db().child("publicIds").child(publicIdKey).removeValue()); } catch (Exception ignored) {}
-        }
-
-        // 3. Bilik-bilik: creator padam room, member buang diri
+        // 1. Bilik-bilik: creator padam room, member buang diri SEBELUM userRooms dipadam
         for (Map.Entry<String, String> entry : roomRoles.entrySet()) {
             String code = entry.getKey();
             String role = entry.getValue();
@@ -1852,11 +1865,40 @@ public final class FirebaseRoomClient {
             } catch (Exception ignored) {}
         }
 
-        // 4. Buang diri dari senarai kawan orang lain (auth != null write rules)
+        // 2. Buang diri dari senarai kawan orang lain
         for (String fUid : friendUids) {
             try { await(db().child("userFriends").child(fUid).child(u).removeValue()); } catch (Exception ignored) {}
             try { await(db().child("friendRequests").child(fUid).child(u).removeValue()); } catch (Exception ignored) {}
             try { await(db().child("sentRequests").child(fUid).child(u).removeValue()); } catch (Exception ignored) {}
+        }
+
+        // 3. Padam registeredEmails & publicIds (auth != null write rules)
+        if (sanitizedEmail != null) {
+            try { await(db().child("registeredEmails").child(sanitizedEmail).removeValue()); } catch (Exception ignored) {}
+        }
+        if (publicIdKey != null) {
+            try { await(db().child("publicIds").child(publicIdKey).removeValue()); } catch (Exception ignored) {}
+        }
+
+        // 4. Padam data milik sendiri (user-level write rules: auth.uid === $uid)
+        String[] ownedPaths = {
+            "users/" + u,
+            "admins/" + u,
+            "supportChats/" + u,
+            "aiChats/" + u,
+            "userNotifications/" + u,
+            "notifications/" + u,
+            "sos_history/" + u,
+            "sos_alerts/" + u,
+            "sos_status/" + u,
+            "live_locations/" + u,
+            "userFriends/" + u,
+            "friendRequests/" + u,
+            "sentRequests/" + u,
+            "userRooms/" + u
+        };
+        for (String path : ownedPaths) {
+            try { await(db().child(path).removeValue()); } catch (Exception ignored) {}
         }
     }
 

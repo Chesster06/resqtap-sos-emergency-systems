@@ -9,10 +9,10 @@
     <string name="settings_dark_mode_desc">在光线较暗的环境中使用深色界面。</string>
     <string name="settings_light_mode">浅色模式</string>
     <string name="language">语言</string>
-    <string name="lang_ms">马来语</string>
-    <string name="lang_en">英语</string>
-    <string name="lang_zh">中文</string>
-    <string name="lang_ta">泰米尔语</string>
+    <string name="lang_ms">Bahasa Melayu</string>
+    <string name="lang_en">English</string>
+    <string name="lang_zh">Chinese (Mandarin)</string>
+    <string name="lang_ta">Tamil</string>
     <string name="language_title">语言</string>
     <string name="language_choose">选择语言</string>
     <string name="profile_language">语言</string>
@@ -164,8 +164,6 @@
     <string name="security_change_pin_desc">更新您的4位数安全通行码。</string>
     <string name="security_change_biometric_pin_title">修改生物识别PIN码</string>
     <string name="security_change_biometric_pin_desc">更新生物识别解锁的4位数备用PIN码。</string>
-    <string name="security_change_face_id_pin_title">修改人脸识别PIN码</string>
-    <string name="security_change_face_id_pin_desc">更新用于人脸识别的4位数个人备用PIN码。</string>
     <string name="security_section_account">账户与访问</string>
     <string name="security_change_password_title">修改密码</string>
     <string name="security_change_password_desc">更新您的账户登录密码。</string>
@@ -463,37 +461,8 @@
     <string name="notif_room_left_title">离开房间</string>
     <string name="notif_room_deleted_msg">您已删除房间 %1$s。</string>
     <string name="notif_room_left_msg">您已离开房间 %1$s。</string>
+    <string name="ai_feedback_thanks">感谢您的反馈</string>
+    <string name="ai_feedback_improve">已记录反馈，我们将继续改进</string>
 
-    <!-- Face ID & Security -->
-    <string name="security_face_id_title">Face ID 面容识别</string>
-    <string name="security_face_id_desc">使用面容识别解锁应用。</string>
-    <string name="security_face_id_disabled">Face ID 解锁已关闭。</string>
-    <string name="security_face_id_enabled_success">Face ID 解锁已成功开启！</string>
-    <string name="face_id_register_title">注册 Face ID</string>
-    <string name="face_id_register_subtitle">请将面部对准取景框以注册 Face ID</string>
-    <string name="face_id_sheet_scan_face">轻触取景框扫描面部</string>
-    <string name="face_id_sheet_scanning">正在扫描面部特征...</string>
-    <string name="face_id_confirm_sheet_success">Face ID 验证成功！</string>
-    <string name="face_id_prompt_verified_need_pin">人脸验证成功！请设置您的4位个人人脸识别PIN码。</string>
-    <string name="face_id_not_detected">未检测到面部。请将脸部对准取景框中央。</string>
-    <string name="face_id_timeout">面容识别超时。请重试或使用 PIN 码。</string>
-    <string name="face_id_camera_error">无法访问相机。请检查权限或使用 PIN 码。</string>
-    <string name="face_id_use_pin">使用 PIN 码</string>
-    <string name="face_id_retry">重试</string>
-    <string name="face_id_waiting_camera">正在启动相机...</string>
-
-    <!-- 3-Phase Face ID Verification UI -->
-    <string name="face_verify_intro_title">Face ID 身份验证</string>
-    <string name="face_verify_intro_subtitle">此步骤用于验证您是真人用户</string>
-    <string name="face_verify_intro_point1">首先，将您的面部置于取景框内</string>
-    <string name="face_verify_intro_point2">请缓慢向左右两侧转动头部</string>
-    <string name="face_verify_intro_disclaimer">请确保周围光线充足，以便获得最佳识别效果。</string>
-    <string name="face_verify_btn_ready">准备好了</string>
-    <string name="face_verify_instruction_position">请将面部对准取景框</string>
-    <string name="face_verify_instruction_steady">已检测到面部，请保持静止...</string>
-    <string name="face_verify_instruction_turn_head">请缓慢向左右两侧转动头部</string>
-    <string name="face_verify_instruction_turn_left">请缓慢向左转头</string>
-    <string name="face_verify_instruction_turn_right">请缓慢向右转头</string>
-    <string name="face_verify_complete_title">验证完成</string>
 </resources>
 

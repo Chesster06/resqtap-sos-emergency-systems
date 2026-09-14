@@ -118,12 +118,14 @@
                         android:layout_height="64dp"
                         android:background="@drawable/bg_bottom_nav_glass">
 
-                        <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/qr_user_avatar"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
                             android:layout_gravity="center"
-                            android:src="@drawable/ic_ios_contacts"
-                            app:tint="@color/brand_primary" />
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/ic_avatar"
+                            app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.ResQTap.Circle" />
                     </FrameLayout>
 
                     <TextView
@@ -142,13 +144,13 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
-                        android:background="@drawable/bg_badge_default"
+                        android:background="@drawable/bg_badge_user_tag"
                         android:fontFamily="sans-serif-medium"
                         android:paddingStart="14dp"
                         android:paddingTop="4dp"
                         android:paddingEnd="14dp"
                         android:paddingBottom="4dp"
-                        android:textColor="@color/text_secondary"
+                        android:textColor="@color/badge_user_tag_text"
                         android:textSize="12sp"
                         tools:text="ID: #12345" />
 

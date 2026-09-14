@@ -43,7 +43,6 @@ public class AppLockManager implements Application.ActivityLifecycleCallbacks {
         if (activity == null || activity.isFinishing()) return;
         if (activity instanceof AppLockActivity ||
             activity instanceof SetPinActivity ||
-            activity instanceof FaceIdVerificationActivity ||
             activity instanceof SplashActivity ||
             activity instanceof LoginActivity ||
             activity instanceof RegisterActivity ||
@@ -58,7 +57,7 @@ public class AppLockManager implements Application.ActivityLifecycleCallbacks {
         Context ctx = activity.getApplicationContext();
         boolean appLockOn = UserPrefs.isAppLockEnabled(ctx);
         String pin = UserPrefs.getAppLockPin(ctx);
-        boolean biometricOn = UserPrefs.isFingerprintEnabled(ctx) || UserPrefs.isFaceIdEnabled(ctx);
+        boolean biometricOn = UserPrefs.isFingerprintEnabled(ctx);
 
         boolean hasAppLockPin = appLockOn && pin != null && pin.trim().length() == 4;
         boolean needsLock = (hasAppLockPin || biometricOn);

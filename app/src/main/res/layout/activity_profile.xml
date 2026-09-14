@@ -150,7 +150,7 @@
                 android:layout_marginTop="-28dp"
                 android:layout_marginEnd="0dp"
                 android:layout_marginBottom="24dp"
-                app:cardBackgroundColor="@color/white"
+                app:cardBackgroundColor="@color/panel"
                 app:cardElevation="0dp"
                 app:shapeAppearanceOverlay="@style/ShapeAppearance.ResQTap.TopRoundedSheet"
                 app:strokeColor="@color/divider"

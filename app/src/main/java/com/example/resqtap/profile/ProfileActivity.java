@@ -117,6 +117,10 @@ public class ProfileActivity extends BaseActivity {
                     if (logout != null) {
                         logout.setOnClickListener(v2 -> {
                             try {
+                                com.example.resqtap.sos.SosServiceStarter.stop(ProfileActivity.this);
+                            } catch (Exception ignored) {
+                            }
+                            try {
                                 FirebaseAuth.getInstance().signOut();
                             } catch (Exception ignored) {
                             }
@@ -294,7 +298,7 @@ public class ProfileActivity extends BaseActivity {
                 0xFF10B981, // Vibrant Emerald Green
                 0xFFD1FAE5, // Soft Emerald Tint
                 getString(R.string.profile_security),
-                getString(R.string.profile_security_desc),
+                "App lock, biometrics & account security",
                 null,
                 () -> startActivity(new Intent(this, SecuritySettingsActivity.class))
         );
@@ -361,7 +365,9 @@ public class ProfileActivity extends BaseActivity {
             android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
             int radiusPx = (int) (12 * getResources().getDisplayMetrics().density + 0.5f);
             gd.setCornerRadius(radiusPx);
-            gd.setColor(bgTint);
+            boolean isNight = com.example.resqtap.utils.ThemeUtils.isNightMode(this);
+            int actualBg = isNight ? ((iconTint & 0x00FFFFFF) | 0x33000000) : bgTint;
+            gd.setColor(actualBg);
             iconContainer.setBackground(gd);
         }
 

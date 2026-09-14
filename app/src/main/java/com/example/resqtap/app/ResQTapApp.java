@@ -24,6 +24,12 @@ import com.google.firebase.database.FirebaseDatabase;
  * Application class: setup notification channel, tema gelap/cerah, dan config awal app.
  */
 public class ResQTapApp extends Application {
+    private static ResQTapApp instance;
+
+    public static ResQTapApp getInstance() {
+        return instance;
+    }
+
     /** Fungsi untuk attachBaseContext. */
     @Override
     protected void attachBaseContext(Context base) {
@@ -38,6 +44,7 @@ public class ResQTapApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
         LocaleUtils.applySavedLocale(this);
 
         ThemeUtils.applySavedNightMode(this);
@@ -91,21 +98,13 @@ public class ResQTapApp extends Application {
             if (u != null) {
                 String code = String.valueOf(UserPrefs.getActiveRoomCode(this) == null ? "" : UserPrefs.getActiveRoomCode(this)).trim();
                 if (!code.isEmpty()) {
-                    String uid = u.getUid();
-                    String name = UserPrefs.getName(this);
-                    if (name == null || name.trim().isEmpty()) name = "User";
-                    String photoUrl = String.valueOf(UserPrefs.getPhotoUrl(this) == null ? "" : UserPrefs.getPhotoUrl(this)).trim();
-                    String photoB64 = String.valueOf(UserPrefs.getPhotoB64(this) == null ? "" : UserPrefs.getPhotoB64(this)).trim();
-
-                    android.content.Intent i = new android.content.Intent(this, LiveRoomTrackingService.class);
-                    i.setAction(LiveRoomTrackingService.ACTION_START);
-                    i.putExtra(LiveRoomTrackingService.EXTRA_ROOM_CODE, code);
-                    i.putExtra(LiveRoomTrackingService.EXTRA_UID, uid);
-                    i.putExtra(LiveRoomTrackingService.EXTRA_NAME, name);
-                    i.putExtra(LiveRoomTrackingService.EXTRA_PHOTO_URL, photoUrl);
-                    i.putExtra(LiveRoomTrackingService.EXTRA_PHOTO_B64, photoB64);
-                    if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(i);
-                    else startService(i);
+                    FirebaseRoomClient.verifyUserInRoom(u.getUid(), code, isInRoom -> {
+                        if (isInRoom) {
+                            com.example.resqtap.sos.SosServiceStarter.start(ResQTapApp.this, code);
+                        } else {
+                            UserPrefs.setActiveRoomCode(ResQTapApp.this, "");
+                        }
+                    });
                 }
             }
         } catch (Exception ignored) {

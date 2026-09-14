@@ -31,7 +31,6 @@ public class SetPinActivity extends AppCompatActivity {
 
     public static final String EXTRA_IS_CHANGING = "extra_is_changing";
     public static final String EXTRA_IS_FOR_BIOMETRIC = "extra_is_for_biometric";
-    public static final String EXTRA_IS_FOR_FACE_ID = "extra_is_for_face_id";
 
     private static final int STATE_ENTER_CURRENT = 0;
     private static final int STATE_ENTER_NEW = 1;
@@ -40,7 +39,6 @@ public class SetPinActivity extends AppCompatActivity {
     private int currentState = STATE_ENTER_NEW;
     private boolean isChanging = false;
     private boolean isForBiometric = false;
-    private boolean isForFaceId = false;
     private String firstPin = null;
 
     private final StringBuilder enteredPin = new StringBuilder();
@@ -71,11 +69,8 @@ public class SetPinActivity extends AppCompatActivity {
 
         isChanging = getIntent().getBooleanExtra(EXTRA_IS_CHANGING, false);
         isForBiometric = getIntent().getBooleanExtra(EXTRA_IS_FOR_BIOMETRIC, false);
-        isForFaceId = getIntent().getBooleanExtra(EXTRA_IS_FOR_FACE_ID, false);
         String existingPin;
-        if (isForFaceId) {
-            existingPin = UserPrefs.getFaceIdPin(this);
-        } else if (isForBiometric) {
+        if (isForBiometric) {
             existingPin = UserPrefs.getBiometricPin(this);
         } else {
             existingPin = UserPrefs.getAppLockPin(this);
@@ -217,9 +212,7 @@ public class SetPinActivity extends AppCompatActivity {
 
         if (currentState == STATE_ENTER_CURRENT) {
             String existing;
-            if (isForFaceId) {
-                existing = UserPrefs.getFaceIdPin(this);
-            } else if (isForBiometric) {
+            if (isForBiometric) {
                 existing = UserPrefs.getBiometricPin(this);
             } else {
                 existing = UserPrefs.getAppLockPin(this);
@@ -249,9 +242,7 @@ public class SetPinActivity extends AppCompatActivity {
             }, 200);
         } else if (currentState == STATE_CONFIRM_NEW) {
             if (input.equals(firstPin)) {
-                if (isForFaceId) {
-                    UserPrefs.setFaceIdPin(this, firstPin);
-                } else if (isForBiometric) {
+                if (isForBiometric) {
                     UserPrefs.setBiometricPin(this, firstPin);
                 } else {
                     UserPrefs.setAppLockPin(this, firstPin);

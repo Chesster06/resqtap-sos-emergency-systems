@@ -9,7 +9,7 @@
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="@color/white"
+    app:cardBackgroundColor="@color/panel"
     app:cardCornerRadius="18dp"
     app:cardElevation="0dp"
     app:strokeColor="@color/divider"
@@ -61,7 +61,7 @@
                 android:layout_marginTop="6dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="#9CA3AF"
+                android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 tools:text="Kementerian Kesihatan • 27 Ogos 2026" />
         </LinearLayout>
@@ -78,7 +78,7 @@
                 android:id="@+id/img_news_thumb"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="#F3F4F6"
+                android:background="@color/tts_hero_surface_2"
                 android:contentDescription="@null"
                 android:scaleType="centerCrop" />
         </com.google.android.material.card.MaterialCardView>

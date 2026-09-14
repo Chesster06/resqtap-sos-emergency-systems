@@ -1265,10 +1265,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
     private void applyResQTapMapStyle(boolean enabled) {
         if (map == null) return;
         try {
-            boolean night = ThemeUtils.isNightMode(this);
-            map.setMapStyle(enabled && night
-                    ? MapStyleOptions.loadRawResourceStyle(this, R.raw.resqtap_map_style)
-                    : null);
+            map.setMapStyle(null);
         } catch (Exception ignored) {
         }
     }

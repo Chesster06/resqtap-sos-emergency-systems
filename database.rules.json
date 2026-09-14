@@ -56,15 +56,14 @@
           ".read": "auth != null && root.child('rooms').child($roomId).child('members').child(auth.uid).exists()",
           "$uid": {
 
-            ".write": "auth != null && ( (auth.uid === $uid && newData.parent().parent().child('creatorUid').exists() && !root.child('roomTombstones').child($roomId).exists()) || (!newData.exists() && root.child('userRooms').child(auth.uid).child($roomId).child('role').val() === 'creator') )",
+            ".write": "auth != null && ( (auth.uid === $uid && (!newData.exists() || (root.child('rooms').child($roomId).child('creatorUid').exists() && !root.child('roomTombstones').child($roomId).exists()))) || (!newData.exists() && root.child('userRooms').child(auth.uid).child($roomId).child('role').val() === 'creator') )",
             ".validate": "!newData.exists() || (newData.hasChildren(['uid','name','updatedAt','instanceId']) && newData.child('instanceId').val() === newData.parent().parent().child('instanceId').val())"
           }
         },
         "bells": {
           ".read": "auth != null && root.child('rooms').child($roomId).child('members').child(auth.uid).exists() && !root.child('roomTombstones').child($roomId).exists()",
           "$toUid": {
-
-            ".write": "auth != null && root.child('rooms').child($roomId).child('members').child(auth.uid).exists() && !root.child('roomTombstones').child($roomId).exists()"
+            ".write": "auth != null && (auth.uid === $toUid || (root.child('rooms').child($roomId).child('members').child(auth.uid).exists() && !root.child('roomTombstones').child($roomId).exists()))"
           }
         },
         "sosAlerts": {

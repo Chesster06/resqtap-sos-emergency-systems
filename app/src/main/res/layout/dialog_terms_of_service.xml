@@ -3,10 +3,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:cardBackgroundColor="@color/white"
+    app:cardBackgroundColor="@color/panel"
     app:cardCornerRadius="22dp"
     app:cardElevation="0dp"
-    app:strokeColor="#E2E8F0"
+    app:strokeColor="@color/divider"
     app:strokeWidth="1dp">
 
     <LinearLayout
@@ -25,7 +25,7 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:text="@string/about_terms_header"
-            android:textColor="#0F172A"
+            android:textColor="@color/text_primary"
             android:textSize="17sp"
             android:textStyle="bold" />
 
@@ -49,7 +49,7 @@
                 android:lineSpacingMultiplier="1.25"
                 android:paddingEnd="10dp"
                 android:text="@string/terms_and_conditions_full"
-                android:textColor="#475569"
+                android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
         </androidx.core.widget.NestedScrollView>
 
@@ -61,10 +61,10 @@
             android:enabled="false"
             android:text="ACCEPT"
             android:textAllCaps="true"
-            android:textColor="#94A3B8"
+            android:textColor="@color/text_secondary"
             android:textSize="14sp"
             android:textStyle="bold"
-            app:backgroundTint="#E2E8F0"
+            app:backgroundTint="@color/divider"
             app:cornerRadius="12dp"
             app:elevation="0dp"
             app:rippleColor="#33000000" />

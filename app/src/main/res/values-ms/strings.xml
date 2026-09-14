@@ -207,7 +207,7 @@
     <string name="language">Bahasa</string>
     <string name="lang_ms">Bahasa Melayu</string>
     <string name="lang_en">English</string>
-    <string name="lang_zh">Cina</string>
+    <string name="lang_zh">Chinese (Mandarin)</string>
     <string name="lang_ta">Tamil</string>
 
     <string name="battery_settings">TETAPAN BATERI</string>
@@ -325,8 +325,6 @@
     <string name="security_change_pin_desc">Kemas kini kod keselamatan 4 digit anda.</string>
     <string name="security_change_biometric_pin_title">Tukar PIN Biometrik</string>
     <string name="security_change_biometric_pin_desc">Kemas kini PIN sandaran 4 digit untuk kunci biometrik.</string>
-    <string name="security_change_face_id_pin_title">Tukar PIN Face ID</string>
-    <string name="security_change_face_id_pin_desc">Kemas kini PIN peribadi 4 digit untuk Face ID.</string>
     <string name="security_section_account">Akaun &amp; Akses</string>
     <string name="security_change_password_title">Tukar Kata Laluan</string>
     <string name="security_change_password_desc">Kemas kini kata laluan log masuk akaun anda.</string>
@@ -811,37 +809,8 @@
     <string name="notif_room_left_title">Meninggalkan Bilik</string>
     <string name="notif_room_deleted_msg">Anda telah memadamkan bilik %1$s.</string>
     <string name="notif_room_left_msg">Anda telah keluar dari bilik %1$s.</string>
+    <string name="ai_feedback_thanks">Terima kasih atas maklum balas anda</string>
+    <string name="ai_feedback_improve">Maklum balas diterima. Kami akan perbaiki ini</string>
 
-    <!-- Face ID & Security -->
-    <string name="security_face_id_title">Face ID</string>
-    <string name="security_face_id_desc">Gunakan pengecaman wajah untuk membuka kunci.</string>
-    <string name="security_face_id_disabled">Kunci Face ID dimatikan.</string>
-    <string name="security_face_id_enabled_success">Kunci Face ID berjaya diaktifkan!</string>
-    <string name="face_id_register_title">Daftar Face ID</string>
-    <string name="face_id_register_subtitle">Letakkan wajah anda di dalam bingkai untuk daftar Face ID</string>
-    <string name="face_id_sheet_scan_face">Ketik bingkai untuk imbas wajah</string>
-    <string name="face_id_sheet_scanning">Mengimbas ciri-ciri wajah...</string>
-    <string name="face_id_confirm_sheet_success">Face ID disahkan!</string>
-    <string name="face_id_prompt_verified_need_pin">Wajah disahkan! Sila tetapkan PIN peribadi 4 digit Face ID anda.</string>
-    <string name="face_id_not_detected">Wajah tidak dikesan. Sila letakkan wajah anda di tengah bingkai.</string>
-    <string name="face_id_timeout">Pengesahan tamat masa. Sila cuba lagi atau gunakan PIN.</string>
-    <string name="face_id_camera_error">Tidak dapat mengakses kamera. Sila periksa kebenaran atau gunakan PIN.</string>
-    <string name="face_id_use_pin">Guna PIN</string>
-    <string name="face_id_retry">Cuba Lagi</string>
-    <string name="face_id_waiting_camera">Memulakan kamera...</string>
-
-    <!-- 3-Phase Face ID Verification UI -->
-    <string name="face_verify_intro_title">Pengesahan Face ID</string>
-    <string name="face_verify_intro_subtitle">Ini adalah untuk mengesahkan bahawa anda individu sebenar</string>
-    <string name="face_verify_intro_point1">Pertama, letakkan wajah anda di dalam bingkai</string>
-    <string name="face_verify_intro_point2">Pusingkan kepala anda perlahan-lahan ke kiri dan kanan</string>
-    <string name="face_verify_intro_disclaimer">Sila pastikan anda berada di kawasan yang mempunyai pencahayaan mencukupi.</string>
-    <string name="face_verify_btn_ready">Saya Sedia</string>
-    <string name="face_verify_instruction_position">Letakkan wajah anda di dalam bingkai</string>
-    <string name="face_verify_instruction_steady">Wajah dikesan. Kekalkan posisi...</string>
-    <string name="face_verify_instruction_turn_head">Pusingkan kepala perlahan-lahan\nke kiri dan kanan</string>
-    <string name="face_verify_instruction_turn_left">Pusingkan kepala perlahan-lahan ke kiri</string>
-    <string name="face_verify_instruction_turn_right">Pusingkan kepala perlahan-lahan ke kanan</string>
-    <string name="face_verify_complete_title">Pengesahan selesai</string>
 </resources>
 

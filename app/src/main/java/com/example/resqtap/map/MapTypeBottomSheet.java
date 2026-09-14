@@ -112,10 +112,7 @@ public final class MapTypeBottomSheet {
     private static void applyResQTapMapStyle(Activity activity, GoogleMap map, boolean enabled) {
         if (activity == null || map == null) return;
         try {
-            boolean night = com.example.resqtap.utils.ThemeUtils.isNightMode(activity);
-            map.setMapStyle(enabled && night
-                    ? MapStyleOptions.loadRawResourceStyle(activity, R.raw.resqtap_map_style)
-                    : null);
+            map.setMapStyle(null);
         } catch (Exception ignored) {
         }
     }

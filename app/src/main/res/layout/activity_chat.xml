@@ -603,23 +603,7 @@
                     android:textColor="@color/text_primary"
                     android:textSize="12sp" />
 
-                <!-- Suggestion 5: ResQTap Watch -->
-                <TextView
-                    android:id="@+id/chip_prompt_watch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:background="@drawable/bg_bottom_chip_suggestion"
-                    android:fontFamily="sans-serif-medium"
-                    android:paddingStart="14dp"
-                    android:paddingTop="7dp"
-                    android:paddingEnd="14dp"
-                    android:paddingBottom="7dp"
-                    android:text="ResQTap Watch guide"
-                    android:textColor="@color/text_primary"
-                    android:textSize="12sp" />
-
-                <!-- Suggestion 6: Talk to Human Agent -->
+                <!-- Suggestion: Talk to Human Agent -->
                 <TextView
                     android:id="@+id/chip_switch_to_livechat"
                     android:layout_width="wrap_content"

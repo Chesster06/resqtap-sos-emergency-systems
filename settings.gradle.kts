@@ -24,4 +24,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "ResQTap"
 include(":app")
-include(":resqtapwatch")

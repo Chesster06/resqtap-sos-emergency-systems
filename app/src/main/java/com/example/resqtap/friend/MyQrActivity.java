@@ -21,6 +21,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.resqtap.R;
 import com.example.resqtap.app.BaseActivity;
+import com.example.resqtap.utils.AvatarUtils;
 import com.example.resqtap.utils.BottomNavUtils;
 import com.example.resqtap.utils.ThemeUtils;
 import com.example.resqtap.utils.UserPrefs;
@@ -93,10 +94,21 @@ public class MyQrActivity extends BaseActivity {
         qrUserName = findViewById(R.id.qr_user_name);
         qrUserPublicId = findViewById(R.id.qr_user_public_id);
         ivMyQrCode = findViewById(R.id.iv_my_qr_code);
+        ImageView ivUserAvatar = findViewById(R.id.qr_user_avatar);
 
         final String userTag = name + "#" + publicId;
         qrUserName.setText(name);
         qrUserPublicId.setText(userTag);
+
+        String photoB64 = UserPrefs.getPhotoB64(this);
+        String photoUri = UserPrefs.getPhotoUri(this);
+        String photoUrl = UserPrefs.getPhotoUrl(this);
+        boolean hasCustomPhoto = (photoB64 != null && !photoB64.trim().isEmpty())
+                || (photoUri != null && !photoUri.trim().isEmpty())
+                || (photoUrl != null && !photoUrl.trim().isEmpty());
+        if (ivUserAvatar != null) {
+            AvatarUtils.applyAvatar(ivUserAvatar, photoB64, photoUrl, photoUri, R.drawable.ic_avatar);
+        }
 
         MaterialButton btnCopy = findViewById(R.id.btn_copy_public_id);
         if (btnCopy != null) {
@@ -195,10 +207,21 @@ public class MyQrActivity extends BaseActivity {
             TextView tvName = posterView.findViewById(R.id.poster_user_name);
             TextView tvTag = posterView.findViewById(R.id.poster_user_tag);
             ImageView ivQr = posterView.findViewById(R.id.poster_qr_image);
+            ImageView ivPosterAvatar = posterView.findViewById(R.id.poster_user_avatar);
 
             if (tvName != null) tvName.setText(name);
             if (tvTag != null) tvTag.setText(name + "#" + publicId);
             if (ivQr != null) ivQr.setImageBitmap(qrBitmap);
+
+            String photoB64 = UserPrefs.getPhotoB64(this);
+            String photoUri = UserPrefs.getPhotoUri(this);
+            String photoUrl = UserPrefs.getPhotoUrl(this);
+            boolean hasCustomPhoto = (photoB64 != null && !photoB64.trim().isEmpty())
+                    || (photoUri != null && !photoUri.trim().isEmpty())
+                    || (photoUrl != null && !photoUrl.trim().isEmpty());
+            if (ivPosterAvatar != null) {
+                AvatarUtils.applyAvatar(ivPosterAvatar, photoB64, photoUrl, photoUri, R.drawable.ic_avatar);
+            }
 
             int widthPx = 1080;
             int widthSpec = View.MeasureSpec.makeMeasureSpec(widthPx, View.MeasureSpec.EXACTLY);

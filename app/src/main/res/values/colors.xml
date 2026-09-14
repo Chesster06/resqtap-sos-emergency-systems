@@ -13,6 +13,24 @@
     <color name="input_unfocused_stroke">#E2E5EB</color>
     <color name="input_focused_hint">#E60067</color>
     <color name="input_unfocused_hint">#8E95A2</color>
+    <color name="input_field_bg">#F3F4F6</color>
+    <color name="input_field_stroke">#E5E7EB</color>
+    <color name="chat_chip_bg">#FFF0F5</color>
+    <color name="chat_chip_stroke">#FFD1E0</color>
+    <color name="badge_default_bg">#F3F4F6</color>
+    <color name="badge_default_stroke">#E5E7EB</color>
+    <color name="badge_user_tag_bg">#FFF0F5</color>
+    <color name="badge_user_tag_stroke">#FFD1E0</color>
+    <color name="badge_user_tag_text">#E60067</color>
+
+    <!-- Medical Summary Cards -->
+    <color name="med_card_blood_bg">#FFEBF2</color>
+    <color name="med_card_blood_stroke">#FFD1E3</color>
+    <color name="med_card_allergy_bg">#FFF4DE</color>
+    <color name="med_card_allergy_stroke">#FFE8B2</color>
+    <color name="med_card_conditions_bg">#EBF3FF</color>
+    <color name="med_card_conditions_stroke">#D0E1FD</color>
+    <color name="med_card_label">#2D3748</color>
 
     <color name="brand_red">#E60067</color>
     <color name="brand_red_dark">#C2185B</color>

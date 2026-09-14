@@ -89,7 +89,15 @@ public abstract class BaseActivity extends AppCompatActivity {
                 com.example.resqtap.call.IncomingCallManager.getInstance().startListening(u.getUid());
             }
             String code = String.valueOf(UserPrefs.getActiveRoomCode(this) == null ? "" : UserPrefs.getActiveRoomCode(this)).trim();
-            if (!code.isEmpty()) SosServiceStarter.start(this, code);
+            if (!code.isEmpty()) {
+                com.example.resqtap.room.FirebaseRoomClient.verifyUserInRoom(u.getUid(), code, isInRoom -> {
+                    if (isInRoom) {
+                        SosServiceStarter.start(BaseActivity.this, code);
+                    } else {
+                        UserPrefs.setActiveRoomCode(BaseActivity.this, "");
+                    }
+                });
+            }
         } catch (Exception ignored) {
         }
     }

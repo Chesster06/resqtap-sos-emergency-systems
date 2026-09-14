@@ -106,6 +106,7 @@ public class RegisterActivity extends BaseActivity {
         ThemeUtils.applySavedNightMode(this);
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
+        UserPrefs.setActiveRoomCode(this, "");
         setContentView(R.layout.activity_register);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -836,6 +837,7 @@ public class RegisterActivity extends BaseActivity {
                 .setValue(user)
                 .addOnSuccessListener(vv -> {
                     // Simpan UserPrefs segera (tanpa tunggu DB ops lain)
+                    UserPrefs.setActiveRoomCode(this, "");
                     UserPrefs.setUid(this, uid);
                     UserPrefs.setEmail(this, emailVal);
                     UserPrefs.setName(this, nameValue);

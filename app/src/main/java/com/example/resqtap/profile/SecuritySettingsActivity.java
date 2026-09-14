@@ -15,7 +15,6 @@ import android.os.Bundle;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.app.ActivityCompat;
-import com.example.resqtap.security.FaceIdVerificationActivity;
 import com.example.resqtap.security.SetPinActivity;
 
 import android.view.LayoutInflater;
@@ -47,7 +46,6 @@ import android.view.TextureView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
-import com.example.resqtap.security.FaceScannerManager;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
@@ -56,7 +54,6 @@ import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.mlkit.vision.face.Face;
 
 /**
  * SecuritySettingsActivity
@@ -66,44 +63,14 @@ import com.google.mlkit.vision.face.Face;
 public class SecuritySettingsActivity extends BaseActivity {
 
     private boolean isSettingPinForBiometric = false;
-    private boolean isSettingPinForFaceId = false;
 
     private SwitchMaterial toggleAppLock;
     private SwitchMaterial toggleBiometric;
-    private SwitchMaterial toggleFaceId;
     private SwitchMaterial toggleDuressSafeguard;
     private View rowChangePin;
     private View rowChangeBiometricPin;
-    private View rowChangeFaceIdPin;
     private View rowBiometric;
-    private View rowFaceId;
     private boolean isSyncingUI = false;
-
-    private final ActivityResultLauncher<Intent> faceIdVerificationLauncher =
-            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (result.getResultCode() == RESULT_OK) {
-                    boolean hasFaceIdPin = UserPrefs.getFaceIdPin(this) != null
-                            && UserPrefs.getFaceIdPin(this).length() == 4;
-
-                    if (hasFaceIdPin) {
-                        UserPrefs.setFaceIdEnabled(this, true);
-                        Toast.makeText(this, R.string.security_face_id_enabled_success, Toast.LENGTH_SHORT).show();
-                        syncSecuritySettingsUI();
-                    } else {
-                        Toast.makeText(this, R.string.face_id_prompt_verified_need_pin, Toast.LENGTH_LONG).show();
-                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                            isSettingPinForFaceId = true;
-                            openSetPinForFaceId(false);
-                        }, 300);
-                    }
-                } else {
-                    if (toggleFaceId != null) {
-                        toggleFaceId.setChecked(false);
-                    }
-                    UserPrefs.setFaceIdEnabled(this, false);
-                    syncSecuritySettingsUI();
-                }
-            });
 
     private final ActivityResultLauncher<Intent> setPinLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
@@ -116,15 +83,6 @@ public class SecuritySettingsActivity extends BaseActivity {
                         UserPrefs.setBiometricPin(this, "");
                     }
                     isSettingPinForBiometric = false;
-                } else if (isSettingPinForFaceId) {
-                    if (result.getResultCode() == RESULT_OK) {
-                        UserPrefs.setFaceIdEnabled(this, true);
-                        Toast.makeText(this, R.string.security_face_id_enabled_success, Toast.LENGTH_SHORT).show();
-                    } else {
-                        UserPrefs.setFaceIdEnabled(this, false);
-                        UserPrefs.setFaceIdPin(this, "");
-                    }
-                    isSettingPinForFaceId = false;
                 }
                 syncSecuritySettingsUI();
             });
@@ -170,13 +128,10 @@ public class SecuritySettingsActivity extends BaseActivity {
     private void initViews() {
         toggleAppLock = findViewById(R.id.toggle_app_lock);
         toggleBiometric = findViewById(R.id.toggle_biometric);
-        toggleFaceId = findViewById(R.id.toggle_face_id);
         toggleDuressSafeguard = findViewById(R.id.toggle_duress_safeguard);
         rowChangePin = findViewById(R.id.row_change_pin);
         rowChangeBiometricPin = findViewById(R.id.row_change_biometric_pin);
-        rowChangeFaceIdPin = findViewById(R.id.row_change_face_id_pin);
         rowBiometric = findViewById(R.id.row_biometric);
-        rowFaceId = findViewById(R.id.row_face_id);
 
         syncSecuritySettingsUI();
     }
@@ -186,9 +141,7 @@ public class SecuritySettingsActivity extends BaseActivity {
         try {
             boolean appLockOn = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
             boolean biometricOn = UserPrefs.isFingerprintEnabled(this);
-            boolean faceIdOn = UserPrefs.isFaceIdEnabled(this);
             boolean hasBiometricPin = UserPrefs.getBiometricPin(this) != null && UserPrefs.getBiometricPin(this).length() == 4;
-            boolean hasFaceIdPin = UserPrefs.getFaceIdPin(this) != null && UserPrefs.getFaceIdPin(this).length() == 4;
             boolean duressOn = UserPrefs.isDuressSafeguardEnabled(this);
 
             if (toggleAppLock != null) {
@@ -225,15 +178,6 @@ public class SecuritySettingsActivity extends BaseActivity {
                 }
             }
 
-            // Face ID toggle & row status
-            if (rowFaceId != null) {
-                rowFaceId.setVisibility(View.VISIBLE);
-            }
-            if (toggleFaceId != null) {
-                toggleFaceId.setChecked(faceIdOn);
-                toggleFaceId.setEnabled(true);
-            }
-
             if (toggleDuressSafeguard != null) {
                 toggleDuressSafeguard.setChecked(duressOn);
             }
@@ -242,9 +186,6 @@ public class SecuritySettingsActivity extends BaseActivity {
             }
             if (rowChangeBiometricPin != null) {
                 rowChangeBiometricPin.setVisibility((biometricOn && hasBiometricPin) ? View.VISIBLE : View.GONE);
-            }
-            if (rowChangeFaceIdPin != null) {
-                rowChangeFaceIdPin.setVisibility((faceIdOn && hasFaceIdPin) ? View.VISIBLE : View.GONE);
             }
         } finally {
             isSyncingUI = false;
@@ -259,10 +200,6 @@ public class SecuritySettingsActivity extends BaseActivity {
 
         if (rowBiometric != null && toggleBiometric != null) {
             rowBiometric.setOnClickListener(v -> toggleBiometric.toggle());
-        }
-
-        if (rowFaceId != null && toggleFaceId != null) {
-            rowFaceId.setOnClickListener(v -> toggleFaceId.toggle());
         }
 
         View rowDuress = findViewById(R.id.row_duress_safeguard);
@@ -334,22 +271,6 @@ public class SecuritySettingsActivity extends BaseActivity {
             });
         }
 
-        if (toggleFaceId != null) {
-            toggleFaceId.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                if (isSyncingUI) return;
-                if (isChecked) {
-                    startFaceIdRegistrationFlow();
-                } else {
-                    UserPrefs.setFaceIdEnabled(this, false);
-                    UserPrefs.setFaceIdPin(this, "");
-                    if (rowChangeFaceIdPin != null) {
-                        rowChangeFaceIdPin.setVisibility(View.GONE);
-                    }
-                    Toast.makeText(this, R.string.security_face_id_disabled, Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-
         if (toggleDuressSafeguard != null) {
             toggleDuressSafeguard.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (isSyncingUI) return;
@@ -363,10 +284,6 @@ public class SecuritySettingsActivity extends BaseActivity {
 
         if (rowChangeBiometricPin != null) {
             rowChangeBiometricPin.setOnClickListener(v -> openSetPin(true, true));
-        }
-
-        if (rowChangeFaceIdPin != null) {
-            rowChangeFaceIdPin.setOnClickListener(v -> openSetPinForFaceId(true));
         }
 
         View rowChangePassword = findViewById(R.id.row_change_password);
@@ -618,22 +535,6 @@ public class SecuritySettingsActivity extends BaseActivity {
         }
     }
 
-    private void startFaceIdRegistrationFlow() {
-        if (isFinishing() || isDestroyed()) return;
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, 101);
-            if (toggleFaceId != null) {
-                toggleFaceId.setChecked(false);
-            }
-            return;
-        }
-
-        Intent intent = new Intent(this, FaceIdVerificationActivity.class);
-        intent.putExtra(FaceIdVerificationActivity.EXTRA_MODE, FaceIdVerificationActivity.MODE_REGISTER);
-        faceIdVerificationLauncher.launch(intent);
-    }
-
     private void openSetPin(boolean isChanging) {
         openSetPin(isChanging, false);
     }
@@ -642,13 +543,6 @@ public class SecuritySettingsActivity extends BaseActivity {
         Intent intent = new Intent(this, SetPinActivity.class);
         intent.putExtra(SetPinActivity.EXTRA_IS_CHANGING, isChanging);
         intent.putExtra(SetPinActivity.EXTRA_IS_FOR_BIOMETRIC, isForBiometric);
-        setPinLauncher.launch(intent);
-    }
-
-    private void openSetPinForFaceId(boolean isChanging) {
-        Intent intent = new Intent(this, SetPinActivity.class);
-        intent.putExtra(SetPinActivity.EXTRA_IS_CHANGING, isChanging);
-        intent.putExtra(SetPinActivity.EXTRA_IS_FOR_FACE_ID, true);
         setPinLauncher.launch(intent);
     }
 

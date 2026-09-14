@@ -25,7 +25,6 @@ import com.example.resqtap.utils.BatteryOptimizationHelper;
 import com.example.resqtap.utils.BottomNavUtils;
 import com.example.resqtap.utils.ThemeUtils;
 import com.example.resqtap.utils.UserPrefs;
-import com.example.resqtap.wear.WearSosBridge;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -64,19 +63,12 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import com.google.android.gms.wearable.DataClient;
-import com.google.android.gms.wearable.DataEvent;
-import com.google.android.gms.wearable.DataEventBuffer;
-import com.google.android.gms.wearable.MessageClient;
-import com.google.android.gms.wearable.MessageEvent;
-import com.google.android.gms.wearable.Wearable;
-
 
 /**
  * MainActivity
- * Main Dashboard: Butang OneTap SOS, grid menu pantas, status bateri, dan sambungan ke smartwatch.
+ * Main Dashboard: Butang OneTap SOS, grid menu pantas, status bateri, dan keselamatan peribadi.
  */
-public class MainActivity extends BaseActivity implements MessageClient.OnMessageReceivedListener, DataClient.OnDataChangedListener {
+public class MainActivity extends BaseActivity {
     private TextView subtitle;
     private String phone;
     private ObjectAnimator sosPulseAnimator;
@@ -104,8 +96,6 @@ public class MainActivity extends BaseActivity implements MessageClient.OnMessag
     private volatile boolean restoringActiveRoom = false;
     private volatile String myActiveSosId = "";
     private volatile boolean cancelMySosWhenIdArrives = false;
-    private boolean pendingWatchSosTrigger = false;
-    private long lastWatchSosTriggerAt = 0L;
     private RecyclerView rvMedicalNews;
     private MedicalNewsAdapter medicalNewsAdapter;
     private android.view.View newsProgress;
@@ -213,7 +203,6 @@ public class MainActivity extends BaseActivity implements MessageClient.OnMessag
                 myActiveSosId = "";
             }
         });
-        handleWatchSosIntent(getIntent());
 
         android.view.View featureHospital = findViewById(R.id.feature_hospital);
         android.view.View featureContacts = findViewById(R.id.feature_contacts);
@@ -426,7 +415,6 @@ public class MainActivity extends BaseActivity implements MessageClient.OnMessag
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        handleWatchSosIntent(intent);
     }
 
     // =========================================================================
@@ -494,70 +482,16 @@ public class MainActivity extends BaseActivity implements MessageClient.OnMessag
     @Override
     protected void onResume() {
         super.onResume();
-        try {
-            Wearable.getMessageClient(this).addListener(this);
-            Wearable.getDataClient(this).addListener(this);
-        } catch (Exception ignored) {
-        }
         refreshProfileUi();
         refreshInboxBadge();
         try { BatteryOptimizationHelper.promptOnce(this); } catch (Exception ignored) {}
         ensureActiveRoomTracking();
         startSosRingPulse();
-        if (WearSosBridge.consumePending(this)) {
-            scheduleWatchSosTrigger();
-        }
-        if (pendingWatchSosTrigger) {
-            scheduleWatchSosTrigger();
-        }
-    }
-
-    /** Fungsi untuk onMessageReceived. */
-    @Override
-    public void onMessageReceived(MessageEvent messageEvent) {
-        if (messageEvent == null || !WearSosBridge.SOS_MESSAGE_PATH.equals(messageEvent.getPath())) return;
-        runOnUiThread(this::scheduleWatchSosTrigger);
-    }
-
-    /** Fungsi untuk onDataChanged. */
-    @Override
-    public void onDataChanged(DataEventBuffer dataEvents) {
-        if (dataEvents == null) return;
-        for (DataEvent event : dataEvents) {
-            if (event == null || event.getType() != DataEvent.TYPE_CHANGED || event.getDataItem() == null) continue;
-            android.net.Uri uri = event.getDataItem().getUri();
-            if (uri != null && WearSosBridge.SOS_DATA_PATH.equals(uri.getPath())) {
-                runOnUiThread(this::scheduleWatchSosTrigger);
-                return;
-            }
-        }
-    }
-
-    /** Fungsi untuk handleWatchSosIntent. */
-    private void handleWatchSosIntent(Intent intent) {
-        if (intent == null || !intent.getBooleanExtra(WearSosBridge.triggerExtra(), false)) return;
-        intent.removeExtra(WearSosBridge.triggerExtra());
-        WearSosBridge.consumePending(this);
-        scheduleWatchSosTrigger();
-    }
-
-    /** Fungsi untuk scheduleWatchSosTrigger. */
-    private void scheduleWatchSosTrigger() {
-        pendingWatchSosTrigger = true;
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (isFinishing() || isDestroyed()) return;
-            pendingWatchSosTrigger = false;
-            long now = android.os.SystemClock.elapsedRealtime();
-            if (now - lastWatchSosTriggerAt < 1200L) return;
-            lastWatchSosTriggerAt = now;
-            triggerSosFlow();
-        }, 350L);
     }
 
     /** Fungsi untuk triggerSosFlow. */
     private void triggerSosFlow() {
         if (sosSheet == null) {
-            pendingWatchSosTrigger = true;
             return;
         }
         String code = String.valueOf(UserPrefs.getActiveRoomCode(MainActivity.this) == null ? "" : UserPrefs.getActiveRoomCode(MainActivity.this)).trim();
@@ -777,11 +711,6 @@ public class MainActivity extends BaseActivity implements MessageClient.OnMessag
     @Override
     protected void onPause() {
         super.onPause();
-        try {
-            Wearable.getMessageClient(this).removeListener(this);
-            Wearable.getDataClient(this).removeListener(this);
-        } catch (Exception ignored) {
-        }
         MaterialButton btnSos = findViewById(R.id.btn_sos);
         if (btnSos != null) stopSosPulse(btnSos);
         stopSosRingPulse();
@@ -809,15 +738,16 @@ public class MainActivity extends BaseActivity implements MessageClient.OnMessag
                 restoreActiveRoomIfMissing(uid);
                 return;
             }
-            try {
-                android.util.Log.d("SOS_DEBUG", "Saved currentRoomId: " + activeRoomCode);
-            } catch (Exception ignored) {
-            }
-            SosServiceStarter.start(this, activeRoomCode);
-            try {
-                android.util.Log.d("SOS_DEBUG", "LiveRoomTrackingService started");
-            } catch (Exception ignored) {
-            }
+
+            FirebaseRoomClient.verifyUserInRoom(uid, activeRoomCode, isInRoom -> {
+                if (isInRoom) {
+                    SosServiceStarter.start(MainActivity.this, activeRoomCode);
+                } else {
+                    activeRoomCode = "";
+                    UserPrefs.setActiveRoomCode(MainActivity.this, "");
+                    restoreActiveRoomIfMissing(uid);
+                }
+            });
         } catch (Exception ignored) {
         }
     }

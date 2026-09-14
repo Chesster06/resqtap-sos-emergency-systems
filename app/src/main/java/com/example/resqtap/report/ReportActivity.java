@@ -494,8 +494,7 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
                 map.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
             } else {
                 map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-                boolean night = com.example.resqtap.utils.ThemeUtils.isNightMode(this);
-                map.setMapStyle(night ? MapStyleOptions.loadRawResourceStyle(this, R.raw.resqtap_map_style) : null);
+                map.setMapStyle(null);
             }
         } catch (Exception ignored) {
         }

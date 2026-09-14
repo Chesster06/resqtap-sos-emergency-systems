@@ -64,9 +64,7 @@ ResQTap/
 │       ├── profile/            # User and medical profile details
 │       ├── report/             # Incident report submission
 │       ├── room/               # Group emergency rooms
-│       ├── sos/                # SOS dispatch and state machine
-│       └── wear/               # Phone-to-watch synchronization
-├── resqtapwatch/               # Wear OS watch companion module
+│       └── sos/                # SOS dispatch and state machine
 ├── ResQTap-Website/            # Web portal / landing platform
 ├── firebase-functions/         # Cloud Functions for automated tasks and cleanups
 └── database.rules.json         # Firebase Realtime Database security rules
@@ -80,7 +78,6 @@ ResQTap/
 - **Android Studio** (Ladybug / Meerkat or newer recommended)
 - **JDK 11** or higher
 - Android device or emulator running **Android 7.0 (API 24)** or higher
-- (Optional) Wear OS device or emulator for testing watch capabilities
 
 ### Setup Instructions
 
@@ -88,7 +85,7 @@ ResQTap/
    Open the project folder in Android Studio.
 
 2. **Firebase Configuration**
-   - Place your `google-services.json` file inside the `app/` and `resqtapwatch/` directories.
+   - Place your `google-services.json` file inside the `app/` directory.
    - Ensure Firebase Authentication, Realtime Database, and Storage are properly set up in your Firebase Console.
 
 3. **Google Maps API Key**

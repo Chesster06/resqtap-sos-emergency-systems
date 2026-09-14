@@ -36,9 +36,7 @@ public final class UserPrefs {
     private static final String KEY_APP_LOCK_ENABLED = "app_lock_enabled";
     private static final String KEY_APP_LOCK_PIN = "app_lock_pin";
     private static final String KEY_FINGERPRINT_ENABLED = "fingerprint_enabled";
-    private static final String KEY_FACE_ID_ENABLED = "face_id_enabled";
     private static final String KEY_BIOMETRIC_PIN = "biometric_pin";
-    private static final String KEY_FACE_ID_PIN = "face_id_pin";
     private static final String KEY_DURESS_SAFEGUARD_ENABLED = "duress_safeguard_enabled";
     private static final String KEY_LANGUAGE = "language";
     private static final String KEY_ADDRESS = "address";
@@ -252,7 +250,7 @@ public final class UserPrefs {
 
     /** Padam atau bersihkan AccountData. */
     public static void clearAccountData(Context context) {
-
+        if (context == null) return;
         prefs(context).edit()
                 .remove(KEY_UID)
                 .remove(KEY_NAME)
@@ -273,13 +271,30 @@ public final class UserPrefs {
                 .remove(KEY_GENDER)
                 .remove(KEY_WEIGHT)
                 .remove(KEY_HEIGHT)
+                .remove(KEY_MEDICATIONS)
+                .remove(KEY_ORGAN_DONOR)
                 .remove(KEY_HIDE_MEDICAL_INFO)
                 .remove(KEY_EMERGENCY_CONTACTS_JSON)
                 .remove(KEY_APP_LOCK_ENABLED)
                 .remove(KEY_APP_LOCK_PIN)
                 .remove(KEY_FINGERPRINT_ENABLED)
-                .remove(KEY_FACE_ID_ENABLED)
                 .remove(KEY_BIOMETRIC_PIN)
+                .remove(KEY_DURESS_SAFEGUARD_ENABLED)
+                .remove(KEY_ACTIVE_ROOM_CODE)
+                .remove(KEY_ROOM_MAP_VISIBLE)
+                .remove(KEY_SOS_FOCUS_ROOM)
+                .remove(KEY_SOS_FOCUS_SENDER_UID)
+                .remove(KEY_SOS_FOCUS_ALERT_ID)
+                .remove(KEY_SOS_FOCUS_CREATED_AT)
+                .remove(KEY_SOS_FOCUS_CONSUMED)
+                .remove(KEY_SOS_UI_ROOM)
+                .remove(KEY_SOS_UI_SENDER_UID)
+                .remove(KEY_SOS_UI_ALERT_ID)
+                .remove(KEY_SOS_UI_UNTIL_MS)
+                .remove(KEY_NOTIF_UNREAD)
+                .remove(KEY_LAST_INCIDENT_REPORT_ID)
+                .remove(KEY_LAST_INCIDENT_REPORT_STATUS)
+                .remove(KEY_TOS_ACCEPTED)
                 .apply();
     }
 
@@ -393,16 +408,6 @@ public final class UserPrefs {
         prefs(context).edit().putBoolean(KEY_FINGERPRINT_ENABLED, enabled).apply();
     }
 
-    /** Semak dan sahkan FaceIdEnabled. */
-    public static boolean isFaceIdEnabled(Context context) {
-        return prefs(context).getBoolean(KEY_FACE_ID_ENABLED, false);
-    }
-
-    /** Fungsi untuk setFaceIdEnabled. */
-    public static void setFaceIdEnabled(Context context, boolean enabled) {
-        prefs(context).edit().putBoolean(KEY_FACE_ID_ENABLED, enabled).apply();
-    }
-
     /** Ambil atau muat data BiometricPin. */
     public static String getBiometricPin(Context context) {
         return prefs(context).getString(KEY_BIOMETRIC_PIN, "");
@@ -411,16 +416,6 @@ public final class UserPrefs {
     /** Fungsi untuk setBiometricPin. */
     public static void setBiometricPin(Context context, String pin) {
         prefs(context).edit().putString(KEY_BIOMETRIC_PIN, pin == null ? "" : pin).apply();
-    }
-
-    /** Ambil atau muat data FaceIdPin. */
-    public static String getFaceIdPin(Context context) {
-        return prefs(context).getString(KEY_FACE_ID_PIN, "");
-    }
-
-    /** Fungsi untuk setFaceIdPin. */
-    public static void setFaceIdPin(Context context, String pin) {
-        prefs(context).edit().putString(KEY_FACE_ID_PIN, pin == null ? "" : pin).apply();
     }
 
     /** Semak dan sahkan DuressSafeguardEnabled. */
