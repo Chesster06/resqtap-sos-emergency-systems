@@ -529,15 +529,26 @@ public class MainActivity extends BaseActivity {
 
     /** Fungsi untuk triggerSosFlow. */
     private void triggerSosFlow() {
-        if (sosSheet == null) {
+        if (sosSheet == null) return;
+        String code = String.valueOf(UserPrefs.getActiveRoomCode(this) == null ? "" : UserPrefs.getActiveRoomCode(this)).trim();
+        if (!code.isEmpty()) {
+            sosSheet.show();
             return;
         }
-        String code = String.valueOf(UserPrefs.getActiveRoomCode(MainActivity.this) == null ? "" : UserPrefs.getActiveRoomCode(MainActivity.this)).trim();
-        if (code.isEmpty()) {
-            showJoinOrCreateRoomDialog();
-            return;
-        }
-        sosSheet.show();
+        // No active room set — auto-resolve from Firebase without blocking user
+        com.google.firebase.auth.FirebaseUser cu = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        if (cu == null) { showJoinOrCreateRoomDialog(); return; }
+        FirebaseRoomClient.fetchMostRecentUserRoomCodeQueued(cu.getUid(), found -> {
+            String resolved = found == null ? "" : found.trim();
+            runOnUiThread(() -> {
+                if (resolved.isEmpty()) {
+                    showJoinOrCreateRoomDialog();
+                } else {
+                    UserPrefs.setActiveRoomCode(MainActivity.this, resolved);
+                    if (sosSheet != null) sosSheet.show();
+                }
+            });
+        });
     }
 
     /** Fungsi untuk ensureNotificationsPermission. */
