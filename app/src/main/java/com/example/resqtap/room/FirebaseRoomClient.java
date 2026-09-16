@@ -387,9 +387,7 @@ public final class FirebaseRoomClient {
         memberData.put("name", friendName == null ? "" : friendName.trim());
         memberData.put("role", "member");
         memberData.put("updatedAt", ServerValue.TIMESTAMP);
-        if (!instanceId.isEmpty()) {
-            memberData.put("instanceId", instanceId);
-        }
+        memberData.put("instanceId", instanceId);
         updates.put("rooms/" + code + "/members/" + fUid, memberData);
 
         Map<String, Object> friendUserRoom = new HashMap<>();
@@ -2087,41 +2085,97 @@ public final class FirebaseRoomClient {
             usersRef.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot snapshot) {
-                    if (snapshot != null && snapshot.exists()) {
-                        Map<String, Object> deletionMap = new HashMap<>();
-                        int count = 0;
+                    if (snapshot == null || !snapshot.exists()) {
+                        android.util.Log.d("RTDB_CLEAN", "No users found in RTDB.");
+                        return;
+                    }
 
-                        for (DataSnapshot child : snapshot.getChildren()) {
-                            String uid = child.getKey();
-                            if (uid == null || uid.trim().isEmpty()) continue;
+                    java.util.Set<String> resqtapUids = new java.util.HashSet<>();
+                    java.util.List<String> nonResqtapUids = new java.util.ArrayList<>();
 
-                            String email = child.child("email").getValue(String.class);
-                            boolean isResQTap = email != null && email.trim().toLowerCase(java.util.Locale.ROOT).contains("@resqtap");
+                    for (DataSnapshot child : snapshot.getChildren()) {
+                        String uid = child.getKey();
+                        if (uid == null || uid.trim().isEmpty()) continue;
 
-                            if (!isResQTap) {
-                                count++;
-                                deletionMap.put("users/" + uid, null);
-                                deletionMap.put("userFriends/" + uid, null);
-                                deletionMap.put("userRooms/" + uid, null);
-                                deletionMap.put("friendRequests/" + uid, null);
-                                deletionMap.put("sentRequests/" + uid, null);
-                                deletionMap.put("notifications/" + uid, null);
-                                deletionMap.put("sos_history/" + uid, null);
-                                deletionMap.put("sos_alerts/" + uid, null);
-                                android.util.Log.d("RTDB_CLEAN", "Target deletion UID: " + uid + " | Email: " + email);
+                        String email = child.child("email").getValue(String.class);
+                        String name = child.child("name").getValue(String.class);
+                        boolean isResQTap = email != null && email.trim().toLowerCase(java.util.Locale.ROOT).endsWith("@resqtap.com");
+
+                        android.util.Log.i("RTDB_USER_LIST", "UID: " + uid + " | Name: " + name + " | Email: " + email + " | isResQTap: " + isResQTap);
+
+                        if (isResQTap) {
+                            resqtapUids.add(uid);
+                        } else {
+                            nonResqtapUids.add(uid);
+                            android.util.Log.d("RTDB_CLEAN", "Resetting non-resqtap user: " + uid + " | " + email);
+                        }
+                    }
+
+                    rootRef.child("registeredEmails").addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot rSnap) {
+                            if (rSnap != null && rSnap.exists()) {
+                                for (DataSnapshot eChild : rSnap.getChildren()) {
+                                    android.util.Log.i("RTDB_REG_EMAIL", "Registered email: " + eChild.getKey());
+                                }
                             }
                         }
+                        @Override
+                        public void onCancelled(DatabaseError error) {}
+                    });
 
-                        if (!deletionMap.isEmpty()) {
-                            final int deletedCount = count;
-                            rootRef.updateChildren(deletionMap).addOnSuccessListener(v -> {
-                                android.util.Log.d("RTDB_CLEAN", "SUCCESS: Cleared " + deletedCount + " non-resqtap users from RTDB!");
-                            }).addOnFailureListener(e -> {
-                                android.util.Log.e("RTDB_CLEAN", "FAILED to delete users from RTDB: " + e.getMessage());
-                            });
-                        } else {
-                            android.util.Log.d("RTDB_CLEAN", "No non-resqtap users found in RTDB.");
-                        }
+                    // Reset each non-resqtap user's friendlist and room connections directly
+                    for (String uid : nonResqtapUids) {
+                        rootRef.child("userFriends").child(uid).removeValue().addOnCompleteListener(t -> {
+                            android.util.Log.d("RTDB_CLEAN", "Cleared userFriends for " + uid + " success=" + t.isSuccessful());
+                        });
+                        rootRef.child("userRooms").child(uid).removeValue().addOnCompleteListener(t -> {
+                            android.util.Log.d("RTDB_CLEAN", "Cleared userRooms for " + uid + " success=" + t.isSuccessful());
+                        });
+                        rootRef.child("friendRequests").child(uid).removeValue();
+                        rootRef.child("sentRequests").child(uid).removeValue();
+                    }
+
+                    // For any @resqtap users, remove any friends who are not @resqtap users
+                    for (String adminUid : resqtapUids) {
+                        rootRef.child("userFriends").child(adminUid).addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(DataSnapshot fSnap) {
+                                if (fSnap != null && fSnap.exists()) {
+                                    for (DataSnapshot fChild : fSnap.getChildren()) {
+                                        String fUid = fChild.getKey();
+                                        if (fUid != null && !resqtapUids.contains(fUid)) {
+                                            rootRef.child("userFriends").child(adminUid).child(fUid).removeValue();
+                                            android.util.Log.d("RTDB_CLEAN", "Removed non-resqtap friend " + fUid + " from admin " + adminUid);
+                                        }
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(DatabaseError error) {}
+                        });
+                    }
+
+                    // Now check rooms for non-resqtap users to purge
+                    for (String uid : nonResqtapUids) {
+                        // Clean any rooms owned by this user
+                        rootRef.child("userRooms").child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(DataSnapshot urSnap) {
+                                if (urSnap != null && urSnap.exists()) {
+                                    for (DataSnapshot rChild : urSnap.getChildren()) {
+                                        String roomCode = rChild.getKey();
+                                        if (roomCode != null) {
+                                            rootRef.child("rooms").child(roomCode).removeValue();
+                                            rootRef.child("roomTombstones").child(roomCode).removeValue();
+                                        }
+                                    }
+                                }
+                            }
+                            @Override
+                            public void onCancelled(DatabaseError error) {}
+                        });
                     }
                 }
 

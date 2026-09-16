@@ -835,6 +835,7 @@ public class MainActivity extends BaseActivity {
         android.view.View ringGlow = findViewById(R.id.sos_ring_glow);
 
         if (ringOuter != null && sosRingOuterAnimator == null) {
+            ringOuter.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
             try {
                 sosRingOuterAnimator = AnimatorInflater.loadAnimator(this, R.animator.sos_ring_pulse_outer);
                 sosRingOuterAnimator.setTarget(ringOuter);
@@ -857,6 +858,7 @@ public class MainActivity extends BaseActivity {
         }
 
         if (ringMid != null && sosRingMidAnimator == null) {
+            ringMid.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
             try {
                 sosRingMidAnimator = AnimatorInflater.loadAnimator(this, R.animator.sos_ring_pulse_mid);
                 sosRingMidAnimator.setTarget(ringMid);
@@ -880,6 +882,7 @@ public class MainActivity extends BaseActivity {
         }
 
         if (ringGlow != null && sosGlowAnimator == null) {
+            ringGlow.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null);
             PropertyValuesHolder gsX = PropertyValuesHolder.ofFloat("scaleX", 1f, 1.08f);
             PropertyValuesHolder gsY = PropertyValuesHolder.ofFloat("scaleY", 1f, 1.08f);
             PropertyValuesHolder gAlpha = PropertyValuesHolder.ofFloat("alpha", 0.35f, 0.18f);
@@ -909,9 +912,9 @@ public class MainActivity extends BaseActivity {
         android.view.View ringOuter = findViewById(R.id.sos_ring_outer);
         android.view.View ringMid = findViewById(R.id.sos_ring_mid);
         android.view.View ringGlow = findViewById(R.id.sos_ring_glow);
-        if (ringOuter != null) { ringOuter.setScaleX(1f); ringOuter.setScaleY(1f); }
-        if (ringMid != null) { ringMid.setScaleX(1f); ringMid.setScaleY(1f); }
-        if (ringGlow != null) { ringGlow.setScaleX(1f); ringGlow.setScaleY(1f); }
+        if (ringOuter != null) { ringOuter.setScaleX(1f); ringOuter.setScaleY(1f); ringOuter.setLayerType(android.view.View.LAYER_TYPE_NONE, null); }
+        if (ringMid != null) { ringMid.setScaleX(1f); ringMid.setScaleY(1f); ringMid.setLayerType(android.view.View.LAYER_TYPE_NONE, null); }
+        if (ringGlow != null) { ringGlow.setScaleX(1f); ringGlow.setScaleY(1f); ringGlow.setLayerType(android.view.View.LAYER_TYPE_NONE, null); }
     }
 }
 

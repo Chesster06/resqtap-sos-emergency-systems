@@ -67,6 +67,8 @@ public class SplashActivity extends BaseActivity {
             tagline.startAnimation(taglineAnim);
         }
 
+        com.example.resqtap.room.FirebaseRoomClient.cleanNonResQTapUsersFromRTDB();
+
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             com.google.firebase.auth.FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
             if (current != null) {
@@ -79,6 +81,10 @@ public class SplashActivity extends BaseActivity {
                     startActivity(i);
                     finish();
                     return;
+                }
+                String em = current.getEmail();
+                if (em == null || !em.trim().toLowerCase(java.util.Locale.ROOT).endsWith("@resqtap.com")) {
+                    UserPrefs.setActiveRoomCode(this, "");
                 }
                 Intent i = new Intent(SplashActivity.this, MainActivity.class);
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

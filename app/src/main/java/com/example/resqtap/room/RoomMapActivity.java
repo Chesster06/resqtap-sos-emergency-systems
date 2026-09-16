@@ -111,7 +111,9 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
     private CancellationTokenSource cancellationTokenSource;
 
     private final Map<String, Marker> markersByUid = new HashMap<>();
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Map<String, String> markerIconKeyByUid = new HashMap<>();
+    private final ExecutorService executor = Executors.newCachedThreadPool();
+    private final ExecutorService pollingExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService imageExecutor = Executors.newFixedThreadPool(2);
     private final ExecutorService geocodeExecutor = Executors.newSingleThreadExecutor();
     private final LruCache<String, Bitmap> remotePhotoCache = new LruCache<>(40);
@@ -394,6 +396,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
             membersRecycler.setLayoutManager(new LinearLayoutManager(this));
             membersAdapter = new RoomMembersAdapter(uid);
             membersRecycler.setAdapter(membersAdapter);
+            updateRoomFooterVisibility();
             try {
 
                 membersAdapter.setActiveSos(activeSosUid, activeSosUntilMs);
@@ -936,6 +939,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
         stopForceLeaveListener();
         stopRoomDeletedListener();
         executor.shutdownNow();
+        pollingExecutor.shutdownNow();
         imageExecutor.shutdownNow();
         geocodeExecutor.shutdownNow();
     }
@@ -1348,7 +1352,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
 
     /** Fungsi untuk startPolling. */
     private void startPolling() {
-        executor.execute(() -> {
+        pollingExecutor.execute(() -> {
 
             try {
                 FirebaseRoomClient.joinRoom(roomCode, uid, displayName, "");
@@ -1465,9 +1469,12 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
             }
             if (marker != null) {
                 if (m.uid.equals(uid)) {
-
-                    marker.setIcon(BitmapDescriptorFactory.fromBitmap(buildSelfMarkerBitmap()));
-                    marker.setAnchor(0.5f, 0.5f);
+                    String iconKey = "self|" + myPhotoUri + "|" + myPhotoUrl + "|" + (myPhotoB64 == null ? "" : myPhotoB64.hashCode());
+                    if (!iconKey.equals(markerIconKeyByUid.get(uid))) {
+                        marker.setIcon(BitmapDescriptorFactory.fromBitmap(buildSelfMarkerBitmap()));
+                        marker.setAnchor(0.5f, 0.5f);
+                        markerIconKeyByUid.put(uid, iconKey);
+                    }
                     if ((myPhotoUri == null || myPhotoUri.isEmpty())
                             && (myPhotoB64 == null || myPhotoB64.isEmpty())
                             && myPhotoUrl != null
@@ -1482,14 +1489,21 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                     }
                     Bitmap b = decodeBase64Avatar(b64);
                     if (b != null) {
-                        marker.setIcon(BitmapDescriptorFactory.fromBitmap(buildProfileMarkerBitmapFromPhoto(this, b)));
-                        marker.setAnchor(0.5f, 0.5f);
+                        String iconKey = "b64|" + b64.hashCode();
+                        if (!iconKey.equals(markerIconKeyByUid.get(m.uid))) {
+                            marker.setIcon(BitmapDescriptorFactory.fromBitmap(buildProfileMarkerBitmapFromPhoto(this, b)));
+                            marker.setAnchor(0.5f, 0.5f);
+                            markerIconKeyByUid.put(m.uid, iconKey);
+                        }
                     } else {
-
                         String url0 = String.valueOf(m.photoUrl == null ? "" : m.photoUrl).trim();
                         if (url0.isEmpty()) {
-                            marker.setIcon(BitmapDescriptorFactory.fromBitmap(buildProfileMarkerBitmap(this, "")));
-                            marker.setAnchor(0.5f, 0.5f);
+                            String iconKey = "default|empty";
+                            if (!iconKey.equals(markerIconKeyByUid.get(m.uid))) {
+                                marker.setIcon(BitmapDescriptorFactory.fromBitmap(buildProfileMarkerBitmap(this, "")));
+                                marker.setAnchor(0.5f, 0.5f);
+                                markerIconKeyByUid.put(m.uid, iconKey);
+                            }
                         }
 
                         String url = String.valueOf(m.photoUrl == null ? "" : m.photoUrl).trim();
@@ -1661,7 +1675,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
 
     private boolean canAddRoomMembers() {
         boolean isCreator = canUseRemoveMode();
-        return isCreator || (roomPermissions != null && roomPermissions.allowMemberInvite);
+        return isCreator || (roomPermissions == null || roomPermissions.allowMemberInvite);
     }
 
     private boolean shouldShowRoomFooter() {
@@ -1839,10 +1853,33 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
         }
 
         void submit(ArrayList<FirebaseRoomClient.Member> members) {
+            if (isSameMembers(items, members)) return;
             items.clear();
             if (members != null) items.addAll(members);
             applySosPinIfNeeded();
             notifyDataSetChanged();
+        }
+
+        private boolean isSameMembers(List<FirebaseRoomClient.Member> a, List<FirebaseRoomClient.Member> b) {
+            if (a == b) return true;
+            if (a == null || b == null) return false;
+            if (a.size() != b.size()) return false;
+            for (int i = 0; i < a.size(); i++) {
+                FirebaseRoomClient.Member m1 = a.get(i);
+                FirebaseRoomClient.Member m2 = b.get(i);
+                if (m1 == null || m2 == null) {
+                    if (m1 != m2) return false;
+                    continue;
+                }
+                if (!java.util.Objects.equals(m1.uid, m2.uid)) return false;
+                if (!java.util.Objects.equals(m1.name, m2.name)) return false;
+                if (Double.compare(m1.lat, m2.lat) != 0) return false;
+                if (Double.compare(m1.lng, m2.lng) != 0) return false;
+                if (m1.batteryPct != m2.batteryPct) return false;
+                if (!java.util.Objects.equals(m1.photoUrl, m2.photoUrl)) return false;
+                if (!java.util.Objects.equals(m1.photoB64, m2.photoB64)) return false;
+            }
+            return true;
         }
 
         void setActiveSos(String uid, long untilMs) {
@@ -2538,8 +2575,12 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
             if (bmp == null) return;
             Marker current = markersByUid.get(u);
             if (current == null) return;
-            current.setIcon(BitmapDescriptorFactory.fromBitmap(buildProfileMarkerBitmapFromPhoto(this, bmp)));
-            current.setAnchor(0.5f, 0.5f);
+            String iconKey = "remote|" + url;
+            if (!iconKey.equals(markerIconKeyByUid.get(u))) {
+                current.setIcon(BitmapDescriptorFactory.fromBitmap(buildProfileMarkerBitmapFromPhoto(this, bmp)));
+                current.setAnchor(0.5f, 0.5f);
+                markerIconKeyByUid.put(u, iconKey);
+            }
         });
     }
 
