@@ -94,8 +94,10 @@ public class MainActivity extends BaseActivity {
     private String pendingAdminNotificationMessage = "";
     private boolean adminNotificationBaselineLoaded = false;
     private volatile boolean restoringActiveRoom = false;
-    private volatile String myActiveSosId = "";
-    private volatile boolean cancelMySosWhenIdArrives = false;
+    // Multi-room SOS state: roomCode -> sosId for every room we fired to
+    private final java.util.concurrent.ConcurrentHashMap<String, String> activeSosIds = new java.util.concurrent.ConcurrentHashMap<>();
+    // Set when user slides-to-cancel before all Firebase IDs have arrived
+    private volatile boolean sosCancelledWhilePending = false;
     private RecyclerView rvMedicalNews;
     private MedicalNewsAdapter medicalNewsAdapter;
     private android.view.View newsProgress;
@@ -165,42 +167,55 @@ public class MainActivity extends BaseActivity {
         btnInbox = findViewById(R.id.btn_inbox);
         inboxUnreadDot = findViewById(R.id.inbox_unread_dot);
         sosSheet = new SosBottomSheetController(this, new SosBottomSheetController.SosCallbacks() {
-            /** Fungsi untuk onSosStarted. */
+            /** Blast SOS to every room this user belongs to. */
     @Override
             public void onSosStarted() {
-                String code = String.valueOf(UserPrefs.getActiveRoomCode(MainActivity.this) == null ? "" : UserPrefs.getActiveRoomCode(MainActivity.this)).trim();
-                if (code.isEmpty()) {
-                    showJoinOrCreateRoomDialog();
-                    return;
-                }
+                sosCancelledWhilePending = false;
+                activeSosIds.clear();
                 FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
                 if (u == null) return;
-                String uid = u.getUid();
-                String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
-                String name = UserPrefs.getName(MainActivity.this);
-                if (name == null || name.trim().isEmpty()) name = "User";
-                FirebaseRoomClient.sendRoomSosQueued(code, uid, dev, name, id -> {
-                    myActiveSosId = String.valueOf(id == null ? "" : id).trim();
-                    if (cancelMySosWhenIdArrives && !myActiveSosId.isEmpty()) {
-                        FirebaseRoomClient.cancelRoomSosQueued(code, myActiveSosId, dev);
-                        myActiveSosId = "";
-                        cancelMySosWhenIdArrives = false;
-                    }
-                });
+                final String uid = u.getUid();
+                final String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
+                final String rawName = UserPrefs.getName(MainActivity.this);
+                final String name = (rawName == null || rawName.trim().isEmpty()) ? "User" : rawName.trim();
+
+                // One read: grab all rooms this user is in, then fire SOS to each
+                FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                        .getReference("userRooms")
+                        .child(uid)
+                        .get()
+                        .addOnSuccessListener(snapshot -> {
+                            if (snapshot == null || !snapshot.exists()) return;
+                            for (DataSnapshot child : snapshot.getChildren()) {
+                                if (child == null || child.getKey() == null) continue;
+                                final String code = child.getKey().trim().toUpperCase(java.util.Locale.ROOT);
+                                if (code.isEmpty()) continue;
+                                FirebaseRoomClient.sendRoomSosQueued(code, uid, dev, name, id -> {
+                                    String sosId = String.valueOf(id == null ? "" : id).trim();
+                                    if (sosId.isEmpty()) return;
+                                    if (sosCancelledWhilePending) {
+                                        // User cancelled before this ID arrived — kill it immediately
+                                        FirebaseRoomClient.cancelRoomSosQueued(code, sosId, dev);
+                                    } else {
+                                        activeSosIds.put(code, sosId);
+                                    }
+                                });
+                            }
+                        });
             }
 
-            /** Fungsi untuk onSosCancelled. */
+            /** Cancel SOS on every room we fired to. */
     @Override
             public void onSosCancelled() {
-                String code = String.valueOf(UserPrefs.getActiveRoomCode(MainActivity.this) == null ? "" : UserPrefs.getActiveRoomCode(MainActivity.this)).trim();
-                String id = String.valueOf(myActiveSosId == null ? "" : myActiveSosId).trim();
-                if (!code.isEmpty() && !id.isEmpty()) {
-                    String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
-                    FirebaseRoomClient.cancelRoomSosQueued(code, id, dev);
-                } else if (!code.isEmpty() && id.isEmpty()) {
-                    cancelMySosWhenIdArrives = true;
+                sosCancelledWhilePending = true;
+                final String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
+                // Cancel all rooms whose IDs have already arrived
+                for (java.util.Map.Entry<String, String> e : new java.util.HashMap<>(activeSosIds).entrySet()) {
+                    if (!e.getKey().isEmpty() && !e.getValue().isEmpty()) {
+                        FirebaseRoomClient.cancelRoomSosQueued(e.getKey(), e.getValue(), dev);
+                    }
                 }
-                myActiveSosId = "";
+                activeSosIds.clear();
             }
         });
 
@@ -510,15 +525,14 @@ public class MainActivity extends BaseActivity {
     }
 
     private void cancelActiveSosIfAny() {
-        String code = String.valueOf(UserPrefs.getActiveRoomCode(MainActivity.this) == null ? "" : UserPrefs.getActiveRoomCode(MainActivity.this)).trim();
-        String id = String.valueOf(myActiveSosId == null ? "" : myActiveSosId).trim();
-        if (!code.isEmpty() && !id.isEmpty()) {
-            String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
-            FirebaseRoomClient.cancelRoomSosQueued(code, id, dev);
-        } else if (!code.isEmpty()) {
-            cancelMySosWhenIdArrives = true;
+        sosCancelledWhilePending = true;
+        final String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
+        for (java.util.Map.Entry<String, String> e : new java.util.HashMap<>(activeSosIds).entrySet()) {
+            if (!e.getKey().isEmpty() && !e.getValue().isEmpty()) {
+                FirebaseRoomClient.cancelRoomSosQueued(e.getKey(), e.getValue(), dev);
+            }
         }
-        myActiveSosId = "";
+        activeSosIds.clear();
         if (sosSheet != null) {
             try {
                 sosSheet.cancel();
@@ -527,28 +541,12 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    /** Fungsi untuk triggerSosFlow. */
+    /** Tekan SOS — sheet muncul, onSosStarted akan broadcast ke semua room. */
     private void triggerSosFlow() {
         if (sosSheet == null) return;
-        String code = String.valueOf(UserPrefs.getActiveRoomCode(this) == null ? "" : UserPrefs.getActiveRoomCode(this)).trim();
-        if (!code.isEmpty()) {
-            sosSheet.show();
-            return;
-        }
-        // No active room set — auto-resolve from Firebase without blocking user
-        com.google.firebase.auth.FirebaseUser cu = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        FirebaseUser cu = FirebaseAuth.getInstance().getCurrentUser();
         if (cu == null) { showJoinOrCreateRoomDialog(); return; }
-        FirebaseRoomClient.fetchMostRecentUserRoomCodeQueued(cu.getUid(), found -> {
-            String resolved = found == null ? "" : found.trim();
-            runOnUiThread(() -> {
-                if (resolved.isEmpty()) {
-                    showJoinOrCreateRoomDialog();
-                } else {
-                    UserPrefs.setActiveRoomCode(MainActivity.this, resolved);
-                    if (sosSheet != null) sosSheet.show();
-                }
-            });
-        });
+        sosSheet.show();
     }
 
     /** Fungsi untuk ensureNotificationsPermission. */
