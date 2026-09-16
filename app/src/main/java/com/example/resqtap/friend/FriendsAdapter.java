@@ -8,9 +8,12 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -19,6 +22,7 @@ import com.example.resqtap.R;
 import com.example.resqtap.room.FirebaseRoomClient;
 import com.example.resqtap.utils.AvatarUtils;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.imageview.ShapeableImageView;
 
 import java.util.ArrayList;
@@ -83,8 +87,9 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.ViewHold
         } else {
             for (FirebaseFriendClient.FriendInfo friend : allFriends) {
                 String name = friend.name != null ? friend.name.toLowerCase() : "";
+                String nick = friend.nickname != null ? friend.nickname.toLowerCase() : "";
                 String pubId = friend.publicId != null ? friend.publicId.toLowerCase() : "";
-                if (name.contains(query) || pubId.contains(query)) {
+                if (name.contains(query) || nick.contains(query) || pubId.contains(query)) {
                     displayFriends.add(friend);
                 }
             }
@@ -104,11 +109,33 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.ViewHold
         FirebaseFriendClient.FriendInfo friend = displayFriends.get(position);
         Context ctx = holder.itemView.getContext();
 
-        holder.name.setText(friend.name.isEmpty() ? ctx.getString(R.string.friend_default_name) : friend.name);
-        if (friend.publicId.isEmpty()) {
-            holder.publicId.setText(ctx.getString(R.string.friend_resqtap_default));
+        String realName = friend.name.isEmpty() ? ctx.getString(R.string.friend_default_name) : friend.name;
+        boolean hasNickname = friend.nickname != null && !friend.nickname.trim().isEmpty();
+
+        if (hasNickname) {
+            holder.name.setText(friend.nickname.trim());
+            if (friend.publicId.isEmpty()) {
+                holder.publicId.setText(realName);
+            } else {
+                holder.publicId.setText(ctx.getString(R.string.friend_nickname_real_name_format, realName, friend.publicId));
+            }
         } else {
-            holder.publicId.setText(ctx.getString(R.string.friend_tag_format, friend.publicId));
+            holder.name.setText(realName);
+            if (friend.publicId.isEmpty()) {
+                holder.publicId.setText(ctx.getString(R.string.friend_resqtap_default));
+            } else {
+                holder.publicId.setText(ctx.getString(R.string.friend_tag_format, friend.publicId));
+            }
+        }
+
+        // Edit nama panggilan / nickname peribadi
+        if (holder.btnEditNickname != null) {
+            holder.btnEditNickname.setOnClickListener(v -> {
+                int currentPos = holder.getAdapterPosition();
+                if (currentPos != RecyclerView.NO_POSITION) {
+                    showEditNicknameDialog(ctx, friend, currentPos);
+                }
+            });
         }
 
         String b64 = friend.photoB64 != null ? friend.photoB64.trim() : "";
@@ -332,10 +359,61 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.ViewHold
         return allFriends.size();
     }
 
+    /** Dialog untuk menetapkan atau mengemaskini nama panggilan (nickname) peribadi. */
+    private void showEditNicknameDialog(Context ctx, FirebaseFriendClient.FriendInfo friend, int position) {
+        if (friend == null || ctx == null) return;
+
+        EditText input = new EditText(ctx);
+        input.setSingleLine(true);
+        input.setHint(R.string.friend_nickname_hint);
+        if (friend.nickname != null && !friend.nickname.trim().isEmpty()) {
+            input.setText(friend.nickname.trim());
+            input.setSelection(input.getText().length());
+        }
+
+        FrameLayout container = new FrameLayout(ctx);
+        int px = (int) (22 * ctx.getResources().getDisplayMetrics().density);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        lp.leftMargin = px;
+        lp.rightMargin = px;
+        lp.topMargin = (int) (10 * ctx.getResources().getDisplayMetrics().density);
+        lp.bottomMargin = (int) (4 * ctx.getResources().getDisplayMetrics().density);
+        input.setLayoutParams(lp);
+        container.addView(input);
+
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(ctx)
+                .setTitle(R.string.friend_nickname_dialog_title)
+                .setMessage(R.string.friend_nickname_dialog_desc)
+                .setView(container)
+                .setNegativeButton(R.string.cancel, (dialog, which) -> dialog.dismiss())
+                .setPositiveButton(R.string.friend_nickname_save, (dialog, which) -> {
+                    String entered = input.getText().toString().trim();
+                    friend.nickname = entered;
+                    FirebaseFriendClient.updateFriendNickname(currentUid, friend.uid, entered);
+                    notifyItemChanged(position);
+                    Toast.makeText(ctx, R.string.friend_nickname_updated, Toast.LENGTH_SHORT).show();
+                });
+
+        if (friend.nickname != null && !friend.nickname.trim().isEmpty()) {
+            builder.setNeutralButton(R.string.friend_nickname_reset, (dialog, which) -> {
+                friend.nickname = "";
+                FirebaseFriendClient.updateFriendNickname(currentUid, friend.uid, "");
+                notifyItemChanged(position);
+                Toast.makeText(ctx, R.string.friend_nickname_updated, Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        builder.show();
+    }
+
     static class ViewHolder extends RecyclerView.ViewHolder {
         final View headerLayout;
         final ShapeableImageView avatar;
         final TextView name;
+        final ImageView btnEditNickname;
         final TextView publicId;
         final MaterialButton btnRemove;
         final ImageView ivChevron;
@@ -359,6 +437,7 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.ViewHold
             headerLayout = itemView.findViewById(R.id.layout_friend_header);
             avatar = itemView.findViewById(R.id.friend_avatar);
             name = itemView.findViewById(R.id.friend_name);
+            btnEditNickname = itemView.findViewById(R.id.btn_edit_nickname);
             publicId = itemView.findViewById(R.id.friend_public_id);
             btnRemove = itemView.findViewById(R.id.btn_remove_friend);
             ivChevron = itemView.findViewById(R.id.iv_expand_chevron);

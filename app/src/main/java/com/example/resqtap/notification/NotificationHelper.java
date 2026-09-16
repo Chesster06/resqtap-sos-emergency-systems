@@ -173,6 +173,32 @@ public final class NotificationHelper {
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0)
         );
 
+        // Full-screen Intent untuk popup skrin SosAlarmActivity atas lockscreen
+        Intent fullScreenIntent = new Intent(context, com.example.resqtap.sos.SosAlarmActivity.class);
+        fullScreenIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        if (!safeRoom.isEmpty()) fullScreenIntent.putExtra(com.example.resqtap.sos.SosAlarmActivity.EXTRA_ROOM_CODE, safeRoom);
+        if (!safeName.isEmpty()) fullScreenIntent.putExtra(com.example.resqtap.sos.SosAlarmActivity.EXTRA_SENDER_NAME, safeName);
+        if (!focusUid.isEmpty()) fullScreenIntent.putExtra(com.example.resqtap.sos.SosAlarmActivity.EXTRA_SENDER_UID, focusUid);
+        if (!aId.isEmpty()) fullScreenIntent.putExtra(com.example.resqtap.sos.SosAlarmActivity.EXTRA_ALERT_ID, aId);
+        PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(
+                context,
+                201,
+                fullScreenIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0)
+        );
+
+        // Action Snooze (Padamkan Siren)
+        Intent snoozeIntent = new Intent(context, com.example.resqtap.sos.SosSnoozeReceiver.class);
+        snoozeIntent.setAction(com.example.resqtap.sos.SosSnoozeReceiver.ACTION_SNOOZE_SOS);
+        snoozeIntent.putExtra(com.example.resqtap.sos.SosSnoozeReceiver.EXTRA_ALERT_ID, aId);
+        snoozeIntent.putExtra(com.example.resqtap.sos.SosSnoozeReceiver.EXTRA_ROOM_ID, safeRoom);
+        PendingIntent snoozePendingIntent = PendingIntent.getBroadcast(
+                context,
+                202,
+                snoozeIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0)
+        );
+
         NotificationCompat.Builder b = new NotificationCompat.Builder(context, CHANNEL_ID_SOS)
                 .setSmallIcon(R.drawable.ic_error_24)
                 .setContentTitle(title)
@@ -184,7 +210,9 @@ public final class NotificationHelper {
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(openPi)
-
+                .setFullScreenIntent(fullScreenPendingIntent, true)
+                .addAction(R.drawable.ic_bell, context.getString(R.string.sos_action_snooze), snoozePendingIntent)
+                .addAction(R.drawable.ic_menu_location, context.getString(R.string.sos_alarm_view_map), openPi)
                 .setSilent(true)
                 .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
                 .setVibrate(new long[]{0});

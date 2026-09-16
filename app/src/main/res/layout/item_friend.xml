@@ -75,10 +75,21 @@
             </LinearLayout>
 
             <ImageView
+                android:id="@+id/btn_edit_nickname"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/friend_edit_nickname_desc"
+                android:padding="6dp"
+                android:src="@drawable/ic_edit_24"
+                app:tint="@color/text_secondary" />
+
+            <ImageView
                 android:id="@+id/iv_expand_chevron"
                 android:layout_width="32dp"
                 android:layout_height="32dp"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="2dp"
                 android:contentDescription="@null"
                 android:padding="4dp"
                 android:src="@drawable/ic_chevron_down_24"

@@ -130,8 +130,14 @@
       }
     },
     "users": {
+      ".read": "auth != null",
+      ".indexOn": [
+        "publicId",
+        "name",
+        "email"
+      ],
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
+        ".read": "auth != null",
         ".write": "auth != null && auth.uid === $uid"
       }
     },

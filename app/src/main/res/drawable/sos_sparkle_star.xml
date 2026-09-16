@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="12dp"
+    android:height="12dp"
+    android:viewportWidth="12"
+    android:viewportHeight="12">
+    <!-- 4-point star sparkle / diamond -->
+    <path
+        android:fillColor="#FFEF4444"
+        android:pathData="M6,0 Q6,6 12,6 Q6,6 6,12 Q6,6 0,6 Q6,6 6,0 Z" />
+</vector>

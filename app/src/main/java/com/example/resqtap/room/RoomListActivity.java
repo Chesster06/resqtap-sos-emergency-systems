@@ -291,8 +291,13 @@ public class RoomListActivity extends BaseActivity {
             try {
                 loaded = FirebaseRoomClient.fetchUserRooms(uid);
             } catch (Exception e) {
+                if (e instanceof InterruptedException || isFinishing() || isDestroyed()) return;
                 final String err = e.getMessage() != null ? e.getMessage() : e.toString();
-                runOnUiThread(() -> android.widget.Toast.makeText(RoomListActivity.this, "Error fetching rooms: " + err, android.widget.Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed()) {
+                        android.widget.Toast.makeText(RoomListActivity.this, "Error fetching rooms: " + err, android.widget.Toast.LENGTH_LONG).show();
+                    }
+                });
             }
             ArrayList<FirebaseRoomClient.RoomInfo> finalLoaded = loaded;
             runOnUiThread(() -> {

@@ -34,6 +34,7 @@ public class FirebaseFriendClient {
         public String uid = "";
         public String publicId = "";
         public String name = "";
+        public String nickname = "";
         public String photoUrl = "";
         public String photoB64 = "";
         public long addedAt = 0L;
@@ -45,6 +46,7 @@ public class FirebaseFriendClient {
             info.uid = snap.getKey() == null ? "" : snap.getKey().trim();
             info.publicId = String.valueOf(snap.child("publicId").getValue() == null ? "" : snap.child("publicId").getValue()).trim();
             info.name = String.valueOf(snap.child("name").getValue() == null ? "" : snap.child("name").getValue()).trim();
+            info.nickname = String.valueOf(snap.child("nickname").getValue() == null ? "" : snap.child("nickname").getValue()).trim();
             info.photoUrl = String.valueOf(snap.child("photoUrl").getValue() == null ? "" : snap.child("photoUrl").getValue()).trim();
             info.photoB64 = String.valueOf(snap.child("photoB64").getValue() == null ? "" : snap.child("photoB64").getValue()).trim();
             Object at = snap.child("addedAt").getValue();
@@ -364,6 +366,16 @@ public class FirebaseFriendClient {
         updates.put("userFriends/" + cUid + "/" + fUid, null);
         updates.put("userFriends/" + fUid + "/" + cUid, null);
         await(db().updateChildren(updates));
+    }
+
+    /** Kemaskini nama samaran (nickname) rakan untuk paparan peribadi pengguna. */
+    public static void updateFriendNickname(String currentUid, String friendUid, String newNickname) {
+        String cUid = String.valueOf(currentUid == null ? "" : currentUid).trim();
+        String fUid = String.valueOf(friendUid == null ? "" : friendUid).trim();
+        if (cUid.isEmpty() || fUid.isEmpty()) return;
+
+        String safeNick = newNickname == null ? "" : newNickname.trim();
+        db().child("userFriends").child(cUid).child(fUid).child("nickname").setValue(safeNick);
     }
 
     public static class UserDetail {

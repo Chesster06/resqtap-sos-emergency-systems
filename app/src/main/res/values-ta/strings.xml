@@ -471,5 +471,29 @@
     <string name="ai_feedback_thanks">உங்கள் கருத்துக்கு நன்றி</string>
     <string name="ai_feedback_improve">கருத்து பதிவு செய்யப்பட்டது. இதை நாங்கள் மேம்படுத்துவோம்</string>
 
+    <!-- SOS Alarm Screen Localization (Tamil) -->
+    <string name="sos_alarm_slide_to_snooze">அலாரத்தை நிறுத்த ஸ்லைடு செய்க</string>
+    <string name="sos_alarm_snoozed">அலாரம் நிறுத்தப்பட்டது</string>
+    <string name="sos_alarm_snoozed_success">அலாரம் நிறுத்தப்பட்டது • சைரன் அணைக்கப்பட்டது</string>
+    <string name="sos_alert_title">அவசர SOS</string>
+    <string name="sos_alarm_view_map">வரைபடத்தில் பார்க்கவும்</string>
+    <string name="sos_alarm_dismiss">நிராகரி</string>
+    <string name="sos_alarm_alert_received_title">SOS பெறப்பட்டது!</string>
+    <string name="sos_alarm_sender_label">SOS தூண்டியவர்</string>
+    <string name="sos_alarm_emergency_badge">அவசரம்</string>
+    <string name="sos_alarm_needs_help">உடனடி அவசர உதவி தேவைப்படுகிறது!</string>
+    <string name="sos_alarm_room_format">அறை: %1$s</string>
+    <string name="sos_alarm_code_format">குறியீடு: %1$s</string>
+    <string name="sos_alarm_room_code_format">அறை: %1$s (%2$s)</string>
+
+    <!-- Private Friend Nickname -->
+    <string name="friend_nickname_dialog_title">புனைப்பெயரை அமைக்கவும்</string>
+    <string name="friend_nickname_dialog_desc">இந்தப் புனைப்பெயர் உங்களுக்கு மட்டுமே தெரியும்.</string>
+    <string name="friend_nickname_hint">புனைப்பெயரை உள்ளிடவும்</string>
+    <string name="friend_nickname_save">சேமி</string>
+    <string name="friend_nickname_reset">மீட்டமை</string>
+    <string name="friend_nickname_real_name_format">%1$s#%2$s • நண்பர்</string>
+    <string name="friend_nickname_updated">புனைப்பெயர் புதுப்பிக்கப்பட்டது</string>
+    <string name="friend_edit_nickname_desc">தனிப்பட்ட புனைப்பெயரைத் திருத்து</string>
 </resources>
 

@@ -35,7 +35,13 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
+import java.util.Set;
 
 
 /**
@@ -79,12 +85,10 @@ public class LiveRoomTrackingService extends Service {
     private boolean running = false;
     private android.content.BroadcastReceiver batteryReceiver;
     private boolean hasNotifiedLowBattery = false;
-    private ChildEventListener bellListener;
-    private ChildEventListener roomSosListener;
+    private final ConcurrentHashMap<String, RoomWatcher> roomWatchers = new ConcurrentHashMap<>();
+    private ChildEventListener userRoomsListener;
     private ValueEventListener forceLeaveListener;
     private ValueEventListener roomDeletedListener;
-    private FirebaseRoomClient.RoomPermissions roomPermissions = new FirebaseRoomClient.RoomPermissions();
-    private ValueEventListener roomPermissionsListener;
     private final android.os.Handler sosHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private volatile Runnable sosStopWatchdog;
     private final android.os.Handler fgHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -96,6 +100,19 @@ public class LiveRoomTrackingService extends Service {
     private String photoUrl = "";
     private String photoB64 = "";
     private String deviceId = "";
+
+    /** Kelas pembantu untuk mendengar SOS, Bell dan Permissions bagi setiap bilik. */
+    private static class RoomWatcher {
+        final String room;
+        ValueEventListener permissionsListener;
+        FirebaseRoomClient.RoomPermissions permissions = new FirebaseRoomClient.RoomPermissions();
+        ChildEventListener sosListener;
+        ChildEventListener bellListener;
+
+        RoomWatcher(String room) {
+            this.room = room;
+        }
+    }
 
     // =========================================================================
     // SEKSYEN: ONCREATE
@@ -197,11 +214,9 @@ public class LiveRoomTrackingService extends Service {
                 stopSelf();
                 return;
             }
-            startRoomPermissionsListener();
-            startBellListener();
+            startUserRoomsMultiWatcher();
             startForceLeaveListener();
             startRoomDeletedListener();
-            startRoomSosListener();
             startIncomingCallListener();
             startTracking();
         });
@@ -224,9 +239,7 @@ public class LiveRoomTrackingService extends Service {
             }
         } catch (Exception ignored) {
         }
-        stopRoomPermissionsListener();
-        stopBellListener();
-        stopRoomSosListener();
+        stopUserRoomsMultiWatcher();
         super.onDestroy();
     }
 
@@ -248,9 +261,8 @@ public class LiveRoomTrackingService extends Service {
                 } catch (Exception ignored) {
                 }
                 try { stopTracking(); } catch (Exception ignored) {}
-                try { stopBellListener(); } catch (Exception ignored) {}
+                try { stopUserRoomsMultiWatcher(); } catch (Exception ignored) {}
                 try { stopForceLeaveListener(); } catch (Exception ignored) {}
-                try { stopRoomSosListener(); } catch (Exception ignored) {}
                 try { stopRoomDeletedListener(); } catch (Exception ignored) {}
                 try { stopIncomingCallListener(); } catch (Exception ignored) {}
                 try { stopForegroundNotificationWatchdog(); } catch (Exception ignored) {}
@@ -293,11 +305,7 @@ public class LiveRoomTrackingService extends Service {
                 } catch (Exception ignored) {
                 }
                 try {
-                    stopBellListener();
-                } catch (Exception ignored) {
-                }
-                try {
-                    stopRoomSosListener();
+                    stopUserRoomsMultiWatcher();
                 } catch (Exception ignored) {
                 }
                 try {
@@ -371,10 +379,6 @@ public class LiveRoomTrackingService extends Service {
 
     /** Fungsi untuk startTracking. */
     private void startTracking() {
-
-        startBellListener();
-        startRoomSosListener();
-
         if (running) return;
         if (!PermissionUtils.hasAnyLocation(this)) return;
         if (!GpsUtils.isGpsEnabled(this)) return;
@@ -422,13 +426,103 @@ public class LiveRoomTrackingService extends Service {
         running = false;
     }
 
-    /** Fungsi untuk startBellListener. */
-    private void startBellListener() {
-        if (bellListener != null) return;
+    /** Memulakan pendengaran ke atas semua bilik pengguna secara dinamik. */
+    private void startUserRoomsMultiWatcher() {
+        if (userRoomsListener != null) return;
+        if (uid == null || uid.trim().isEmpty()) return;
+
+        // Sentiasa pastikan bilik aktif semasa dipantau
+        if (roomCode != null && !roomCode.trim().isEmpty()) {
+            ensureRoomWatcher(roomCode.trim());
+        }
+
         try {
-            bellListener = FirebaseRoomClient.listenBells(roomCode, uid, deviceId, (fromUid, fromDeviceId, fromName, atMillis, id) -> {
-                if (roomPermissions != null && !roomPermissions.allowTriggerBell) {
-                    FirebaseRoomClient.ackBell(roomCode, uid, id, deviceId);
+            userRoomsListener = new ChildEventListener() {
+                @Override
+                public void onChildAdded(DataSnapshot snapshot, String previousChildName) {
+                    if (snapshot == null || !snapshot.exists()) return;
+                    String code = snapshot.getKey() == null ? "" : snapshot.getKey().trim();
+                    if (!code.isEmpty()) {
+                        ensureRoomWatcher(code);
+                    }
+                }
+
+                @Override
+                public void onChildChanged(DataSnapshot snapshot, String previousChildName) {
+                    if (snapshot == null || !snapshot.exists()) return;
+                    String code = snapshot.getKey() == null ? "" : snapshot.getKey().trim();
+                    if (!code.isEmpty()) {
+                        ensureRoomWatcher(code);
+                    }
+                }
+
+                @Override
+                public void onChildRemoved(DataSnapshot snapshot) {
+                    if (snapshot == null) return;
+                    String code = snapshot.getKey() == null ? "" : snapshot.getKey().trim();
+                    if (!code.isEmpty()) {
+                        removeRoomWatcher(code);
+                    }
+                }
+
+                @Override public void onChildMoved(DataSnapshot snapshot, String previousChildName) {}
+                @Override public void onCancelled(DatabaseError error) {}
+            };
+
+            FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                    .getReference("userRooms")
+                    .child(uid)
+                    .addChildEventListener(userRoomsListener);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** Hentikan pendengaran nod userRooms. */
+    private void stopUserRoomsMultiWatcher() {
+        if (userRoomsListener != null) {
+            try {
+                FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                        .getReference("userRooms")
+                        .child(uid)
+                        .removeEventListener(userRoomsListener);
+            } catch (Exception ignored) {}
+            userRoomsListener = null;
+        }
+        for (String c : roomWatchers.keySet()) {
+            removeRoomWatcher(c);
+        }
+        roomWatchers.clear();
+    }
+
+    /** Pastikan pemantau (Watcher) wujud dan aktif bagi bilik tertentu. */
+    private synchronized void ensureRoomWatcher(String targetRoom) {
+        if (targetRoom == null || targetRoom.trim().isEmpty()) return;
+        final String code = targetRoom.trim().toUpperCase(java.util.Locale.ROOT);
+        if (roomWatchers.containsKey(code)) return;
+
+        RoomWatcher watcher = new RoomWatcher(code);
+        roomWatchers.put(code, watcher);
+
+        // 1. Dengar permissions untuk bilik ini
+        try {
+            watcher.permissionsListener = FirebaseRoomClient.listenRoomPermissions(code, p -> {
+                if (p != null) {
+                    watcher.permissions = p;
+                    if (!watcher.permissions.allowSosAlarm) {
+                        try {
+                            VibrateManager.stopAll(LiveRoomTrackingService.this);
+                            SosAudioManager.stopAll();
+                        } catch (Exception ignored) {}
+                    }
+                }
+            });
+        } catch (Exception ignored) {}
+
+        // 2. Dengar Bell untuk bilik ini
+        try {
+            watcher.bellListener = FirebaseRoomClient.listenBells(code, uid, deviceId, (fromUid, fromDeviceId, fromName, atMillis, id) -> {
+                if (watcher.permissions != null && !watcher.permissions.allowTriggerBell) {
+                    FirebaseRoomClient.ackBell(code, uid, id, deviceId);
                     return;
                 }
                 String from = String.valueOf(fromUid == null ? "" : fromUid).trim();
@@ -437,69 +531,35 @@ public class LiveRoomTrackingService extends Service {
                 boolean sameAccount = uid != null && uid.trim().equals(from);
                 boolean sameDevice = deviceId != null && !deviceId.trim().isEmpty() && deviceId.trim().equals(fromDev);
                 if (sameAccount && sameDevice) {
-                    FirebaseRoomClient.ackBell(roomCode, uid, id, deviceId);
+                    FirebaseRoomClient.ackBell(code, uid, id, deviceId);
                     return;
                 }
                 triggerVibrate();
-                NotificationUtils.notifyBell(this, roomCode, name);
-                FirebaseRoomClient.ackBell(roomCode, uid, id, deviceId);
+                NotificationUtils.notifyBell(LiveRoomTrackingService.this, code, name);
+                FirebaseRoomClient.ackBell(code, uid, id, deviceId);
             });
-        } catch (Exception ignored) {
-        }
-    }
+        } catch (Exception ignored) {}
 
-    /** Fungsi untuk stopBellListener. */
-    private void stopBellListener() {
-        if (bellListener == null) return;
-        FirebaseRoomClient.removeBellListener(roomCode, uid, bellListener);
-        bellListener = null;
-    }
-
-    /** Fungsi untuk startRoomPermissionsListener. */
-    private void startRoomPermissionsListener() {
-        if (roomPermissionsListener != null) return;
+        // 3. Dengar SOS untuk bilik ini
         try {
-            roomPermissionsListener = FirebaseRoomClient.listenRoomPermissions(roomCode, p -> {
-                if (p != null) {
-                    roomPermissions = p;
-                    if (!roomPermissions.allowSosAlarm) {
-                        try {
-                            VibrateManager.stopAll(LiveRoomTrackingService.this);
-                            SosAudioManager.stopAll();
-                        } catch (Exception ignored) {}
-                    }
-                }
-            });
-        } catch (Exception ignored) {
-        }
-    }
-
-    /** Fungsi untuk stopRoomPermissionsListener. */
-    private void stopRoomPermissionsListener() {
-        if (roomPermissionsListener == null) return;
-        FirebaseRoomClient.removeRoomPermissionsListener(roomCode, roomPermissionsListener);
-        roomPermissionsListener = null;
-    }
-
-    /** Fungsi untuk startRoomSosListener. */
-    private void startRoomSosListener() {
-        if (roomSosListener != null) return;
-        try {
-            long localLastSeen = SosPrefs.getLastSeenAlertTime(this, roomCode);
+            long localLastSeen = SosPrefs.getLastSeenAlertTime(this, code);
             FirebaseRoomClient.fetchServerNowQueued(serverNow -> {
                 long baseline = Math.max(serverNow, localLastSeen);
-
-                SosPrefs.bumpBaselineAtListenerStart(LiveRoomTrackingService.this, roomCode, baseline);
+                SosPrefs.bumpBaselineAtListenerStart(LiveRoomTrackingService.this, code, baseline);
                 try {
-                    android.util.Log.d("SOS_DEBUG", "Listener attached to roomId: " + roomCode + " (service)");
-                } catch (Exception ignored) {
-                }
+                    android.util.Log.d("SOS_DEBUG", "Multi-room SOS listener attached to: " + code);
+                } catch (Exception ignored) {}
                 logServiceEnvOnce("listenerAttach");
-                roomSosListener = FirebaseRoomClient.listenRoomSosSince(roomCode, deviceId, baseline, new FirebaseRoomClient.RoomSosHandler() {
-                    /** Fungsi untuk onSos. */
-    @Override
-    public void onSos(String senderUid, String senderName, String roomId, long createdAtMs, String alertId, String status) {
-                        if (roomPermissions != null && !roomPermissions.allowSosAlarm) {
+
+                watcher.sosListener = FirebaseRoomClient.listenRoomSosSince(code, deviceId, baseline, new FirebaseRoomClient.RoomSosHandler() {
+                    @Override
+                    public void onSos(String senderUid, String senderName, String roomId, long createdAtMs, String alertId, String status) {
+                        try {
+                            android.util.Log.d("SOS_DEBUG", "onSos entered in service: room=" + code + " id=" + alertId + " senderUid=" + senderUid + " createdAt=" + createdAtMs + " permissions=" + (watcher.permissions != null ? watcher.permissions.allowSosAlarm : "null"));
+                        } catch (Exception ignored) {}
+
+                        if (watcher.permissions != null && !watcher.permissions.allowSosAlarm) {
+                            try { android.util.Log.d("SOS_DEBUG", "onSos dropped: allowSosAlarm is false"); } catch (Exception ignored) {}
                             return;
                         }
                         String from = String.valueOf(senderUid == null ? "" : senderUid).trim();
@@ -507,78 +567,126 @@ public class LiveRoomTrackingService extends Service {
                         String sosId = String.valueOf(alertId == null ? "" : alertId).trim();
                         long createdAt = Math.max(0L, createdAtMs);
 
-                        if (uid != null && !uid.trim().isEmpty() && uid.trim().equals(from)) return;
+                        if (uid != null && !uid.trim().isEmpty() && uid.trim().equals(from)) {
+                            try { android.util.Log.d("SOS_DEBUG", "onSos dropped: sender is self"); } catch (Exception ignored) {}
+                            return;
+                        }
 
-                        if (!SosPrefs.tryMarkHandled(LiveRoomTrackingService.this, roomCode, sosId, createdAt)) return;
+                        if (!SosPrefs.tryMarkHandled(LiveRoomTrackingService.this, code, sosId, createdAt)) {
+                            try { android.util.Log.d("SOS_DEBUG", "onSos dropped: tryMarkHandled returned false for alertId=" + sosId); } catch (Exception ignored) {}
+                            return;
+                        }
 
                         try {
-                            android.util.Log.d("SOS_DEBUG", "SOS alert received in service: " + sosId + " createdAt=" + createdAt + " status=" + status);
-                        } catch (Exception ignored) {
-                        }
+                            android.util.Log.d("SOS_DEBUG", "SOS alert received in service for room: " + code + " id=" + sosId + " status=" + status);
+                        } catch (Exception ignored) {}
                         logServiceEnvOnce("handleSos");
                         try { NotificationHelper.ensureSosChannel(LiveRoomTrackingService.this); } catch (Exception ignored) {}
 
                         try {
-                            UserPrefs.setPendingSosFocus(LiveRoomTrackingService.this, roomCode, from, sosId, createdAt);
-                        } catch (Exception ignored) {
-                        }
+                            UserPrefs.setPendingSosFocus(LiveRoomTrackingService.this, code, from, sosId, createdAt);
+                        } catch (Exception ignored) {}
 
                         try {
                             long until = (createdAt > 0L ? createdAt : System.currentTimeMillis()) + 20_000L;
-                            UserPrefs.setSosUiBlink(LiveRoomTrackingService.this, roomCode, from, sosId, until);
-                        } catch (Exception ignored) {
-                        }
-                        NotificationHelper.showSosAlert(LiveRoomTrackingService.this, roomCode, nameSafe, from, sosId);
+                            UserPrefs.setSosUiBlink(LiveRoomTrackingService.this, code, from, sosId, until);
+                        } catch (Exception ignored) {}
+
+                        NotificationHelper.showSosAlert(LiveRoomTrackingService.this, code, nameSafe, from, sosId);
                         VibrateManager.startEmergency10s(LiveRoomTrackingService.this, sosId);
                         SosAudioManager.start10s(LiveRoomTrackingService.this, sosId);
+
+                        // Lancarkan skrin SosAlarmActivity secara terus jika peranti aktif/skrin hidup
+                        try {
+                            Intent alarmIntent = new Intent(LiveRoomTrackingService.this, com.example.resqtap.sos.SosAlarmActivity.class);
+                            alarmIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                            alarmIntent.putExtra(com.example.resqtap.sos.SosAlarmActivity.EXTRA_ROOM_CODE, code);
+                            alarmIntent.putExtra(com.example.resqtap.sos.SosAlarmActivity.EXTRA_ROOM_NAME, code);
+                            alarmIntent.putExtra(com.example.resqtap.sos.SosAlarmActivity.EXTRA_SENDER_NAME, nameSafe);
+                            alarmIntent.putExtra(com.example.resqtap.sos.SosAlarmActivity.EXTRA_SENDER_UID, from);
+                            alarmIntent.putExtra(com.example.resqtap.sos.SosAlarmActivity.EXTRA_ALERT_ID, sosId);
+                            LiveRoomTrackingService.this.startActivity(alarmIntent);
+                        } catch (Exception e) {
+                            android.util.Log.e("SOS_DEBUG", "Failed to start SosAlarmActivity directly: " + e.getMessage());
+                        }
 
                         try {
                             Runnable prev = sosStopWatchdog;
                             if (prev != null) sosHandler.removeCallbacks(prev);
-                        } catch (Exception ignored) {
-                        }
+                        } catch (Exception ignored) {}
+
                         sosStopWatchdog = () -> {
                             try {
                                 android.util.Log.d("SOS_DEBUG", "Service watchdog stopping vibration/sound after 10s. alertId=" + sosId);
-                            } catch (Exception ignored) {
-                            }
+                            } catch (Exception ignored) {}
                             VibrateManager.stopAll(LiveRoomTrackingService.this);
                             SosAudioManager.stopAll();
                         };
                         sosHandler.postDelayed(sosStopWatchdog, 10_000L);
                     }
 
-                    /** Fungsi untuk onSosCancelled. */
-    @Override
-    public void onSosCancelled(String senderUid, String roomId, String alertId, long cancelledAtMs) {
+                    @Override
+                    public void onSosCancelled(String senderUid, String roomId, String alertId, long cancelledAtMs) {
                         String sosId = String.valueOf(alertId == null ? "" : alertId).trim();
                         try {
-                            android.util.Log.d("SOS_DEBUG", "SOS cancelled received: " + sosId);
-                        } catch (Exception ignored) {
-                        }
+                            android.util.Log.d("SOS_DEBUG", "SOS cancelled received for room " + code + ": " + sosId);
+                        } catch (Exception ignored) {}
                         logServiceEnvOnce("handleCancel");
 
                         VibrateManager.stopAll(LiveRoomTrackingService.this);
                         SosAudioManager.stopAll();
                         try {
-                            UserPrefs.clearSosUiBlinkIfAlert(LiveRoomTrackingService.this, roomCode, sosId);
-                        } catch (Exception ignored) {
+                            UserPrefs.clearSosUiBlinkIfAlert(LiveRoomTrackingService.this, code, sosId);
+                        } catch (Exception ignored) {}
+
+                        // Hantar broadcast pembatalan kepada SosAlarmActivity
+                        try {
+                            Intent cancelIntent = new Intent("com.example.resqtap.SOS_CANCELLED");
+                            cancelIntent.putExtra("alertId", sosId);
+                            cancelIntent.putExtra("roomId", code);
+                            cancelIntent.setPackage(getPackageName());
+                            sendBroadcast(cancelIntent);
+                        } catch (Exception e) {
+                            android.util.Log.e("SOS_DEBUG", "Failed to broadcast SOS_CANCELLED: " + e.getMessage());
                         }
+
                         try {
                             Runnable prev = sosStopWatchdog;
                             if (prev != null) sosHandler.removeCallbacks(prev);
-                        } catch (Exception ignored) {
-                        }
+                        } catch (Exception ignored) {}
                         sosStopWatchdog = null;
-                        try {
-                            android.util.Log.d("SOS_DEBUG", "Vibration stopped due to cancel. activeAlertId(now)=" + VibrateManager.getActiveAlertId());
-                        } catch (Exception ignored) {
-                        }
-
                     }
                 });
             });
-        } catch (Exception ignored) {
+        } catch (Exception ignored) {}
+    }
+
+    /** Buang pemantau dan listener bagi bilik tertentu. */
+    private synchronized void removeRoomWatcher(String targetRoom) {
+        if (targetRoom == null || targetRoom.trim().isEmpty()) return;
+        final String code = targetRoom.trim().toUpperCase(java.util.Locale.ROOT);
+        RoomWatcher watcher = roomWatchers.remove(code);
+        if (watcher == null) return;
+
+        if (watcher.permissionsListener != null) {
+            try {
+                FirebaseRoomClient.removeRoomPermissionsListener(code, watcher.permissionsListener);
+            } catch (Exception ignored) {}
+            watcher.permissionsListener = null;
+        }
+
+        if (watcher.bellListener != null) {
+            try {
+                FirebaseRoomClient.removeBellListener(code, uid, watcher.bellListener);
+            } catch (Exception ignored) {}
+            watcher.bellListener = null;
+        }
+
+        if (watcher.sosListener != null) {
+            try {
+                FirebaseRoomClient.removeRoomSosListener(code, watcher.sosListener);
+            } catch (Exception ignored) {}
+            watcher.sosListener = null;
         }
     }
 
@@ -615,16 +723,6 @@ public class LiveRoomTrackingService extends Service {
                     + " sdk=" + android.os.Build.VERSION.SDK_INT);
         } catch (Exception ignored) {
         }
-    }
-
-    /** Fungsi untuk stopRoomSosListener. */
-    private void stopRoomSosListener() {
-        if (roomSosListener == null) return;
-        try {
-            FirebaseRoomClient.removeRoomSosListener(roomCode, roomSosListener);
-        } catch (Exception ignored) {
-        }
-        roomSosListener = null;
     }
 
     /** Fungsi untuk startIncomingCallListener. */

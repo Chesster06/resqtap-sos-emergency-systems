@@ -472,5 +472,29 @@
     <string name="ai_feedback_thanks">感谢您的反馈</string>
     <string name="ai_feedback_improve">已记录反馈，我们将继续改进</string>
 
+    <!-- SOS Alarm Screen Localization (Chinese) -->
+    <string name="sos_alarm_slide_to_snooze">滑动暂停警报</string>
+    <string name="sos_alarm_snoozed">警报已暂停</string>
+    <string name="sos_alarm_snoozed_success">警报已暂停 • 警笛已关闭</string>
+    <string name="sos_alert_title">紧急 SOS</string>
+    <string name="sos_alarm_view_map">在地图上查看</string>
+    <string name="sos_alarm_dismiss">关闭</string>
+    <string name="sos_alarm_alert_received_title">收到 SOS！</string>
+    <string name="sos_alarm_sender_label">SOS 发起人</string>
+    <string name="sos_alarm_emergency_badge">紧急</string>
+    <string name="sos_alarm_needs_help">需要立即紧急援助！</string>
+    <string name="sos_alarm_room_format">房间：%1$s</string>
+    <string name="sos_alarm_code_format">代码：%1$s</string>
+    <string name="sos_alarm_room_code_format">房间：%1$s (%2$s)</string>
+
+    <!-- Private Friend Nickname -->
+    <string name="friend_nickname_dialog_title">设置专属备注名</string>
+    <string name="friend_nickname_dialog_desc">此备注名仅您自己可见。</string>
+    <string name="friend_nickname_hint">输入备注名（如：弟弟、室友）</string>
+    <string name="friend_nickname_save">保存</string>
+    <string name="friend_nickname_reset">重置</string>
+    <string name="friend_nickname_real_name_format">%1$s#%2$s • 好友</string>
+    <string name="friend_nickname_updated">备注名已更新</string>
+    <string name="friend_edit_nickname_desc">修改专属备注名</string>
 </resources>
 

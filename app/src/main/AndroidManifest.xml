@@ -235,6 +235,22 @@
             android:foregroundServiceType="mediaProjection|camera|microphone" />
 
         <activity
+            android:name=".sos.SosAlarmActivity"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:exported="true" />
+
+        <receiver
+            android:name=".sos.SosSnoozeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.resqtap.ACTION_SNOOZE_SOS" />
+            </intent-filter>
+        </receiver>
+
+        <activity
             android:name=".call.IncomingCallActivity"
             android:showOnLockScreen="true"
             android:turnScreenOn="true"

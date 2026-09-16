@@ -158,6 +158,24 @@
     <string name="sos_sheet_subtitle">SOS dan lokasi anda akan dihantar kepada circle dan kenalan kecemasan anda.</string>
     <string name="sos_sheet_slide_to_cancel">Leret untuk batal</string>
     <string name="sos_sheet_slide_track">Leret untuk batal SOS</string>
+    <string name="sos_alarm_slide_to_snooze">Leret untuk henti siren</string>
+    <string name="sos_alarm_snoozed">Siren Diberhentikan</string>
+    <string name="sos_alarm_snoozed_success">Penggera dihentikan • Siren dipadamkan</string>
+    <string name="sos_alert_title">Kecemasan SOS</string>
+    <string name="sos_room_badge_format">Bilik: %1$s • %2$s</string>
+    <string name="sos_alarm_view_map">Lihat Pada Peta</string>
+    <string name="sos_alarm_dismiss">Tutup</string>
+    <string name="sos_alarm_alert_received_title">SOS Diterima!</string>
+    <string name="sos_alarm_sender_label">PENCETUS SOS</string>
+    <string name="sos_alarm_emergency_badge">KECEMASAN</string>
+    <string name="sos_alarm_needs_help">Memerlukan bantuan kecemasan segera!</string>
+    <string name="sos_alarm_room_format">Bilik: %1$s</string>
+    <string name="sos_alarm_code_format">Kod: %1$s</string>
+    <string name="sos_alarm_room_code_format">Bilik: %1$s (%2$s)</string>
+    <string name="sos_alarm_card_bold">Jangan Bimbang!</string>
+    <string name="sos_alarm_card_desc1"><![CDATA[<font color="#E11D48"><b>Jangan Bimbang!</b></font> %1$s telah mencetuskan amaran SOS bersama maklumat lokasi!]]></string>
+    <string name="sos_alarm_card_desc2">Bertenang dan semak bilik anda untuk memberi bantuan dengan segera.</string>
+    <string name="sos_action_snooze">Henti Siren</string>
     <string name="toast_account_created">Akaun berjaya dicipta.</string>
 
     <string name="open_menu">Buka menu</string>
@@ -864,5 +882,14 @@
     <string name="toast_checkin_safe">Status dikemaskini: Anda selamat.</string>
     <string name="toast_checkin_danger">Amaran kecemasan diperbaharui!</string>
 
+    <!-- Private Friend Nickname -->
+    <string name="friend_nickname_dialog_title">Tetapkan Nama Panggilan</string>
+    <string name="friend_nickname_dialog_desc">Nama panggilan ini hanya akan kelihatan pada akaun anda.</string>
+    <string name="friend_nickname_hint">Masukkan nama panggilan (cth: Adik, Roommate)</string>
+    <string name="friend_nickname_save">Simpan</string>
+    <string name="friend_nickname_reset">Set Semula</string>
+    <string name="friend_nickname_real_name_format">%1$s#%2$s • Rakan</string>
+    <string name="friend_nickname_updated">Nama panggilan dikemaskini</string>
+    <string name="friend_edit_nickname_desc">Ubah nama panggilan peribadi</string>
 </resources>
 

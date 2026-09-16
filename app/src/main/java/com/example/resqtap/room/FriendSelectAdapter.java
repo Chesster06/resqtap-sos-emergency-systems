@@ -67,8 +67,14 @@ public class FriendSelectAdapter extends RecyclerView.Adapter<FriendSelectAdapte
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         FriendInfo f = friends.get(position);
         android.content.Context ctx = holder.itemView.getContext();
-        holder.name.setText(f.name.isEmpty() ? ctx.getString(R.string.friend_default_name) : f.name);
-        holder.tag.setText(f.name + "#" + f.publicId);
+        boolean hasNick = f.nickname != null && !f.nickname.trim().isEmpty();
+        if (hasNick) {
+            holder.name.setText(f.nickname.trim());
+            holder.tag.setText(f.name + "#" + f.publicId);
+        } else {
+            holder.name.setText(f.name.isEmpty() ? ctx.getString(R.string.friend_default_name) : f.name);
+            holder.tag.setText(f.name + "#" + f.publicId);
+        }
 
         AvatarUtils.applyAvatar(holder.avatar, f.photoB64, f.photoUrl, R.drawable.ic_avatar);
 

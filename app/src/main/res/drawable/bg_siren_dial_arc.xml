@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Active Pink Arc: starts from 12 o'clock (100,10) and sweeps ~100 degrees to ~3:30 (189,122) -->
+    <path
+        android:strokeColor="#FFE60067"
+        android:strokeWidth="4"
+        android:strokeLineCap="butt"
+        android:pathData="M 100,10 A 90,90 0 0,1 189,122" />
+
+</vector>

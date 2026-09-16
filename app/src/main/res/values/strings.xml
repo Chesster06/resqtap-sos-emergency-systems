@@ -182,6 +182,24 @@
     <string name="sos_sheet_subtitle">Your SOS and location will be sent to your circle and emergency contacts.</string>
     <string name="sos_sheet_slide_to_cancel">Slide to cancel</string>
     <string name="sos_sheet_slide_track">Slide to cancel SOS</string>
+    <string name="sos_alarm_slide_to_snooze">Slide to snooze alarm</string>
+    <string name="sos_alarm_snoozed">Alarm Snoozed</string>
+    <string name="sos_alarm_snoozed_success">Alarm snoozed • Siren silenced</string>
+    <string name="sos_alert_title">Emergency SOS</string>
+    <string name="sos_room_badge_format">Room: %1$s • %2$s</string>
+    <string name="sos_alarm_view_map">View on Map</string>
+    <string name="sos_alarm_dismiss">Dismiss</string>
+    <string name="sos_alarm_alert_received_title">SOS Received!</string>
+    <string name="sos_alarm_sender_label">SOS TRIGGERED BY</string>
+    <string name="sos_alarm_emergency_badge">EMERGENCY</string>
+    <string name="sos_alarm_needs_help">Needs immediate emergency assistance!</string>
+    <string name="sos_alarm_room_format">Room: %1$s</string>
+    <string name="sos_alarm_code_format">Code: %1$s</string>
+    <string name="sos_alarm_room_code_format">Room: %1$s (%2$s)</string>
+    <string name="sos_alarm_card_bold">Worry Not!</string>
+    <string name="sos_alarm_card_desc1"><![CDATA[<font color="#E11D48"><b>Worry Not!</b></font> %1$s has triggered an SOS alert with location details!]]></string>
+    <string name="sos_alarm_card_desc2">So sit back tight and stay calm while checking the room and reaching out.</string>
+    <string name="sos_action_snooze">Snooze</string>
     <string name="toast_account_created">Account created successfully.</string>
 
     <string name="open_menu">Open menu</string>
@@ -1071,5 +1089,13 @@ Terms Version: 1.0</string>
     <string name="toast_checkin_safe">Status updated: You are safe.</string>
     <string name="toast_checkin_danger">Emergency alert refreshed!</string>
 
+    <!-- Private Friend Nickname -->
+    <string name="friend_nickname_dialog_title">Set Private Nickname</string>
+    <string name="friend_nickname_dialog_desc">This nickname will only be visible to you.</string>
+    <string name="friend_nickname_hint">Enter nickname (e.g. Bro, Roommate)</string>
+    <string name="friend_nickname_save">Save</string>
+    <string name="friend_nickname_reset">Reset</string>
+    <string name="friend_nickname_real_name_format">%1$s#%2$s • Friend</string>
+    <string name="friend_nickname_updated">Nickname updated</string>
+    <string name="friend_edit_nickname_desc">Edit private nickname</string>
 </resources>
-
