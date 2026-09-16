@@ -566,6 +566,15 @@ public class SecuritySettingsActivity extends BaseActivity {
         EditText inputCurrent = content.findViewById(R.id.input_current_password);
         EditText inputNew = content.findViewById(R.id.input_new_password);
         EditText inputConfirm = content.findViewById(R.id.input_confirm_password);
+
+        ImageView toggleCurrent = content.findViewById(R.id.btn_toggle_current_password);
+        ImageView toggleNew = content.findViewById(R.id.btn_toggle_new_password);
+        ImageView toggleConfirm = content.findViewById(R.id.btn_toggle_confirm_password);
+
+        setupPasswordVisibilityToggle(inputCurrent, toggleCurrent);
+        setupPasswordVisibilityToggle(inputNew, toggleNew);
+        setupPasswordVisibilityToggle(inputConfirm, toggleConfirm);
+
         View btnCancel = content.findViewById(R.id.btn_cancel_password);
         View btnSave = content.findViewById(R.id.btn_save_password);
 
@@ -620,6 +629,29 @@ public class SecuritySettingsActivity extends BaseActivity {
         }
 
         dialog.show();
+    }
+
+    private void setupPasswordVisibilityToggle(EditText editText, ImageView toggleButton) {
+        if (editText == null || toggleButton == null) return;
+
+        final boolean[] isVisible = new boolean[]{false};
+        toggleButton.setOnClickListener(v -> {
+            isVisible[0] = !isVisible[0];
+            if (isVisible[0]) {
+                editText.setTransformationMethod(android.text.method.HideReturnsTransformationMethod.getInstance());
+                toggleButton.setImageResource(R.drawable.ic_eye);
+                toggleButton.setContentDescription("Hide password");
+            } else {
+                editText.setTransformationMethod(android.text.method.PasswordTransformationMethod.getInstance());
+                toggleButton.setImageResource(R.drawable.ic_eye_off);
+                toggleButton.setContentDescription("Show password");
+            }
+            // Keep cursor position at the end of text
+            try {
+                editText.setSelection(editText.getText().length());
+            } catch (Exception ignored) {
+            }
+        });
     }
 
     @Override

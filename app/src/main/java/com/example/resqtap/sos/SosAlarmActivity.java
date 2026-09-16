@@ -71,7 +71,7 @@ public class SosAlarmActivity extends AppCompatActivity {
     private final Handler autoSnoozeHandler = new Handler(Looper.getMainLooper());
     private final Runnable autoSnoozeRunnable = () -> {
         if (!isFinishing() && !isDestroyed() && !isSnoozed) {
-            autoSnoozeAndReturnHome();
+            autoSnoozeTimerFinished();
         }
     };
 
@@ -198,14 +198,9 @@ public class SosAlarmActivity extends AppCompatActivity {
         }
 
         if (tvSenderRoomInfo != null) {
-            if (!roomName.isEmpty() && !roomCode.isEmpty()) {
-                tvSenderRoomInfo.setText(getString(R.string.sos_alarm_room_code_format, roomName, roomCode));
-                tvSenderRoomInfo.setVisibility(View.VISIBLE);
-            } else if (!roomName.isEmpty()) {
-                tvSenderRoomInfo.setText(getString(R.string.sos_alarm_room_format, roomName));
-                tvSenderRoomInfo.setVisibility(View.VISIBLE);
-            } else if (!roomCode.isEmpty()) {
-                tvSenderRoomInfo.setText(getString(R.string.sos_alarm_code_format, roomCode));
+            String roomDisplay = !roomName.isEmpty() ? roomName : roomCode;
+            if (!roomDisplay.isEmpty()) {
+                tvSenderRoomInfo.setText(getString(R.string.sos_alarm_room_format, roomDisplay));
                 tvSenderRoomInfo.setVisibility(View.VISIBLE);
             } else {
                 tvSenderRoomInfo.setVisibility(View.GONE);
@@ -340,7 +335,7 @@ public class SosAlarmActivity extends AppCompatActivity {
             @Override
             public void onAnimationEnd(Animator animation) {
                 if (!cancelled && !isFinishing() && !isDestroyed() && !isSnoozed) {
-                    autoSnoozeAndReturnHome();
+                    autoSnoozeTimerFinished();
                 }
             }
         });
@@ -351,15 +346,16 @@ public class SosAlarmActivity extends AppCompatActivity {
     }
 
     /**
-     * autoSnoozeAndReturnHome
+     * autoSnoozeTimerFinished
      * Apabila penggera tamat berbunyi (10 saat):
-     * Mematikan siren & getaran, batalkan notifikasi, dan automatik navigasi balik ke laman utama (MainActivity).
+     * Mematikan siren & getaran, batalkan notifikasi, dan terus masuk ke mod Snoozed (skrin tindakan Dismiss / View on Map)
+     * tanpa kembali ke laman utama (MainActivity).
      */
-    private void autoSnoozeAndReturnHome() {
+    private void autoSnoozeTimerFinished() {
         if (isSnoozed) return;
         isSnoozed = true;
         autoSnoozeHandler.removeCallbacks(autoSnoozeRunnable);
-        Log.d("SOS_DEBUG", "SosAlarmActivity: 10s alarm duration elapsed. Auto-snoozing & returning to MainActivity.");
+        Log.d("SOS_DEBUG", "SosAlarmActivity: 10s alarm duration elapsed. Auto-snoozing & showing action buttons.");
 
         // 1. Matikan audio dan getaran serta-merta
         try {
@@ -377,16 +373,8 @@ public class SosAlarmActivity extends AppCompatActivity {
             } catch (Exception ignored) {}
         }
 
-        // 3. Navigasi kembali ke main page (MainActivity)
-        try {
-            Intent homeIntent = new Intent(this, MainActivity.class);
-            homeIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            startActivity(homeIntent);
-        } catch (Exception e) {
-            Log.e("SOS_DEBUG", "Failed to navigate to MainActivity on auto-snooze: " + e.getMessage());
-        }
-
-        finish();
+        // 3. Masuk terus ke page snoozed (page kanan) dengan butang Dismiss dan View on Map - JANGAN masuk main page
+        onAlarmSnoozedUi();
     }
 
     private void startPulseAnimation() {

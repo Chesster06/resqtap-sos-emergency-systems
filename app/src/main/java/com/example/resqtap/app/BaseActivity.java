@@ -95,8 +95,11 @@ public abstract class BaseActivity extends AppCompatActivity {
                         SosServiceStarter.start(BaseActivity.this, code);
                     } else {
                         UserPrefs.setActiveRoomCode(BaseActivity.this, "");
+                        SosServiceStarter.start(BaseActivity.this, "");
                     }
                 });
+            } else {
+                SosServiceStarter.start(BaseActivity.this, "");
             }
         } catch (Exception ignored) {
         }

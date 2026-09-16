@@ -171,7 +171,7 @@
     <string name="sos_alarm_needs_help">Memerlukan bantuan kecemasan segera!</string>
     <string name="sos_alarm_room_format">Bilik: %1$s</string>
     <string name="sos_alarm_code_format">Kod: %1$s</string>
-    <string name="sos_alarm_room_code_format">Bilik: %1$s (%2$s)</string>
+    <string name="sos_alarm_room_code_format">Bilik: %1$s</string>
     <string name="sos_alarm_card_bold">Jangan Bimbang!</string>
     <string name="sos_alarm_card_desc1"><![CDATA[<font color="#E11D48"><b>Jangan Bimbang!</b></font> %1$s telah mencetuskan amaran SOS bersama maklumat lokasi!]]></string>
     <string name="sos_alarm_card_desc2">Bertenang dan semak bilik anda untuk memberi bantuan dengan segera.</string>

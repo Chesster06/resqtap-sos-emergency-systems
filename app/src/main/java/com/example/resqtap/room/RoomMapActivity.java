@@ -1018,7 +1018,9 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
             long localLastSeen = UserPrefs.getSosLastSeenAt(this, roomCode);
             long storedBaseline = UserPrefs.getSosListenerBaselineAt(this, roomCode);
             FirebaseRoomClient.fetchServerNowQueued(serverNow -> {
-                long baseline = Math.max(serverNow, Math.max(localLastSeen, storedBaseline));
+                // Use localLastSeen as query start — catches SOSes fired while service was down.
+                // Only fall back to serverNow if no prior lastSeen exists (first ever attach).
+                long baseline = localLastSeen > 0L ? localLastSeen : Math.max(serverNow, storedBaseline);
                 UserPrefs.setSosListenerBaselineAt(RoomMapActivity.this, roomCode, baseline);
                 try {
                     android.util.Log.d("SOS_DEBUG", "Listener attached to roomId: " + roomCode);

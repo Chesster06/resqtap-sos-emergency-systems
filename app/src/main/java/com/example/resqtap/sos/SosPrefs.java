@@ -32,15 +32,22 @@ public final class SosPrefs {
         UserPrefs.setSosLastHandledId(context, roomId, alertId);
     }
 
-    /** Fungsi untuk bumpBaselineAtListenerStart. */
+    /** Fungsi untuk bumpBaselineAtListenerStart.
+     * Hanya set baseline ke serverNow jika tiada lastSeen sebelumnya (first-time).
+     * Kalau ada lastSeen, biarkan — kita nak catch SOS yang fired masa service mati. */
     public static void bumpBaselineAtListenerStart(Context context, String roomId, long serverNowMsOrLocalNow) {
-        long now = Math.max(0L, serverNowMsOrLocalNow);
         long lastSeen = getLastSeenAlertTime(context, roomId);
-
-        setLastSeenAlertTime(context, roomId, Math.max(lastSeen, now));
+        // Only initialise baseline on first ever attach; never overwrite an existing lastSeen with serverNow.
+        // This lets the listener catch SOSes fired while the service was killed/restarting.
+        if (lastSeen <= 0L) {
+            long now = Math.max(0L, serverNowMsOrLocalNow);
+            setLastSeenAlertTime(context, roomId, now);
+        }
     }
 
-    /** Fungsi untuk tryMarkHandled. */
+    /** Fungsi untuk tryMarkHandled.
+     * Bagi sistem kecemasan: NO hard age limit. Kita cuma reject duplicate IDs.
+     * SOS yang fired masa service mati kena tetap diterima bila service restart. */
     public static synchronized boolean tryMarkHandled(Context context, String roomId, String alertId, long createdAtMs) {
         if (context == null) return false;
         String room = String.valueOf(roomId == null ? "" : roomId).trim().toUpperCase(java.util.Locale.ROOT);
@@ -48,18 +55,11 @@ public final class SosPrefs {
         long createdAt = Math.max(0L, createdAtMs);
         if (room.isEmpty() || id.isEmpty() || createdAt <= 0L) return false;
 
-        try {
-            long now = System.currentTimeMillis();
-            if (now > 0L && createdAt > 0L) {
-                long age = Math.abs(now - createdAt);
-                if (age > 2L * 60L * 1000L) return false;
-            }
-        } catch (Exception ignored) {
-        }
-
+        // Reject duplicates by alertId — same SOS fired twice won't alarm twice.
         String lastId = getLastHandledAlertId(context, room);
         if (!lastId.isEmpty() && lastId.equals(id)) return false;
 
+        // Reject if this SOS is older than the last one we already handled for this room.
         long lastSeen = getLastSeenAlertTime(context, room);
         if (createdAt <= lastSeen) return false;
 

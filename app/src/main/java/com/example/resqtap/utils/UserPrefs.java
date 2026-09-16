@@ -568,6 +568,103 @@ public final class UserPrefs {
                 && !getEthnicity(context).trim().isEmpty();
     }
 
+    /** Muat dan simpan data DataSnapshot profil pengguna ke UserPrefs. */
+    public static void applyUserSnapshot(Context context, com.google.firebase.database.DataSnapshot snapshot) {
+        if (context == null || snapshot == null || !snapshot.exists()) return;
+        Object nameObj = snapshot.child("name").getValue();
+        if (nameObj != null) setName(context, String.valueOf(nameObj));
+        Object bloodObj = snapshot.child("bloodType").getValue();
+        if (bloodObj != null) setBloodType(context, String.valueOf(bloodObj));
+        Object allergiesObj = snapshot.child("allergies").getValue();
+        if (allergiesObj != null) setAllergies(context, String.valueOf(allergiesObj));
+        Object weightObj = snapshot.child("weight").getValue();
+        setWeight(context, weightObj == null ? "" : String.valueOf(weightObj));
+        Object heightObj = snapshot.child("height").getValue();
+        setHeight(context, heightObj == null ? "" : String.valueOf(heightObj));
+        Object genderObj = snapshot.child("gender").getValue();
+        if (genderObj != null) setGender(context, String.valueOf(genderObj));
+        Object icObj = snapshot.child("icNumber").getValue();
+        if (icObj != null) setIcNumber(context, String.valueOf(icObj));
+
+        Object medObj = snapshot.child("medications").getValue();
+        String medications = medObj == null ? "" : String.valueOf(medObj).trim();
+        Object condObj = snapshot.child("existingConditions").getValue();
+        String conditions = condObj == null ? "" : String.valueOf(condObj).trim();
+        if (conditions.isEmpty() && !medications.isEmpty()) {
+            conditions = medications;
+        }
+        setExistingConditions(context, conditions);
+        setMedications(context, medications);
+
+        Object organObj = snapshot.child("organDonor").getValue();
+        if (organObj != null) setOrganDonor(context, String.valueOf(organObj));
+        Object emailObj = snapshot.child("email").getValue();
+        if (emailObj != null) setEmail(context, String.valueOf(emailObj));
+        Object publicIdObj = snapshot.child("publicId").getValue();
+        String pubId = publicIdObj == null ? "" : String.valueOf(publicIdObj).trim();
+        if (pubId.isEmpty()) {
+            pubId = com.example.resqtap.friend.FirebaseFriendClient.format4DigitId(snapshot.getKey(), "");
+            try {
+                snapshot.getRef().child("publicId").setValue(pubId);
+            } catch (Exception ignored) {}
+        } else {
+            pubId = com.example.resqtap.friend.FirebaseFriendClient.format4DigitId(snapshot.getKey(), pubId);
+        }
+        setPublicId(context, pubId);
+
+        Object photoUrlObj = snapshot.child("photoUrl").getValue();
+        String photoUrl = photoUrlObj == null ? "" : String.valueOf(photoUrlObj);
+        if (photoUrl == null) photoUrl = "";
+        photoUrl = photoUrl.trim();
+        if (photoUrl.isEmpty()) {
+            Object photoUriObj = snapshot.child("photoUri").getValue();
+            photoUrl = photoUriObj == null ? "" : String.valueOf(photoUriObj);
+            if (photoUrl == null) photoUrl = "";
+            photoUrl = photoUrl.trim();
+        }
+        if (!photoUrl.isEmpty()) setPhotoUrl(context, photoUrl);
+
+        Object photoB64Obj = snapshot.child("photoB64").getValue();
+        if (photoB64Obj != null) {
+            String b64 = String.valueOf(photoB64Obj);
+            if (b64 != null && !b64.trim().isEmpty()) setPhotoB64(context, b64.trim());
+        }
+
+        Object addrObj = snapshot.child("address").getValue();
+        if (addrObj != null) setAddress(context, String.valueOf(addrObj));
+        Object relObj = snapshot.child("religion").getValue();
+        if (relObj != null) setReligion(context, String.valueOf(relObj));
+        Object phoneObj = snapshot.child("phoneNumber").getValue();
+        if (phoneObj != null) setPhoneNumber(context, String.valueOf(phoneObj));
+        Object dobObj = snapshot.child("dateOfBirth").getValue();
+        if (dobObj != null) setDateOfBirth(context, String.valueOf(dobObj));
+        Object ethObj = snapshot.child("ethnicity").getValue();
+        if (ethObj != null) setEthnicity(context, String.valueOf(ethObj));
+
+        try {
+            com.google.firebase.database.DataSnapshot contactsSnap = snapshot.child("emergencyContacts");
+            if (contactsSnap != null && contactsSnap.exists()) {
+                java.util.ArrayList<EmergencyContact> contacts = new java.util.ArrayList<>();
+                for (com.google.firebase.database.DataSnapshot child : contactsSnap.getChildren()) {
+                    if (child == null) continue;
+                    String id = child.child("id").getValue() == null ? "" : String.valueOf(child.child("id").getValue());
+                    if (id.trim().isEmpty()) id = child.getKey() == null ? "" : child.getKey();
+                    String cName = child.child("name").getValue() == null ? "" : String.valueOf(child.child("name").getValue());
+                    String rel = child.child("relationship").getValue() == null ? "" : String.valueOf(child.child("relationship").getValue());
+                    String phone = child.child("phone").getValue() == null ? "" : String.valueOf(child.child("phone").getValue());
+                    if (id == null) id = "";
+                    if (cName == null) cName = "";
+                    if (rel == null) rel = "";
+                    if (phone == null) phone = "";
+                    if (id.trim().isEmpty()) continue;
+                    contacts.add(new EmergencyContact(id.trim(), cName, rel, phone));
+                }
+                setEmergencyContacts(context, contacts);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     /** Semak dan sahkan ResqTapEmail. */
     private static boolean isResqTapEmail(String email) {
         if (email == null) return false;

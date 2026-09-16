@@ -484,7 +484,7 @@
     <string name="sos_alarm_needs_help">உடனடி அவசர உதவி தேவைப்படுகிறது!</string>
     <string name="sos_alarm_room_format">அறை: %1$s</string>
     <string name="sos_alarm_code_format">குறியீடு: %1$s</string>
-    <string name="sos_alarm_room_code_format">அறை: %1$s (%2$s)</string>
+    <string name="sos_alarm_room_code_format">அறை: %1$s</string>
 
     <!-- Private Friend Nickname -->
     <string name="friend_nickname_dialog_title">புனைப்பெயரை அமைக்கவும்</string>

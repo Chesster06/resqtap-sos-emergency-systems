@@ -103,8 +103,11 @@ public class ResQTapApp extends Application {
                             com.example.resqtap.sos.SosServiceStarter.start(ResQTapApp.this, code);
                         } else {
                             UserPrefs.setActiveRoomCode(ResQTapApp.this, "");
+                            com.example.resqtap.sos.SosServiceStarter.start(ResQTapApp.this, "");
                         }
                     });
+                } else {
+                    com.example.resqtap.sos.SosServiceStarter.start(ResQTapApp.this, "");
                 }
             }
         } catch (Exception ignored) {

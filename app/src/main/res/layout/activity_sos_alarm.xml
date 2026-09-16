@@ -144,7 +144,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="3dp"
-                                android:text="Bilik: Family Safety (FAM123)"
+                                android:text="Bilik: Family Safety"
                                 android:textColor="#FF64748B"
                                 android:textSize="13sp" />
 

@@ -22,7 +22,6 @@ public final class SosServiceStarter {
     public static void start(Context context, String roomId) {
         if (context == null) return;
         String code = String.valueOf(roomId == null ? "" : roomId).trim().toUpperCase(java.util.Locale.ROOT);
-        if (code.isEmpty()) return;
 
         FirebaseUser u = null;
         try { u = FirebaseAuth.getInstance().getCurrentUser(); } catch (Exception ignored) {}
@@ -48,6 +47,13 @@ public final class SosServiceStarter {
             else context.startService(i);
         } catch (Exception ignored) {
         }
+    }
+
+    /** Fungsi untuk start default (menggunakan active room code jika ada). */
+    public static void start(Context context) {
+        if (context == null) return;
+        String code = UserPrefs.getActiveRoomCode(context);
+        start(context, code);
     }
 
     /** Fungsi untuk stop. */

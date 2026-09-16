@@ -145,6 +145,7 @@
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null",
+        ".indexOn": ["createdAt"],
         "$roomId": {
           ".write": "auth != null"
         }

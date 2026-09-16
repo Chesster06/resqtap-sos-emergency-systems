@@ -67,39 +67,55 @@ public class SplashActivity extends BaseActivity {
             tagline.startAnimation(taglineAnim);
         }
 
-        com.example.resqtap.room.FirebaseRoomClient.cleanNonResQTapUsersFromRTDB();
-
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             com.google.firebase.auth.FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
             if (current != null) {
-                if (!UserPrefs.isPersonalInfoComplete(this)) {
-                    Intent i = new Intent(SplashActivity.this, RegisterActivity.class);
-                    i.putExtra("complete_profile", true);
-                    i.putExtra("uid", current.getUid());
-                    i.putExtra("email", current.getEmail());
-                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(i);
-                    finish();
+                // If local profile is already complete, enter MainActivity immediately
+                if (UserPrefs.isPersonalInfoComplete(this)) {
+                    launchMain();
                     return;
                 }
-                String em = current.getEmail();
-                if (em == null || !em.trim().toLowerCase(java.util.Locale.ROOT).endsWith("@resqtap.com")) {
-                    UserPrefs.setActiveRoomCode(this, "");
-                }
-                Intent i = new Intent(SplashActivity.this, MainActivity.class);
-                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                startActivity(i);
+
+                // If local prefs are incomplete or fresh install, attempt to load from RTDB
+                com.google.firebase.database.FirebaseDatabase.getInstance(com.example.resqtap.room.FirebaseRoomClient.DATABASE_URL)
+                        .getReference("users")
+                        .child(current.getUid())
+                        .get()
+                        .addOnSuccessListener(snapshot -> {
+                            if (isFinishing() || isDestroyed()) return;
+                            if (snapshot != null && snapshot.exists()) {
+                                UserPrefs.applyUserSnapshot(SplashActivity.this, snapshot);
+                            }
+                            // Always allow authenticated user into MainActivity!
+                            launchMain();
+                        })
+                        .addOnFailureListener(e -> {
+                            if (isFinishing() || isDestroyed()) return;
+                            // Offline or network lag: still let authenticated user access MainActivity
+                            launchMain();
+                        });
             } else {
                 Intent i = new Intent(SplashActivity.this, GetStartedActivity.class);
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(i);
+                try {
+                    overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+                } catch (Exception ignored) {
+                }
+                finish();
             }
-            try {
-                overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
-            } catch (Exception ignored) {
-            }
-            finish();
         }, 2500);
+    }
+
+    private void launchMain() {
+        Intent i = new Intent(SplashActivity.this, MainActivity.class);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(i);
+        try {
+            overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+        } catch (Exception ignored) {
+        }
+        finish();
     }
 }
 

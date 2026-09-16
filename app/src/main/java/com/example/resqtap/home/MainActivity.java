@@ -773,6 +773,7 @@ public class MainActivity extends BaseActivity {
             String uid = u.getUid();
 
             if (activeRoomCode.isEmpty()) {
+                SosServiceStarter.start(MainActivity.this, "");
                 restoreActiveRoomIfMissing(uid);
                 return;
             }
@@ -783,6 +784,7 @@ public class MainActivity extends BaseActivity {
                 } else {
                     activeRoomCode = "";
                     UserPrefs.setActiveRoomCode(MainActivity.this, "");
+                    SosServiceStarter.start(MainActivity.this, "");
                     restoreActiveRoomIfMissing(uid);
                 }
             });

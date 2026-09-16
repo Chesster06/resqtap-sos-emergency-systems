@@ -197,7 +197,7 @@ public class LiveRoomTrackingService extends Service {
             android.util.Log.d("SOS_DEBUG", "LiveRoomTrackingService started");
         } catch (Exception ignored) {
         }
-        if (roomCode.isEmpty() || uid.isEmpty()) {
+        if (uid.isEmpty()) {
             stopTracking();
             stopForegroundNotificationWatchdog();
             stopForeground(true);
@@ -205,19 +205,27 @@ public class LiveRoomTrackingService extends Service {
             return START_NOT_STICKY;
         }
 
+        // Always ensure multi-room SOS monitoring and incoming calls are active!
+        startUserRoomsMultiWatcher();
+        startIncomingCallListener();
+
+        if (roomCode.isEmpty()) {
+            // No active room selected, but user is fully protected and listening to all rooms
+            stopTracking();
+            return START_STICKY;
+        }
+
         FirebaseRoomClient.verifyUserInRoom(uid, roomCode, isInRoom -> {
             if (!isInRoom) {
                 UserPrefs.setActiveRoomCode(LiveRoomTrackingService.this, "");
+                roomCode = "";
                 stopTracking();
-                stopForegroundNotificationWatchdog();
-                stopForeground(true);
-                stopSelf();
+                stopForceLeaveListener();
+                stopRoomDeletedListener();
                 return;
             }
-            startUserRoomsMultiWatcher();
             startForceLeaveListener();
             startRoomDeletedListener();
-            startIncomingCallListener();
             startTracking();
         });
         return START_STICKY;
@@ -260,14 +268,10 @@ public class LiveRoomTrackingService extends Service {
                     UserPrefs.setActiveRoomCode(LiveRoomTrackingService.this, "");
                 } catch (Exception ignored) {
                 }
+                roomCode = "";
                 try { stopTracking(); } catch (Exception ignored) {}
-                try { stopUserRoomsMultiWatcher(); } catch (Exception ignored) {}
                 try { stopForceLeaveListener(); } catch (Exception ignored) {}
                 try { stopRoomDeletedListener(); } catch (Exception ignored) {}
-                try { stopIncomingCallListener(); } catch (Exception ignored) {}
-                try { stopForegroundNotificationWatchdog(); } catch (Exception ignored) {}
-                try { stopForeground(true); } catch (Exception ignored) {}
-                try { stopSelf(); } catch (Exception ignored) {}
             }).start();
         });
     }
@@ -300,30 +304,10 @@ public class LiveRoomTrackingService extends Service {
                     UserPrefs.setActiveRoomCode(LiveRoomTrackingService.this, "");
                 } catch (Exception ignored) {
                 }
-                try {
-                    stopTracking();
-                } catch (Exception ignored) {
-                }
-                try {
-                    stopUserRoomsMultiWatcher();
-                } catch (Exception ignored) {
-                }
-                try {
-                    stopForegroundNotificationWatchdog();
-                } catch (Exception ignored) {
-                }
-                try {
-                    stopForeground(true);
-                } catch (Exception ignored) {
-                }
-                try {
-                    stopIncomingCallListener();
-                } catch (Exception ignored) {
-                }
-                try {
-                    stopSelf();
-                } catch (Exception ignored) {
-                }
+                roomCode = "";
+                try { stopTracking(); } catch (Exception ignored) {}
+                try { stopForceLeaveListener(); } catch (Exception ignored) {}
+                try { stopRoomDeletedListener(); } catch (Exception ignored) {}
             }).start();
         });
     }
@@ -544,7 +528,10 @@ public class LiveRoomTrackingService extends Service {
         try {
             long localLastSeen = SosPrefs.getLastSeenAlertTime(this, code);
             FirebaseRoomClient.fetchServerNowQueued(serverNow -> {
-                long baseline = Math.max(serverNow, localLastSeen);
+                // Use localLastSeen as the query start — this catches any SOS fired while
+                // the service was killed/restarting. Fall back to serverNow only on first
+                // ever attach (localLastSeen == 0) to avoid replaying entire history.
+                long baseline = localLastSeen > 0L ? localLastSeen : serverNow;
                 SosPrefs.bumpBaselineAtListenerStart(LiveRoomTrackingService.this, code, baseline);
                 try {
                     android.util.Log.d("SOS_DEBUG", "Multi-room SOS listener attached to: " + code);
