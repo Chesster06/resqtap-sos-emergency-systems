@@ -2257,6 +2257,19 @@ window.addEventListener("pointerdown", () => sosAlarmSound.ensureContext(), { pa
 
 let sosAlarmTicker = null;
 
+function getActiveSosForUser(uid) {
+  if (!uid) return null;
+  const now = Date.now();
+  return getSosAlerts().find((a) => {
+    if (a.senderUid !== uid) return false;
+    if (!a.active) return false;
+    if (a.stale) return false;
+    if (isCancelled(a.data)) return false;
+    const age = now - (a.createdAt || 0);
+    return age >= 0 && age <= 30000;
+  });
+}
+
 function updateSosAlarmSystem() {
   const now = Date.now();
   // Filter active, non-cancelled, UN-SERVED SOS alerts created within the last 30 seconds
@@ -2357,7 +2370,12 @@ function updateSosAlarmSystem() {
       setActiveView("livemap");
       const senderUid = latestAlert.senderUid;
       if (senderUid) {
-        state.selected = { type: "user", id: senderUid };
+        const activeSos = getActiveSosForUser(senderUid);
+        if (activeSos) {
+          state.selected = { type: "sos", roomId: activeSos.roomId, alertId: activeSos.key || activeSos.id };
+        } else {
+          state.selected = { type: "user", id: senderUid };
+        }
         renderDetail();
         let lat = 0, lng = 0;
         getRooms().forEach((rm) => {
@@ -2381,7 +2399,12 @@ function updateSosAlarmSystem() {
       setActiveView("livemap");
       const senderUid = latestAlert.senderUid;
       if (senderUid) {
-        state.selected = { type: "user", id: senderUid };
+        const activeSos = getActiveSosForUser(senderUid);
+        if (activeSos) {
+          state.selected = { type: "sos", roomId: activeSos.roomId, alertId: activeSos.key || activeSos.id };
+        } else {
+          state.selected = { type: "user", id: senderUid };
+        }
         renderDetail();
         let lat = 0, lng = 0;
         getRooms().forEach((rm) => {
@@ -3322,7 +3345,7 @@ function renderSosDetail(roomId, alertId) {
     </section>
     <section class="detail-section">
       <button class="secondary-button icon-button" data-action="view-room" data-room="${escapeHtml(alert.roomId)}" type="button">${icon("external-link")}<span>Open room</span></button>
-      ${alert.senderUid ? `<button class="secondary-button icon-button" data-action="view-user" data-uid="${escapeHtml(alert.senderUid)}" type="button">${icon("user-round")}<span>Open sender</span></button>` : ""}
+      ${alert.senderUid ? `<button class="secondary-button icon-button" data-action="view-user" data-uid="${escapeHtml(alert.senderUid)}" data-force-profile="true" type="button">${icon("user-round")}<span>Open sender</span></button>` : ""}
       ${canCancel ? `<button class="secondary-button danger icon-button" data-action="cancel-sos" data-room="${escapeHtml(alert.roomId)}" data-alert="${escapeHtml(alert.key)}" type="button">${icon("circle-x")}<span>Cancel SOS</span></button>` : ""}
     </section>
   `;
@@ -4214,7 +4237,15 @@ function handleAction(button) {
   const attachmentIndex = button.dataset.attachmentIndex || "";
 
   const run = async () => {
-    if (action === "view-user") state.selected = { type: "user", id: uid };
+    if (action === "view-user") {
+      const forceProfile = button.dataset.forceProfile === "true";
+      const activeSos = !forceProfile && getActiveSosForUser(uid);
+      if (activeSos) {
+        state.selected = { type: "sos", roomId: activeSos.roomId, alertId: activeSos.key || activeSos.id };
+      } else {
+        state.selected = { type: "user", id: uid };
+      }
+    }
     if (action === "view-room") state.selected = { type: "room", id: room };
     if (action === "view-sos") state.selected = { type: "sos", roomId: room, alertId: alert };
     if (action === "view-report") state.selected = { type: "report", id: report };
@@ -5377,7 +5408,18 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
           ${hasSos ? "<br><strong style='color:#ef4444;'>🚨 Active SOS</strong>" : ""}
         </div>`;
         upsert(key, lat, lng, { type: it, photo, uid, name: nm }, popup, () => {
-          state.selected = { type: "user", id: uid };
+          if (hasSos) {
+            const activeSos = getActiveSosForUser(uid) || (room.alerts || []).find((a) => a.data.senderUid === uid && !isCancelled(a.data) && (Date.now() - alertCreatedAt(a.data) <= 30000));
+            if (activeSos) {
+              const rId = activeSos.roomId || room.code;
+              const aId = activeSos.key || activeSos.id;
+              state.selected = { type: "sos", roomId: rId, alertId: aId };
+            } else {
+              state.selected = { type: "user", id: uid };
+            }
+          } else {
+            state.selected = { type: "user", id: uid };
+          }
           renderDetail();
           [50, 150, 300].forEach((t) => setTimeout(() => { if (ms.leaflet) ms.leaflet.invalidateSize(); }, t));
         });
