@@ -3379,6 +3379,8 @@ function renderSosDetail(roomId, alertId) {
     return;
   }
 
+  const senderUser = asRecord(state.users[alert.senderUid]);
+  const senderPhone = senderUser.phoneNumber || senderUser.phone || "";
   const label = alert.active ? (alert.stale ? "Stale active" : "Active") : "Cancelled";
   const canCancel = alert.source === "room" && alert.active;
   const body = `
@@ -3391,14 +3393,15 @@ function renderSosDetail(roomId, alertId) {
       ${kv("Cancelled", alert.cancelledAt ? formatDate(alert.cancelledAt) : "-")}
       ${kv("Sender UID", alert.senderUid)}
       ${kv("Sender name", alert.senderName)}
+      ${senderPhone ? kv("Phone", senderPhone) : ""}
     </section>
     <section class="detail-section">
+      ${alert.senderUid ? `<button class="secondary-button icon-button" data-action="call-sos" data-uid="${escapeHtml(alert.senderUid)}" data-name="${escapeHtml(alert.senderName || "Sender")}" type="button">${icon("phone-call")}<span>Call sender</span></button>` : ""}
       <button class="secondary-button icon-button" data-action="view-room" data-room="${escapeHtml(alert.roomId)}" type="button">${icon("external-link")}<span>Open room</span></button>
       ${alert.senderUid ? `<button class="secondary-button icon-button" data-action="view-user" data-uid="${escapeHtml(alert.senderUid)}" data-force-profile="true" type="button">${icon("user-round")}<span>Open sender</span></button>` : ""}
       ${canCancel ? `<button class="secondary-button danger icon-button" data-action="cancel-sos" data-room="${escapeHtml(alert.roomId)}" data-alert="${escapeHtml(alert.key)}" type="button">${icon("circle-x")}<span>Cancel SOS</span></button>` : ""}
     </section>
   `;
-  const senderUser = asRecord(state.users[alert.senderUid]);
   const senderAvatar = alert.senderUid ? avatarHtml(senderUser, alert.senderUid) : "";
   detailShell(alert.senderName || alert.senderUid || "SOS Alert", `${alert.roomId || "-"} - ${label}`, body, senderAvatar);
 }
