@@ -2301,8 +2301,10 @@ function updateSosAlarmSystem() {
     if (!alert.active) return false;
     if (isCancelled(alert.data)) return false;
     if (!alert.createdAt || alert.createdAt <= 0) return false;
+    if (alert.data && (alert.data.served || alert.data.servedBy || alert.data.resolvedAt || (alert.data.progressStep && Number(alert.data.progressStep) >= 1))) return false;
     const aId = alert.key || alert.id;
-    if (state.servedCases && state.servedCases.has(aId)) return false;
+    if (state.servedCases && (state.servedCases.has(aId) || state.servedCases.has(alert.key) || state.servedCases.has(alert.id))) return false;
+    if (alert.senderUid && state.servedSenders && state.servedSenders.has(alert.senderUid)) return false;
     const age = now - alert.createdAt;
     return age >= 0 && age <= 30000;
   });
@@ -2375,8 +2377,20 @@ function updateSosAlarmSystem() {
     btnServe.onclick = async () => {
       state.servedCases = state.servedCases || new Set();
       state.servedCases.add(alertId);
+      if (latestAlert.senderUid) {
+        state.servedSenders = state.servedSenders || new Set();
+        state.servedSenders.add(latestAlert.senderUid);
+        getSosAlerts().forEach((a) => {
+          if (a.senderUid === latestAlert.senderUid) {
+            state.servedCases.add(a.key);
+            state.servedCases.add(a.id);
+            sosAlarmSound.mute(a.key);
+            sosAlarmSound.mute(a.id);
+          }
+        });
+      }
 
-      // AUTOMATICALLY MUTE & STOP SIREN
+      // AUTOMATICALLY MUTE & STOP SIREN IMMEDIATELY
       sosAlarmSound.mute(alertId);
       sosAlarmSound.stop();
 
@@ -3980,6 +3994,32 @@ async function cleanupExpiredAiChats() {
 
 async function reserveSosCase(roomId, alertId, senderUid, senderName) {
   if (!validPathSegment(roomId) || !validPathSegment(alertId)) return;
+
+  state.servedCases = state.servedCases || new Set();
+  state.servedCases.add(alertId);
+  if (senderUid) {
+    state.servedSenders = state.servedSenders || new Set();
+    state.servedSenders.add(senderUid);
+  }
+
+  // AUTOMATICALLY MUTE & STOP SIREN IMMEDIATELY ON FIRST CLICK
+  sosAlarmSound.mute(alertId);
+  sosAlarmSound.stop();
+
+  if (senderUid) {
+    getSosAlerts().forEach((a) => {
+      if (a.senderUid === senderUid) {
+        state.servedCases.add(a.key);
+        state.servedCases.add(a.id);
+        sosAlarmSound.mute(a.key);
+        sosAlarmSound.mute(a.id);
+      }
+    });
+  }
+
+  const banner = document.getElementById("sosAlarmBanner");
+  if (banner) banner.classList.add("hidden");
+
   const adminName = state.currentUser ? (state.currentUser.displayName || state.currentUser.email || "Admin Responder") : "Admin Responder";
   const adminUid = state.currentUser ? state.currentUser.uid : "admin";
   const updates = {};
@@ -3994,7 +4034,7 @@ async function reserveSosCase(roomId, alertId, senderUid, senderName) {
   // Cross-room synchronization for the same sender
   if (senderUid) {
     getSosAlerts().forEach((a) => {
-      if (a.senderUid === senderUid && a.active && a.key !== alertId) {
+      if (a.senderUid === senderUid && a.key !== alertId) {
         if (validPathSegment(a.roomId) && validPathSegment(a.key)) {
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/served`] = true;
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/servedBy`] = adminUid;
@@ -4009,8 +4049,6 @@ async function reserveSosCase(roomId, alertId, senderUid, senderName) {
   }
 
   await update(ref(db), updates);
-  state.servedCases = state.servedCases || new Set();
-  state.servedCases.add(alertId);
 }
 
 let activeCaseModalData = null;
@@ -4526,8 +4564,17 @@ function handleAction(button) {
     }
     if (action === "clear-detail") state.selected = null;
     if (action === "manage-sos-case") {
+      sosAlarmSound.mute(alert);
+      sosAlarmSound.stop();
+      if (uid) {
+        state.servedSenders = state.servedSenders || new Set();
+        state.servedSenders.add(uid);
+      }
+      const banner = document.getElementById("sosAlarmBanner");
+      if (banner) banner.classList.add("hidden");
       await reserveSosCase(room, alert, uid, button.dataset.name || "Sender");
       openCaseModal(room, alert, uid, button.dataset.name || "Sender");
+      updateSosAlarmSystem();
       return;
     }
     if (action === "close-case-modal") {
