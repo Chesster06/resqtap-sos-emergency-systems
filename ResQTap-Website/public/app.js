@@ -3166,6 +3166,8 @@ function detailShell(title, subtitle, body, avatar = "") {
       ${body}
     </div>
   `;
+  refreshIcons();
+  setTimeout(refreshIcons, 20);
 }
 
 function kv(label, value) {
@@ -3376,7 +3378,9 @@ function renderSosDetail(roomId, alertId) {
       ${canCancel ? `<button class="secondary-button danger icon-button" data-action="cancel-sos" data-room="${escapeHtml(alert.roomId)}" data-alert="${escapeHtml(alert.key)}" type="button">${icon("circle-x")}<span>Cancel SOS</span></button>` : ""}
     </section>
   `;
-  detailShell(alert.senderName || alert.senderUid || "SOS Alert", `${alert.roomId || "-"} - ${label}`, body);
+  const senderUser = asRecord(state.users[alert.senderUid]);
+  const senderAvatar = alert.senderUid ? avatarHtml(senderUser, alert.senderUid) : "";
+  detailShell(alert.senderName || alert.senderUid || "SOS Alert", `${alert.roomId || "-"} - ${label}`, body, senderAvatar);
 }
 
 function renderReportDetail(reportKey) {
