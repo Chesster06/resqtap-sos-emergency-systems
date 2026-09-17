@@ -2305,6 +2305,69 @@ function getActiveSosForUser(uid) {
   return null;
 }
 
+function focusSosSenderOnMap(alert) {
+  if (!alert) return;
+  const alertId = alert.key || alert.id;
+  const senderUid = alert.senderUid;
+
+  // 1. Close modal if open so sidebar is front and center
+  closeCaseModal();
+
+  // 2. Set selected for detail sidebar before switching view
+  state.selected = { type: "sos", roomId: alert.roomId, alertId: alertId };
+
+  // 3. Navigate to Live Map view & open sidebar
+  setActiveView("livemap");
+  renderDetail();
+
+  // 4. Resolve coordinates from alert payload, room members, or user profile
+  let lat = 0, lng = 0;
+  if (alert.data) {
+    if (Number(alert.data.lat) && Number(alert.data.lng)) {
+      lat = Number(alert.data.lat);
+      lng = Number(alert.data.lng);
+    } else if (Number(alert.data.latitude) && Number(alert.data.longitude)) {
+      lat = Number(alert.data.latitude);
+      lng = Number(alert.data.longitude);
+    }
+  }
+  if (!lat && !lng && senderUid) {
+    getRooms().forEach((rm) => {
+      const m = (rm.members || []).find((item) => item.uid === senderUid);
+      if (m && Number(m.lat) && Number(m.lng)) {
+        lat = Number(m.lat);
+        lng = Number(m.lng);
+      }
+    });
+  }
+  if (!lat && !lng && senderUid && state.users && state.users[senderUid]) {
+    const u = state.users[senderUid];
+    if (Number(u.lat) && Number(u.lng)) {
+      lat = Number(u.lat);
+      lng = Number(u.lng);
+    }
+  }
+
+  // 5. Smooth zoom to user location on Leaflet map
+  if (lat && lng) {
+    const doZoom = () => {
+      if (window.__resqLiveMap && window.__resqLiveMap.leaflet) {
+        try {
+          window.__resqLiveMap.leaflet.invalidateSize();
+          window.__resqLiveMap.leaflet.setView([lat, lng], 17, { animate: true });
+          if (window.__resqLiveMap.markers) {
+            const marker = window.__resqLiveMap.markers.get(`u:${senderUid}`) || window.__resqLiveMap.markers.get(`sos:${alert.key}`);
+            if (marker) marker.openPopup();
+          }
+        } catch (e) {
+          console.warn("Leaflet zoom error:", e);
+        }
+      }
+    };
+    [50, 150, 300, 600, 1000].forEach((delay) => setTimeout(doZoom, delay));
+  }
+}
+
 function updateSosAlarmSystem() {
   const now = Date.now();
   // Filter active, non-cancelled, UN-SERVED SOS alerts created within the last 60 seconds (with clock-skew tolerance)
@@ -2413,63 +2476,14 @@ function updateSosAlarmSystem() {
       // Immediately refresh SOS alarm system so ticker sees 0 active unserved alerts
       updateSosAlarmSystem();
 
-      // Open floating modal to update case
-      openCaseModal(latestAlert.roomId, alertId, latestAlert.senderUid, latestAlert.senderName);
-
-      // Navigate to Live Map & focus on sender
-      setActiveView("livemap");
-      const senderUid = latestAlert.senderUid;
-      if (senderUid) {
-        const activeSos = getActiveSosForUser(senderUid);
-        if (activeSos) {
-          state.selected = { type: "sos", roomId: activeSos.roomId, alertId: activeSos.key || activeSos.id };
-        } else {
-          state.selected = { type: "user", id: senderUid };
-        }
-        renderDetail();
-        let lat = 0, lng = 0;
-        getRooms().forEach((rm) => {
-          const m = rm.members.find((item) => item.uid === senderUid);
-          if (m && Number(m.lat) && Number(m.lng)) {
-            lat = Number(m.lat);
-            lng = Number(m.lng);
-          }
-        });
-        if (lat && lng && window.__resqLiveMap && window.__resqLiveMap.leaflet) {
-          try {
-            window.__resqLiveMap.leaflet.setView([lat, lng], 16, { animate: true });
-          } catch (e) {}
-        }
-      }
+      // Zoom to user location on Live Map and open the detail sidebar!
+      focusSosSenderOnMap(latestAlert);
     };
   }
 
   if (btnView) {
     btnView.onclick = () => {
-      setActiveView("livemap");
-      const senderUid = latestAlert.senderUid;
-      if (senderUid) {
-        const activeSos = getActiveSosForUser(senderUid);
-        if (activeSos) {
-          state.selected = { type: "sos", roomId: activeSos.roomId, alertId: activeSos.key || activeSos.id };
-        } else {
-          state.selected = { type: "user", id: senderUid };
-        }
-        renderDetail();
-        let lat = 0, lng = 0;
-        getRooms().forEach((rm) => {
-          const m = rm.members.find((item) => item.uid === senderUid);
-          if (m && Number(m.lat) && Number(m.lng)) {
-            lat = Number(m.lat);
-            lng = Number(m.lng);
-          }
-        });
-        if (lat && lng && window.__resqLiveMap && window.__resqLiveMap.leaflet) {
-          try {
-            window.__resqLiveMap.leaflet.setView([lat, lng], 16, { animate: true });
-          } catch (e) {}
-        }
-      }
+      focusSosSenderOnMap(latestAlert);
     };
   }
 
@@ -3411,7 +3425,8 @@ function renderRoomDetail(roomCode) {
 }
 
 function renderSosDetail(roomId, alertId) {
-  const alert = getSosAlerts().find((item) => item.roomId === roomId && item.key === alertId);
+  const alert = getSosAlerts().find((item) => item.roomId === roomId && (item.key === alertId || item.id === alertId))
+    || getSosAlerts().find((item) => item.key === alertId || item.id === alertId);
   if (!alert) {
     state.selected = null;
     renderDetail();
