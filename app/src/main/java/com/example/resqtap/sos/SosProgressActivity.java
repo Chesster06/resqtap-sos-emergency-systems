@@ -202,7 +202,8 @@ public class SosProgressActivity extends BaseActivity {
                     return;
                 }
 
-                String responderName = String.valueOf(snapshot.child("servedByName").getValue() == null ? "Admin Responder" : snapshot.child("servedByName").getValue());
+                String rawResponder = String.valueOf(snapshot.child("servedByName").getValue() == null ? "" : snapshot.child("servedByName").getValue()).trim();
+                String responderName = formatResponderName(rawResponder);
                 String progressStatus = String.valueOf(snapshot.child("progressStatus").getValue() == null ? "Admin Dispatched" : snapshot.child("progressStatus").getValue());
                 String notes = String.valueOf(snapshot.child("progressNotes").getValue() == null ? "Emergency assistance is assigned and responders have been notified." : snapshot.child("progressNotes").getValue());
 
@@ -234,6 +235,26 @@ public class SosProgressActivity extends BaseActivity {
         }
 
         renderStepper(step);
+    }
+
+    private String formatResponderName(String raw) {
+        if (raw == null || raw.trim().isEmpty()) return "Admin Responder";
+        String name = raw.trim();
+        if (name.contains("@")) {
+            String namePart = name.split("@")[0].replaceAll("[._-]", " ").trim();
+            if (!namePart.isEmpty()) {
+                String[] words = namePart.split("\\s+");
+                StringBuilder sb = new StringBuilder();
+                for (String w : words) {
+                    if (w.isEmpty()) continue;
+                    if (sb.length() > 0) sb.append(" ");
+                    sb.append(Character.toUpperCase(w.charAt(0)));
+                    if (w.length() > 1) sb.append(w.substring(1));
+                }
+                return sb.toString();
+            }
+        }
+        return name;
     }
 
     private void renderStepper(int step) {

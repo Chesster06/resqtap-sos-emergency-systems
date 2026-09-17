@@ -3988,6 +3988,34 @@ async function cleanupExpiredAiChats() {
   }
 }
 
+function getAdminDisplayName() {
+  if (!state.currentUser) return "Admin Responder";
+  const uid = state.currentUser.uid;
+  const userRecord = state.users && state.users[uid] ? asRecord(state.users[uid]) : null;
+  const nameFromDb = userRecord && userRecord.name ? text(userRecord.name).trim() : "";
+  if (nameFromDb && !nameFromDb.includes("@")) return nameFromDb;
+
+  const displayName = text(state.currentUser.displayName || "").trim();
+  if (displayName && !displayName.includes("@")) return displayName;
+
+  if (nameFromDb) {
+    const part = nameFromDb.split("@")[0].replace(/[._-]/g, " ").trim();
+    if (part) {
+      return part.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    }
+  }
+
+  const email = text(state.currentUser.email || "").trim();
+  if (email) {
+    const part = email.split("@")[0].replace(/[._-]/g, " ").trim();
+    if (part) {
+      return part.split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    }
+  }
+
+  return "Admin Responder";
+}
+
 async function reserveSosCase(roomId, alertId, senderUid, senderName) {
   if (!validPathSegment(roomId) || !validPathSegment(alertId)) return;
 
@@ -4016,7 +4044,7 @@ async function reserveSosCase(roomId, alertId, senderUid, senderName) {
   const banner = document.getElementById("sosAlarmBanner");
   if (banner) banner.classList.add("hidden");
 
-  const adminName = state.currentUser ? (state.currentUser.displayName || state.currentUser.email || "Admin Responder") : "Admin Responder";
+  const adminName = getAdminDisplayName();
   const adminUid = state.currentUser ? state.currentUser.uid : "admin";
   const updates = {};
   updates[`rooms/${roomId}/sosAlerts/${alertId}/served`] = true;
@@ -4110,7 +4138,7 @@ async function saveCaseProgress() {
 
   const notesInput = document.getElementById("caseNotesInput");
   const notes = notesInput ? notesInput.value.trim() : "";
-  const adminName = state.currentUser ? (state.currentUser.displayName || state.currentUser.email || "Admin Responder") : "Admin Responder";
+  const adminName = getAdminDisplayName();
   const adminUid = state.currentUser ? state.currentUser.uid : "admin";
 
   const updates = {};
