@@ -4059,12 +4059,17 @@ function closeCaseModal() {
   activeCaseModalData = null;
 }
 
+let isSavingCaseProgress = false;
+
 async function saveCaseProgress() {
+  if (isSavingCaseProgress) return;
   if (!activeCaseModalData) {
     showToast("No active case to update.");
     return;
   }
+  isSavingCaseProgress = true;
   const { roomId, alertId, senderUid } = activeCaseModalData;
+  const targetSenderName = activeCaseModalData.senderName || "user";
   const activeStepBtn = document.querySelector(".sos-case-step-btn.is-active");
   const step = activeStepBtn ? (Number(activeStepBtn.dataset.step) || activeCaseModalData.step || 1) : (activeCaseModalData.step || 1);
   const status = activeStepBtn ? (activeStepBtn.dataset.status || activeCaseModalData.status || "In Progress") : (activeCaseModalData.status || "In Progress");
@@ -4117,13 +4122,14 @@ async function saveCaseProgress() {
 
   try {
     await update(ref(db), updates);
-    showToast(`Case update sent to ${activeCaseModalData.senderName || "user"}.`);
+    showToast(`Case update sent to ${targetSenderName}.`);
     closeCaseModal();
     render();
   } catch (err) {
     console.error("Failed to save case progress:", err);
     showToast("Error updating case: " + (err.message || err));
   } finally {
+    isSavingCaseProgress = false;
     if (saveBtn) {
       saveBtn.disabled = false;
       saveBtn.style.opacity = "1";
@@ -5853,11 +5859,6 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
 // SOS Case Modal Listeners & Stepper Setup
 (function initSosCaseModalListeners() {
   function setup() {
-    const saveBtn = document.getElementById("caseSaveBtn");
-    if (saveBtn) {
-      saveBtn.onclick = () => saveCaseProgress();
-    }
-
     // Stepper buttons
     document.querySelectorAll(".sos-case-step-btn").forEach((btn) => {
       btn.onclick = () => {
