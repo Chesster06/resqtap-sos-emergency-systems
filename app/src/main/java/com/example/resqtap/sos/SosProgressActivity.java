@@ -192,7 +192,9 @@ public class SosProgressActivity extends BaseActivity {
 
                 String status = String.valueOf(snapshot.child("status").getValue() == null ? "active" : snapshot.child("status").getValue());
                 boolean isCancelled = "cancelled".equalsIgnoreCase(status) || snapshot.child("cancelledAt").exists();
-                boolean isResolved = "resolved".equalsIgnoreCase(status) || snapshot.child("resolvedAt").exists();
+                Long stepVal = snapshot.child("progressStep").getValue(Long.class);
+                int step = stepVal != null ? stepVal.intValue() : 1;
+                boolean isResolved = "resolved".equalsIgnoreCase(status) || snapshot.child("resolvedAt").exists() || step >= 4;
 
                 if (isCancelled) {
                     Toast.makeText(SosProgressActivity.this, R.string.sos_progress_cancelled, Toast.LENGTH_SHORT).show();
@@ -204,8 +206,6 @@ public class SosProgressActivity extends BaseActivity {
                 String progressStatus = String.valueOf(snapshot.child("progressStatus").getValue() == null ? "Admin Dispatched" : snapshot.child("progressStatus").getValue());
                 String notes = String.valueOf(snapshot.child("progressNotes").getValue() == null ? "Emergency assistance is assigned and responders have been notified." : snapshot.child("progressNotes").getValue());
 
-                Long stepVal = snapshot.child("progressStep").getValue(Long.class);
-                int step = stepVal != null ? stepVal.intValue() : 1;
                 if (isResolved) step = 4;
 
                 Long updatedTimeMs = snapshot.child("updatedAt").getValue(Long.class);

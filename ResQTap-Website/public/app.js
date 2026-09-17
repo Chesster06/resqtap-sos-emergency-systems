@@ -1256,7 +1256,7 @@ function alertCreatedAt(alert) {
 
 function isCancelled(alert) {
   const status = text(alert.status || "").toLowerCase();
-  return status === "cancelled" || Boolean(alert.cancelledAt || alert.cancelledClientAt);
+  return status === "cancelled" || status === "resolved" || Boolean(alert.cancelledAt || alert.cancelledClientAt || alert.resolvedAt);
 }
 
 function getSosAlerts() {
@@ -1628,7 +1628,7 @@ function getNotificationHistory() {
 
   const sosNotifications = getSosAlerts().map((alert) => ({
     id: alert.id,
-    type: alert.active ? "SOS Alert" : "SOS Cancelled",
+    type: alert.active ? "SOS Alert" : (alert.data && (alert.data.resolvedAt || alert.data.status === "resolved" || Number(alert.data.progressStep) >= 4) ? "SOS Resolved" : "SOS Cancelled"),
     recipient: alert.source === "legacy" && alert.data.toUid ? userName(alert.data.toUid) : "Room members",
     recipientMeta: alert.source === "legacy" ? text(alert.data.toUid || "") : "excluding sender",
     sender: alert.senderName || userName(alert.senderUid),
@@ -4060,8 +4060,15 @@ function closeCaseModal() {
 }
 
 async function saveCaseProgress() {
-  if (!activeCaseModalData) return;
-  const { roomId, alertId, senderUid, step, status } = activeCaseModalData;
+  if (!activeCaseModalData) {
+    showToast("No active case to update.");
+    return;
+  }
+  const { roomId, alertId, senderUid } = activeCaseModalData;
+  const activeStepBtn = document.querySelector(".sos-case-step-btn.is-active");
+  const step = activeStepBtn ? (Number(activeStepBtn.dataset.step) || activeCaseModalData.step || 1) : (activeCaseModalData.step || 1);
+  const status = activeStepBtn ? (activeStepBtn.dataset.status || activeCaseModalData.status || "In Progress") : (activeCaseModalData.status || "In Progress");
+
   const notesInput = document.getElementById("caseNotesInput");
   const notes = notesInput ? notesInput.value.trim() : "";
   const adminName = state.currentUser ? (state.currentUser.displayName || state.currentUser.email || "Admin Responder") : "Admin Responder";
@@ -4077,15 +4084,14 @@ async function saveCaseProgress() {
 
   if (Number(step) === 4) {
     // Step 4 is Resolved
-    updates[`rooms/${roomId}/sosAlerts/${alertId}/status`] = "resolved";
     updates[`rooms/${roomId}/sosAlerts/${alertId}/resolvedAt`] = serverTimestamp();
     updates[`rooms/${roomId}/sosAlerts/${alertId}/resolvedBy`] = adminUid;
   }
 
-  // Cross-room synchronization
+  // Cross-room synchronization: sync to all rooms for this sender
   if (senderUid) {
     getSosAlerts().forEach((a) => {
-      if (a.senderUid === senderUid && a.active && a.key !== alertId) {
+      if (a.senderUid === senderUid && a.key !== alertId) {
         if (validPathSegment(a.roomId) && validPathSegment(a.key)) {
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStep`] = Number(step) || 1;
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStatus`] = status || "In Progress";
@@ -4094,7 +4100,6 @@ async function saveCaseProgress() {
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedBy`] = adminUid;
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedByName`] = adminName;
           if (Number(step) === 4) {
-            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/status`] = "resolved";
             updates[`rooms/${a.roomId}/sosAlerts/${a.key}/resolvedAt`] = serverTimestamp();
             updates[`rooms/${a.roomId}/sosAlerts/${a.key}/resolvedBy`] = adminUid;
           }
@@ -4103,10 +4108,28 @@ async function saveCaseProgress() {
     });
   }
 
-  await update(ref(db), updates);
-  showToast(`Case update sent to ${activeCaseModalData.senderName || "user"}.`);
-  closeCaseModal();
-  render();
+  const saveBtn = document.getElementById("caseSaveBtn");
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.style.opacity = "0.7";
+    saveBtn.style.pointerEvents = "none";
+  }
+
+  try {
+    await update(ref(db), updates);
+    showToast(`Case update sent to ${activeCaseModalData.senderName || "user"}.`);
+    closeCaseModal();
+    render();
+  } catch (err) {
+    console.error("Failed to save case progress:", err);
+    showToast("Error updating case: " + (err.message || err));
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.style.opacity = "1";
+      saveBtn.style.pointerEvents = "auto";
+    }
+  }
 }
 
 async function cancelSos(roomId, alertId) {
@@ -4503,6 +4526,10 @@ function handleAction(button) {
     }
     if (action === "close-case-modal") {
       closeCaseModal();
+      return;
+    }
+    if (action === "save-case-progress") {
+      await saveCaseProgress();
       return;
     }
     if (action === "cancel-sos") await cancelSos(room, alert);
