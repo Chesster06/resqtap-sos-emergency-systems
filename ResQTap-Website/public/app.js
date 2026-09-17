@@ -804,6 +804,7 @@ const state = {
   dashboardRange: "today",
   users: {},
   rooms: {},
+  roomTombstones: {},
   userRooms: {},
   admins: {},
   legacyAlerts: {},
@@ -812,6 +813,7 @@ const state = {
   supportChats: {},
   aiChats: {},
   highlights: {},
+  servedCases: new Set(),
   selectedChatUid: "",
   selectedAiChatUid: "",
   livechatAttachment: null,
@@ -1118,6 +1120,9 @@ function startDataListeners() {
   subscribe("rooms", (value) => {
     state.rooms = asRecord(value);
   });
+  subscribe("roomTombstones", (value) => {
+    state.roomTombstones = asRecord(value);
+  });
   subscribe("userRooms", (value) => {
     state.userRooms = asRecord(value);
   });
@@ -1149,7 +1154,16 @@ function startDataListeners() {
 }
 
 function userRoomsFor(uid) {
-  return asRecord(state.userRooms[uid]);
+  const all = asRecord(state.userRooms[uid]);
+  const valid = {};
+  entries(all).forEach(([code, meta]) => {
+    if (state.roomTombstones && state.roomTombstones[code]) return;
+    const room = asRecord(state.rooms[code]);
+    if (!room || !Object.keys(room).length) return;
+    if (room.deleted || room.deletedAt || room.isDeleted) return;
+    valid[code] = meta;
+  });
+  return valid;
 }
 
 function contactsFor(user) {
@@ -1158,7 +1172,10 @@ function contactsFor(user) {
 
 function getUserLastSeen(uid, user) {
   let last = Math.max(millis(user.updatedAt), millis(user.createdAt));
-  entries(state.rooms).forEach(([, room]) => {
+  const myRooms = userRoomsFor(uid);
+  entries(state.rooms).forEach(([code, room]) => {
+    if (!myRooms[code]) return;
+    if (state.roomTombstones && state.roomTombstones[code]) return;
     const member = asRecord(asRecord(room.members)[uid]);
     last = Math.max(last, millis(member.updatedAt));
   });
@@ -1176,38 +1193,61 @@ function getUsers() {
 }
 
 function getRoomMembers(room) {
-  return entries(room.members).map(([uid, member]) => {
-    const data = asRecord(member);
-    return {
-      uid: text(data.uid).trim() || uid,
-      data,
-      updatedAt: millis(data.updatedAt),
-      batteryPct: Number.isFinite(Number(data.batteryPct)) ? Number(data.batteryPct) : null,
-      lat: Number(data.lat),
-      lng: Number(data.lng)
-    };
-  });
+  const roomCode = room.code || room.id || "";
+  return entries(room.members)
+    .filter(([uid]) => {
+      if (roomCode && state.userRooms && state.userRooms[uid] && !state.userRooms[uid][roomCode]) {
+        return false;
+      }
+      return true;
+    })
+    .map(([uid, member]) => {
+      const data = asRecord(member);
+      return {
+        uid: text(data.uid).trim() || uid,
+        data,
+        updatedAt: millis(data.updatedAt),
+        batteryPct: Number.isFinite(Number(data.batteryPct)) ? Number(data.batteryPct) : null,
+        lat: Number(data.lat),
+        lng: Number(data.lng)
+      };
+    });
 }
 
 function getRooms() {
-  return entries(state.rooms).map(([code, roomValue]) => {
-    const room = asRecord(roomValue);
-    const members = getRoomMembers(room);
-    const alerts = entries(room.sosAlerts).map(([alertId, alert]) => ({
-      id: alertId,
-      data: asRecord(alert)
-    }));
-    const lastMemberUpdate = members.reduce((max, member) => Math.max(max, member.updatedAt), 0);
-    return {
-      code,
-      data: room,
-      members,
-      alerts,
-      liveCount: members.filter((member) => Date.now() - member.updatedAt <= ONLINE_MS).length,
-      lowBatteryCount: members.filter((member) => member.batteryPct !== null && member.batteryPct <= LOW_BATTERY).length,
-      updatedAt: Math.max(millis(room.updatedAt), lastMemberUpdate, millis(room.createdAt))
-    };
-  });
+  return entries(state.rooms)
+    .filter(([code, roomValue]) => {
+      if (state.roomTombstones && state.roomTombstones[code]) return false;
+      const room = asRecord(roomValue);
+      if (!room || !Object.keys(room).length) return false;
+      if (room.deleted || room.deletedAt || room.isDeleted) return false;
+
+      // Filter out orphaned rooms where creator has no userRooms entry and no registered users in userRooms
+      const creatorUid = text(room.creatorUid).trim();
+      const hasCreatorInUserRooms = creatorUid && state.userRooms[creatorUid] && state.userRooms[creatorUid][code];
+      const hasAnyMemberInUserRooms = entries(state.userRooms).some(([, ur]) => asRecord(ur)[code]);
+      if (creatorUid && !hasCreatorInUserRooms && !hasAnyMemberInUserRooms) return false;
+
+      return true;
+    })
+    .map(([code, roomValue]) => {
+      const room = asRecord(roomValue);
+      const members = getRoomMembers({ ...room, code });
+      const alerts = entries(room.sosAlerts).map(([alertId, alert]) => ({
+        id: alertId,
+        data: asRecord(alert)
+      }));
+      const lastMemberUpdate = members.reduce((max, member) => Math.max(max, member.updatedAt), 0);
+      return {
+        code,
+        data: room,
+        members,
+        alerts,
+        liveCount: members.filter((member) => Date.now() - member.updatedAt <= ONLINE_MS).length,
+        lowBatteryCount: members.filter((member) => member.batteryPct !== null && member.batteryPct <= LOW_BATTERY).length,
+        updatedAt: Math.max(millis(room.updatedAt), lastMemberUpdate, millis(room.createdAt))
+      };
+    });
 }
 
 function alertCreatedAt(alert) {
@@ -2130,8 +2170,252 @@ function animateDashboardMetrics(cards) {
   });
 }
 
+/* ------------------------------------------------------------------ */
+/* SOS LIVE ALARM SYSTEM (30-SECOND BLIP & WEB AUDIO SIREN)           */
+/* ------------------------------------------------------------------ */
+class SosAlarmSound {
+  constructor() {
+    this.ctx = null;
+    this.osc = null;
+    this.gain = null;
+    this.timer = null;
+    this.isPlaying = false;
+    this.mutedAlerts = new Set();
+  }
+
+  ensureContext() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) this.ctx = new AudioCtx();
+    }
+    if (this.ctx && this.ctx.state === "suspended") {
+      this.ctx.resume().catch(() => {});
+    }
+  }
+
+  play(alertId) {
+    if (alertId && this.mutedAlerts.has(alertId)) return;
+    this.ensureContext();
+    if (!this.ctx || this.isPlaying) return;
+
+    try {
+      this.isPlaying = true;
+      const now = this.ctx.currentTime;
+      this.osc = this.ctx.createOscillator();
+      this.gain = this.ctx.createGain();
+
+      this.osc.type = "sawtooth";
+      this.osc.frequency.setValueAtTime(720, now);
+      this.gain.gain.setValueAtTime(0.18, now);
+
+      let hi = false;
+      this.timer = setInterval(() => {
+        if (!this.ctx || !this.isPlaying || !this.osc) return;
+        hi = !hi;
+        const t = this.ctx.currentTime;
+        this.osc.frequency.setTargetAtTime(hi ? 960 : 700, t, 0.08);
+      }, 350);
+
+      this.osc.connect(this.gain);
+      this.gain.connect(this.ctx.destination);
+      this.osc.start();
+    } catch (e) {
+      console.warn("Could not start SOS siren audio:", e);
+    }
+  }
+
+  stop() {
+    if (!this.isPlaying) return;
+    this.isPlaying = false;
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    if (this.osc) {
+      try {
+        this.osc.stop();
+        this.osc.disconnect();
+      } catch (e) {}
+      this.osc = null;
+    }
+    if (this.gain) {
+      try {
+        this.gain.disconnect();
+      } catch (e) {}
+      this.gain = null;
+    }
+  }
+
+  mute(alertId) {
+    if (alertId) this.mutedAlerts.add(alertId);
+    this.stop();
+  }
+}
+
+const sosAlarmSound = new SosAlarmSound();
+window.addEventListener("pointerdown", () => sosAlarmSound.ensureContext(), { passive: true });
+
+let sosAlarmTicker = null;
+
+function updateSosAlarmSystem() {
+  const now = Date.now();
+  // Filter active, non-cancelled SOS alerts created within the last 30 seconds
+  const activeAlerts = getSosAlerts().filter((alert) => {
+    if (!alert.active) return false;
+    if (isCancelled(alert.data)) return false;
+    if (!alert.createdAt || alert.createdAt <= 0) return false;
+    const age = now - alert.createdAt;
+    return age >= 0 && age <= 30000;
+  });
+
+  let banner = document.getElementById("sosAlarmBanner");
+  const SHIELD_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+  const SHIELD_CHECK_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>`;
+  const MAP_PIN_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`;
+
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.id = "sosAlarmBanner";
+    banner.className = "sos-alarm-banner hidden";
+    banner.innerHTML = `
+      <div class="sos-alarm-icon">🚨</div>
+      <div class="sos-alarm-text">
+        <span class="sos-alarm-title">EMERGENCY SOS ACTIVE</span>
+        <span class="sos-alarm-subtitle" id="sosAlarmSubtitle">-</span>
+      </div>
+      <span class="sos-alarm-timer" id="sosAlarmTimer">30s</span>
+      <div class="sos-alarm-actions">
+        <button class="sos-alarm-btn sos-alarm-btn-serve" id="sosAlarmBtnServe" type="button">
+          ${SHIELD_SVG}<span>Serve Case</span>
+        </button>
+        <button class="sos-alarm-btn sos-alarm-btn-view" id="sosAlarmBtnView" type="button">
+          ${MAP_PIN_SVG}<span>View on Map</span>
+        </button>
+      </div>
+    `;
+    document.body.appendChild(banner);
+  } else {
+    // If old banner exists in DOM, clean up any old mute button
+    const oldMute = document.getElementById("sosAlarmBtnMute");
+    if (oldMute) oldMute.remove();
+  }
+
+  if (!activeAlerts.length) {
+    sosAlarmSound.stop();
+    banner.classList.add("hidden");
+    if (sosAlarmTicker) {
+      clearInterval(sosAlarmTicker);
+      sosAlarmTicker = null;
+    }
+    return;
+  }
+
+  const latestAlert = activeAlerts.sort((a, b) => b.createdAt - a.createdAt)[0];
+  const alertId = latestAlert.key || latestAlert.id;
+  const remainingMs = Math.max(0, 30000 - (now - latestAlert.createdAt));
+  const remainingSec = Math.ceil(remainingMs / 1000);
+
+  // Play audio alarm (will skip if already muted/served)
+  sosAlarmSound.play(alertId);
+
+  const subtitleEl = document.getElementById("sosAlarmSubtitle");
+  const timerEl = document.getElementById("sosAlarmTimer");
+  const btnServe = document.getElementById("sosAlarmBtnServe");
+  const btnView = document.getElementById("sosAlarmBtnView");
+
+  if (subtitleEl) {
+    subtitleEl.textContent = `${latestAlert.senderName || "User"} in Room ${latestAlert.roomId || "-"}`;
+  }
+  if (timerEl) {
+    timerEl.textContent = `${remainingSec}s`;
+  }
+
+  const isServed = state.servedCases && state.servedCases.has(alertId);
+
+  if (btnServe) {
+    if (isServed) {
+      btnServe.innerHTML = `${SHIELD_CHECK_SVG}<span>Case Served</span>`;
+      btnServe.classList.add("is-served");
+      btnServe.disabled = true;
+    } else {
+      btnServe.innerHTML = `${SHIELD_SVG}<span>Serve Case</span>`;
+      btnServe.classList.remove("is-served");
+      btnServe.disabled = false;
+      btnServe.onclick = () => {
+        state.servedCases = state.servedCases || new Set();
+        state.servedCases.add(alertId);
+
+        // AUTOMATICALLY MUTE SIREN
+        sosAlarmSound.mute(alertId);
+        btnServe.innerHTML = `${SHIELD_CHECK_SVG}<span>Case Served</span>`;
+        btnServe.classList.add("is-served");
+        btnServe.disabled = true;
+
+        showToast(`Serving case for ${latestAlert.senderName || "user"}. Alarm muted.`);
+
+        // Navigate to Live Map & focus on sender
+        setActiveView("livemap");
+        const senderUid = latestAlert.senderUid;
+        if (senderUid) {
+          state.selected = { type: "user", id: senderUid };
+          renderDetail();
+          let lat = 0, lng = 0;
+          getRooms().forEach((rm) => {
+            const m = rm.members.find((item) => item.uid === senderUid);
+            if (m && Number(m.lat) && Number(m.lng)) {
+              lat = Number(m.lat);
+              lng = Number(m.lng);
+            }
+          });
+          if (lat && lng && window.__resqLiveMap && window.__resqLiveMap.leaflet) {
+            try {
+              window.__resqLiveMap.leaflet.setView([lat, lng], 16, { animate: true });
+            } catch (e) {}
+          }
+        }
+      };
+    }
+  }
+
+  if (btnView) {
+    btnView.onclick = () => {
+      setActiveView("livemap");
+      const senderUid = latestAlert.senderUid;
+      if (senderUid) {
+        state.selected = { type: "user", id: senderUid };
+        renderDetail();
+        let lat = 0, lng = 0;
+        getRooms().forEach((rm) => {
+          const m = rm.members.find((item) => item.uid === senderUid);
+          if (m && Number(m.lat) && Number(m.lng)) {
+            lat = Number(m.lat);
+            lng = Number(m.lng);
+          }
+        });
+        if (lat && lng && window.__resqLiveMap && window.__resqLiveMap.leaflet) {
+          try {
+            window.__resqLiveMap.leaflet.setView([lat, lng], 16, { animate: true });
+          } catch (e) {}
+        }
+      }
+    };
+  }
+
+  banner.classList.remove("hidden");
+
+  if (!sosAlarmTicker) {
+    sosAlarmTicker = setInterval(() => {
+      updateSosAlarmSystem();
+      if (typeof window.__resqRefreshMarkers === "function") {
+        window.__resqRefreshMarkers();
+      }
+    }, 1000);
+  }
+}
+
 function render() {
   if (els.appShell.classList.contains("hidden")) return;
+  updateSosAlarmSystem();
   renderNav();
   renderDashboard();
   renderUsers();
@@ -2873,11 +3157,13 @@ function renderUserDetail(uid) {
     renderDetail();
     return;
   }
-  const roomEntries = entries(userRoomsFor(uid));
+  const myRooms = userRoomsFor(uid);
+  const roomEntries = entries(myRooms);
   const contactEntries = contactsFor(user);
   const locations = getRooms()
+    .filter((room) => myRooms[room.code])
     .map((room) => ({ room, member: room.members.find((item) => item.uid === uid) }))
-    .filter((item) => item.member);
+    .filter((item) => item.member && Number.isFinite(item.member.lat) && Number.isFinite(item.member.lng) && item.member.lat !== 0 && item.member.lng !== 0);
 
   const contactHtml = contactEntries.length ? contactEntries.map(([, contact]) => {
     const c = asRecord(contact);
@@ -4427,6 +4713,7 @@ onAuthStateChanged(auth, async (user) => {
     setScreen("auth");
     state.users = {};
     state.rooms = {};
+    state.roomTombstones = {};
     state.userRooms = {};
     state.admins = {};
     state.legacyAlerts = {};
@@ -4910,3 +5197,346 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
   setActiveView("livechat");
 });
 
+/* ================================================================
+   LIVE MAP MODULE — Leaflet satellite map of all user locations,
+   active SOS alerts, and incident reports in real time.
+================================================================ */
+(function initLiveMapModule() {
+  // ── Inject CSS ──────────────────────────────────────────────────
+  if (!document.getElementById("livemap-styles")) {
+    const s = document.createElement("style");
+    s.id = "livemap-styles";
+    s.textContent = `.livemap-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 16px;background:var(--surface,#fff);border-bottom:1px solid var(--border,#e2e8f0);position:relative;z-index:10}.livemap-filters{display:flex;gap:6px;flex-wrap:wrap}.livemap-filter-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1.5px solid var(--border,#e2e8f0);background:transparent;font-size:.78rem;font-weight:500;cursor:pointer;color:var(--text-muted,#64748b);transition:all .18s}.livemap-filter-btn:hover{border-color:var(--primary,#6366f1);color:var(--primary,#6366f1)}.livemap-filter-btn.is-active{background:var(--primary,#6366f1);color:#fff;border-color:var(--primary,#6366f1);box-shadow:0 2px 8px rgba(99,102,241,.28)}.livemap-filter-btn i{width:13px;height:13px}.livemap-stats{display:flex;gap:14px;align-items:center;flex:1;flex-wrap:wrap}.livemap-stat{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:var(--text-muted,#64748b)}.livemap-stat i{width:13px;height:13px}.livemap-stat-sos{color:#ef4444;font-weight:600}.livemap-stat-sos strong{color:#ef4444}.livemap-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:6px 16px;font-size:.72rem;color:var(--text-muted,#64748b);background:var(--surface,#fff);border-bottom:1px solid var(--border,#e2e8f0)}.livemap-legend-item{display:flex;align-items:center;gap:5px}.livemap-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}.livemap-dot-online{background:#22c55e;box-shadow:0 0 0 2px #bbf7d0}.livemap-dot-recent{background:#f59e0b;box-shadow:0 0 0 2px #fde68a}.livemap-dot-offline{background:#94a3b8}.livemap-dot-sos{background:#ef4444;box-shadow:0 0 0 2px #fecaca;animation:mapSosPulse 1.2s infinite}.livemap-dot-report{background:#8b5cf6}@keyframes mapSosPulse{0%,100%{box-shadow:0 0 0 2px #fecaca}50%{box-shadow:0 0 0 8px rgba(239,68,68,.18)}}#livemapView{display:flex;flex-direction:column;height:100%;overflow:hidden}#livemapView.hidden{display:none!important}.livemap-container{flex:1;min-height:480px;position:relative}.livemap-sidepanel{position:absolute;top:0;right:0;width:300px;height:100%;background:var(--surface,#fff);border-left:1px solid var(--border,#e2e8f0);z-index:410;display:flex;flex-direction:column;box-shadow:-4px 0 16px rgba(0,0,0,.08)}.livemap-sidepanel.hidden{display:none}.livemap-sidepanel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border,#e2e8f0)}.livemap-sidepanel-header h3{margin:0;font-size:.92rem;font-weight:700}.livemap-close-btn{background:none;border:none;cursor:pointer;color:var(--text-muted,#64748b);padding:4px;border-radius:6px;display:flex;align-items:center}.livemap-close-btn:hover{background:var(--bg-hover,#f1f5f9)}.livemap-sidepanel-body{flex:1;overflow-y:auto;padding:14px 16px;font-size:.82rem}.livemap-detail-row{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}.livemap-detail-row label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted,#64748b)}.livemap-detail-row span{color:var(--text,#1e293b)}.livemap-detail-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:10px;font-size:.72rem;font-weight:600}.livemap-detail-badge.online{background:#dcfce7;color:#15803d}.livemap-detail-badge.recent{background:#fef9c3;color:#92400e}.livemap-detail-badge.offline{background:#f1f5f9;color:#475569}.livemap-detail-badge.sos{background:#fee2e2;color:#b91c1c}.livemap-detail-badge.report{background:#ede9fe;color:#6d28d9}.lm-marker-wrap{position:relative;width:40px;height:40px;border-radius:50%;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.32);transition:transform .18s cubic-bezier(.34,1.56,.64,1);box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:visible!important}.lm-marker-wrap:hover{transform:scale(1.18);z-index:1000!important}.lm-marker-online{border:3px solid #22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.35),0 3px 10px rgba(0,0,0,.32)}.lm-marker-recent{border:3px solid #f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.35),0 3px 10px rgba(0,0,0,.32)}.lm-marker-offline{border:3px solid #94a3b8;box-shadow:0 3px 8px rgba(0,0,0,.25)}.lm-marker-sos{border:3.5px solid #ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.45),0 4px 14px rgba(239,68,68,.6);animation:mapSosPulse 1.1s infinite}.lm-marker-report{border:3px solid #8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.3),0 3px 10px rgba(0,0,0,.3)}.lm-avatar-frame{position:relative;z-index:1;width:100%;height:100%;border-radius:50%;overflow:hidden;background:#FFE4EE;display:flex;align-items:center;justify-content:center}.lm-avatar-frame img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}.lm-avatar-frame svg{width:100%;height:100%;display:block}.lm-icon-report-inner{background:#8b5cf6;color:#fff;font-weight:800;font-size:16px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif}.lm-marker-dot{position:absolute;bottom:-2px;right:-2px;width:11px;height:11px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);z-index:10}.lm-dot-online{background:#22c55e}.lm-dot-recent{background:#f59e0b}.lm-dot-offline{background:#94a3b8}.lm-dot-report{background:#8b5cf6}.lm-sos-badge{position:absolute!important;bottom:-18px!important;left:50%!important;transform:translateX(-50%)!important;background:#ef4444!important;color:#fff!important;font-size:11px!important;font-weight:900!important;padding:2.5px 8px!important;border-radius:9999px!important;border:2px solid #fff!important;box-shadow:0 3px 8px rgba(0,0,0,.6)!important;letter-spacing:.8px!important;line-height:1!important;white-space:nowrap!important;z-index:99999!important;pointer-events:none!important;display:block!important}.leaflet-popup-content-wrapper{border-radius:10px!important;font-family:'Inter',sans-serif!important}.leaflet-popup-content{font-size:.8rem!important;line-height:1.5!important}.dark-mode .livemap-toolbar,.dark-mode .livemap-legend,.dark-mode .livemap-sidepanel{background:var(--surface-dark,#1e293b);border-color:var(--border-dark,#334155)}.dark-mode .livemap-sidepanel-header{border-color:var(--border-dark,#334155)}.dark-mode .livemap-detail-row span{color:#e2e8f0}@media(max-width:700px){.livemap-sidepanel{width:100%}.livemap-stats{display:none}}`;
+    document.head.appendChild(s);
+  }
+
+  // ── Default Avatar SVG matching ResQTap Android App (ic_avatar.xml) ──
+  const DEFAULT_AVATAR_SVG = `<svg viewBox="0 0 48 48" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="display:block;border-radius:50%;"><circle cx="24" cy="24" r="24" fill="#FFE4EE"/><circle cx="24" cy="24" r="23.4" fill="none" stroke="#FFD1E0" stroke-width="1.2"/><circle cx="24" cy="16.5" r="5.5" fill="#E60067"/><path d="M24,24.5c-4.6,0 -9.2,2.3 -12.2,6.2c-0.8,1 -1.1,2.2 -1.1,3.4v1.9c0,0.8 0.6,1.4 1.4,1.4h23.8c0.8,0 1.4,-0.6 1.4,-1.4v-1.9c0,-1.2 -0.3,-2.4 -1.1,-3.4c-3,-3.9 -7.6,-6.2 -12.2,-6.2z" fill="#E60067"/></svg>`;
+  window.__resqDefaultAvatarSvg = DEFAULT_AVATAR_SVG;
+
+  function getUserPhoto(uid, memData) {
+    const u = asRecord(state.users[uid]);
+    const m = asRecord(memData);
+    const uPhoto = text(m.photoUrl || u.photoUrl || m.photoUri || u.photoUri).trim();
+    if (uPhoto && (uPhoto.startsWith("http://") || uPhoto.startsWith("https://") || uPhoto.startsWith("data:image/"))) {
+      return uPhoto;
+    }
+    const b64 = text(m.photoB64 || u.photoB64).trim();
+    if (b64 && b64.length < 400000) {
+      return `data:image/jpeg;base64,${b64}`;
+    }
+    return "";
+  }
+
+  function buildAvatarHtml(photoSrc) {
+    if (photoSrc) {
+      return `<img src="${escapeHtml(photoSrc)}" alt="" onerror="this.onerror=null;this.parentElement.innerHTML=window.__resqDefaultAvatarSvg;" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;">`;
+    }
+    return DEFAULT_AVATAR_SVG;
+  }
+
+  // ── Map state ───────────────────────────────────────────────────
+  const ms = { leaflet: null, markers: new Map(), filter: "all", initialized: false };
+
+  function stCls(updatedAt) {
+    const age = Date.now() - millis(updatedAt);
+    if (age <= ONLINE_MS) return "online";
+    if (age <= RECENT_MS) return "recent";
+    return "offline";
+  }
+
+  function mkIcon(opts) {
+    const o = typeof opts === "string" ? { type: opts } : (opts || {});
+    const type = o.type || "offline";
+
+    if (type === "report") {
+      return window._LeafletMap.divIcon({
+        className: "",
+        html: `<div class="lm-marker-wrap lm-marker-report"><div class="lm-avatar-frame"><div class="lm-icon-report-inner">!</div></div><span class="lm-marker-dot lm-dot-report"></span></div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -22]
+      });
+    }
+
+    const photoSrc = o.photo || "";
+    const avatarContent = buildAvatarHtml(photoSrc);
+    let badgeHtml = "";
+    if (type === "sos") {
+      badgeHtml = `<span class="lm-sos-badge" style="position:absolute!important;bottom:-18px!important;left:50%!important;transform:translateX(-50%)!important;z-index:99999!important;background:#ef4444!important;color:#ffffff!important;font-size:11px!important;font-weight:900!important;padding:2.5px 8px!important;border-radius:9999px!important;border:2px solid #ffffff!important;box-shadow:0 3px 8px rgba(0,0,0,0.6)!important;letter-spacing:0.8px!important;line-height:1!important;white-space:nowrap!important;pointer-events:none!important;display:block!important;">SOS</span>`;
+    } else {
+      badgeHtml = `<span class="lm-marker-dot lm-dot-${type}"></span>`;
+    }
+
+    const wrapCls = `lm-marker-wrap lm-marker-${type}`;
+    return window._LeafletMap.divIcon({
+      className: "",
+      html: `<div class="${wrapCls}" style="overflow:visible!important;"><div class="lm-avatar-frame" style="position:relative!important;z-index:1!important;">${avatarContent}</div>${badgeHtml}</div>`,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+      popupAnchor: [0, -22]
+    });
+  }
+
+  function closeSide() { const p = document.getElementById("livemapSidepanel"); if (p) p.classList.add("hidden"); }
+
+  function openSide(title, body) {
+    const p = document.getElementById("livemapSidepanel");
+    const t = document.getElementById("livemapSidepanelTitle");
+    const b = document.getElementById("livemapSidepanelBody");
+    if (!p || !t || !b) return;
+    t.textContent = title; b.innerHTML = body;
+    p.classList.remove("hidden");
+    refreshIcons();
+  }
+
+  function dr(label, val) { return `<div class="livemap-detail-row"><label>${escapeHtml(label)}</label><span>${val}</span></div>`; }
+  function badge(cls, lbl) { return `<span class="livemap-detail-badge ${escapeHtml(cls)}">${escapeHtml(lbl)}</span>`; }
+
+  function fitAll() {
+    if (!ms.leaflet) return;
+    const pts = []; ms.markers.forEach((m) => { if (m._map) pts.push(m.getLatLng()); });
+    if (!pts.length) return;
+    try { ms.leaflet.fitBounds(window._LeafletMap.latLngBounds(pts), { padding:[40,40], maxZoom:14 }); } catch(e) { /**/ }
+  }
+
+  function prune(keep) {
+    ms.markers.forEach((m, k) => { if (!keep.has(k)) { m.remove(); ms.markers.delete(k); } });
+  }
+
+  function upsert(key, lat, lng, iconOpts, popup, cb) {
+    if (!ms.leaflet || !window._LeafletMap) return;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat===0 && lng===0)) return;
+    const icon = mkIcon(iconOpts);
+    const ll   = window._LeafletMap.latLng(lat, lng);
+    if (ms.markers.has(key)) {
+      ms.markers.get(key).setLatLng(ll).setIcon(icon).bindPopup(popup);
+    } else {
+      const m = window._LeafletMap.marker(ll, {icon}).addTo(ms.leaflet).bindPopup(popup);
+      if (cb) m.on("click", cb);
+      ms.markers.set(key, m);
+    }
+  }
+
+  function refreshMarkers() {
+    if (!ms.initialized || !window._LeafletMap) return;
+    const f = ms.filter;
+    const keep = new Set();
+
+    if (f === "all" || f === "users") {
+      const activeUserMap = new Map();
+      getRooms().forEach((room) => {
+        room.members.forEach((mem) => {
+          const lat = Number(mem.data.lat), lng = Number(mem.data.lng);
+          if (!lat && !lng) return;
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          if (lat === 0 && lng === 0) return;
+          const uid = mem.uid;
+          if (state.userRooms && state.userRooms[uid] && !state.userRooms[uid][room.code]) return;
+          const existing = activeUserMap.get(uid);
+          const hasSos = room.alerts.some((a) => {
+            if (a.data.senderUid !== uid) return false;
+            if (isCancelled(a.data)) return false;
+            const created = alertCreatedAt(a.data);
+            const age = Date.now() - created;
+            return age >= 0 && age <= 30000;
+          });
+          if (!existing || hasSos || (!existing.hasSos && mem.updatedAt > existing.updatedAt)) {
+            activeUserMap.set(uid, {
+              room,
+              mem,
+              lat,
+              lng,
+              hasSos,
+              updatedAt: mem.updatedAt
+            });
+          }
+        });
+      });
+
+      activeUserMap.forEach(({ room, mem, lat, lng, hasSos }, uid) => {
+        const key = `u:${uid}`;
+        keep.add(key);
+        const st  = stCls(mem.updatedAt);
+        const it  = hasSos ? "sos" : st;
+        const nm  = escapeHtml(userName(uid));
+        const bat = mem.batteryPct!==null ? `${mem.batteryPct}%` : "—";
+        const ago = mem.updatedAt ? ageLabel(mem.updatedAt) : "—";
+        const photo = getUserPhoto(uid, mem.data);
+        const avatarSnippet = buildAvatarHtml(photo);
+        const stBorder = it === 'sos' ? '#ef4444' : st === 'online' ? '#22c55e' : st === 'recent' ? '#f59e0b' : '#94a3b8';
+        const popup = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="width:38px;height:38px;border-radius:50%;overflow:hidden;border:2.5px solid ${stBorder};flex-shrink:0;background:#FFE4EE;box-shadow:0 2px 6px rgba(0,0,0,.15);">${avatarSnippet}</div>
+          <div>
+            <strong style="font-size:0.9rem;color:#0f172a;display:block;">${nm}</strong>
+          </div>
+        </div>
+        <div style="font-size:0.77rem;color:#475569;line-height:1.5;border-top:1px solid #e2e8f0;padding-top:6px;">
+          Status: <strong>${st}</strong><br>
+          Battery: <strong>${escapeHtml(bat)}</strong><br>
+          Last seen: ${escapeHtml(ago)}
+          ${hasSos ? "<br><strong style='color:#ef4444;'>🚨 Active SOS</strong>" : ""}
+        </div>`;
+        upsert(key, lat, lng, { type: it, photo, uid, name: nm }, popup, () => {
+          state.selected = { type: "user", id: uid };
+          renderDetail();
+          [50, 150, 300].forEach((t) => setTimeout(() => { if (ms.leaflet) ms.leaflet.invalidateSize(); }, t));
+        });
+      });
+    }
+
+    if (f === "sos") {
+      getSosAlerts().filter((a) => a.active && !a.stale && (Date.now() - a.createdAt <= 30000)).forEach((alert) => {
+        let lat=0, lng=0;
+        getRooms().forEach((rm)=>{
+          const m=rm.members.find((item) => item.uid === alert.senderUid);
+          if(m && Number(m.lat)&&Number(m.lng)){lat=Number(m.lat);lng=Number(m.lng);}
+        });
+        if(!lat&&!lng) return;
+        const key=`sos:${alert.key}`; keep.add(key);
+        const sn=escapeHtml(alert.senderName||userName(alert.senderUid));
+        const senderUid = alert.senderUid;
+        const photo = getUserPhoto(senderUid);
+        const avatarSnippet = buildAvatarHtml(photo);
+        const popup = `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="width:38px;height:38px;border-radius:50%;overflow:hidden;border:2.5px solid #ef4444;flex-shrink:0;background:#FFE4EE;box-shadow:0 2px 6px rgba(0,0,0,.15);">${avatarSnippet}</div>
+          <div>
+            <strong style="color:#ef4444;font-size:0.9rem;display:block;">🚨 ACTIVE SOS</strong>
+            <strong style="font-size:0.85rem;color:#0f172a;">${sn}</strong>
+          </div>
+        </div>
+        <div style="font-size:0.77rem;color:#475569;line-height:1.5;border-top:1px solid #e2e8f0;padding-top:6px;">
+          Triggered: ${escapeHtml(formatDate(alert.createdAt))}
+        </div>`;
+        upsert(key, lat, lng, { type: "sos", photo, uid: senderUid, name: sn }, popup, () => {
+          state.selected = { type: "sos", roomId: alert.roomId, alertId: alert.id };
+          renderDetail();
+          [50, 150, 300].forEach((t) => setTimeout(() => { if (ms.leaflet) ms.leaflet.invalidateSize(); }, t));
+        });
+      });
+    }
+
+    if (f === "all" || f === "reports") {
+      getIncidentReports().forEach((rep) => {
+        const lat=Number(rep.latitude), lng=Number(rep.longitude);
+        if(!lat&&!lng) return;
+        const key=`rpt:${rep.id}`; keep.add(key);
+        const popup=`<strong>${escapeHtml(rep.categoryLabel||rep.category)}</strong><br>Reporter: ${escapeHtml(rep.senderName)}<br>Status: ${escapeHtml(rep.status)}<br>${rep.address?`Address: ${escapeHtml(rep.address)}<br>`:""}${escapeHtml(formatDate(rep.createdAt))}`;
+        upsert(key,lat,lng,{ type: "report" },popup,()=>{
+          state.selected = { type: "report", id: rep.id };
+          renderDetail();
+          [50, 150, 300].forEach((t) => setTimeout(() => { if (ms.leaflet) ms.leaflet.invalidateSize(); }, t));
+        });
+      });
+    }
+    prune(keep);
+  }
+
+  function updateStats() {
+    const rooms=getRooms(); let oc=0; const seen=new Set();
+    rooms.forEach((r)=>{ r.members.forEach((m)=>{ if(seen.has(m.uid)) return; seen.add(m.uid); if(Date.now()-millis(m.updatedAt)<=ONLINE_MS) oc++; }); });
+    const ac=getSosAlerts().filter((a)=>a.active&&!a.stale).length;
+    const rc=getIncidentReports().length;
+    const uce=document.getElementById("livemapUserCount");
+    const sce=document.getElementById("livemapSosCount");
+    const rce=document.getElementById("livemapReportCount");
+    if(uce) uce.textContent=oc;
+    if(sce) sce.textContent=ac;
+    if(rce) rce.textContent=rc;
+  }
+
+  function initMap() {
+    console.log("[LiveMap] initMap called. window._LeafletMap:", !!window._LeafletMap, "initialized:", ms.initialized);
+    if (ms.initialized) return;
+    if (!window._LeafletMap) {
+      console.error("[LiveMap] Leaflet not loaded! window._LeafletMap is undefined.");
+      return;
+    }
+    const container = document.getElementById("livemapContainer");
+    if (!container) { console.error("[LiveMap] #livemapContainer not found!"); return; }
+    console.log("[LiveMap] Container size:", container.offsetWidth, "x", container.offsetHeight);
+    ms.leaflet = window._LeafletMap.map(container, { center:[4.0,109.5], zoom:6 });
+    window._LeafletMap.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
+    }).addTo(ms.leaflet);
+    ms.initialized = true;
+    window.__resqLiveMap = ms;
+    window.__resqRefreshMarkers = refreshMarkers;
+    // Force size recalculation at multiple intervals to handle any layout delay
+    [50, 150, 400].forEach((t) => setTimeout(() => ms.leaflet.invalidateSize(), t));
+    console.log("[LiveMap] Map initialized OK");
+
+    // Auto resize map when detail panel opens or closes
+    if (els.appShell) {
+      const shellObs = new MutationObserver(() => {
+        if (ms.leaflet) {
+          requestAnimationFrame(() => ms.leaflet.invalidateSize());
+          setTimeout(() => { if (ms.leaflet) ms.leaflet.invalidateSize(); }, 260);
+        }
+      });
+      shellObs.observe(els.appShell, { attributes: true, attributeFilter: ["class"] });
+    }
+
+
+    // Filter buttons
+    document.querySelectorAll(".livemap-filter-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        ms.filter = btn.dataset.mapFilter || "all";
+        document.querySelectorAll(".livemap-filter-btn").forEach((b) => b.classList.toggle("is-active", b===btn));
+        refreshMarkers(); refreshIcons();
+      });
+    });
+
+    const cb = document.getElementById("livemapCenterBtn");
+    if (cb) cb.addEventListener("click", fitAll);
+    const cl = document.getElementById("livemapSidepanelClose");
+    if (cl) cl.addEventListener("click", closeSide);
+  }
+
+  // ── MutationObserver: trigger map init the moment user navigates to Live Map ──
+  // This is reliable regardless of how render() is scoped in the ES module.
+  function watchLivemapView() {
+    const view = document.getElementById("livemapView");
+    if (!view) {
+      // DOM not ready yet — retry once after a short delay
+      setTimeout(watchLivemapView, 300);
+      return;
+    }
+
+    const obs = new MutationObserver(() => {
+      const hidden = view.classList.contains("hidden");
+      document.body.classList.toggle("is-livemap-active", !hidden);
+      if (!hidden) {
+        // View just became visible
+        if (!ms.initialized) {
+          initMap();
+        }
+        // Always resize + refresh on show
+        requestAnimationFrame(() => {
+          if (ms.leaflet) ms.leaflet.invalidateSize();
+          updateStats();
+          refreshMarkers();
+        });
+      }
+    });
+    obs.observe(view, { attributes: true, attributeFilter: ["class"] });
+
+    // Also patch renderNav's titles map so "Live Map" shows in the topbar
+    // We wait for the module-level renderNav to exist before patching
+    const origRenderNav = renderNav;
+    // Shadow renderNav in module scope — this works because it's in the same script
+    window.__livemapPatchNav = function() {
+      if (state.activeView === "livemap" && els.viewTitle) {
+        els.viewTitle.textContent = "Live Map";
+      }
+    };
+  }
+
+  // Run after DOM is ready
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", watchLivemapView);
+  } else {
+    watchLivemapView();
+  }
+})();

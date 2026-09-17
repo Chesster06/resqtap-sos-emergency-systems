@@ -741,7 +741,7 @@ code {
   height: 100%;
   padding: 16px 8px;
   overflow-x: visible;
-  overflow-y: auto;
+  overflow-y: hidden;
   background: #FFFFFF;
   border-right: 1px solid #EEF0F4;
   z-index: 50;
@@ -1031,6 +1031,232 @@ code {
   display: grid;
   gap: 20px;
   width: 100%;
+}
+
+/* ── Live Map: 100% edge-to-edge full map, remove topbar, toolbar, legend ── */
+.workspace:has(#livemapView:not(.hidden)),
+body.is-livemap-active .workspace {
+  padding: 0 !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+  height: 100vh !important;
+}
+
+.workspace:has(#livemapView:not(.hidden)) .topbar,
+body.is-livemap-active .topbar,
+#livemapView .livemap-toolbar,
+#livemapView .livemap-legend {
+  display: none !important;
+}
+
+#livemapView:not(.hidden) {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  animation: none !important;
+}
+
+.livemap-container {
+  flex: 1 1 100% !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+  position: relative !important;
+}
+
+/* ── Live Map Sidepanel & High Contrast Dark Mode ── */
+.livemap-sidepanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 320px;
+  height: 100%;
+  background: var(--surface, #ffffff);
+  border-left: 1px solid var(--border, #e2e8f0);
+  z-index: 410;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.18);
+  transition: transform 0.2s ease;
+}
+.livemap-sidepanel.hidden {
+  display: none !important;
+}
+.livemap-sidepanel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+.livemap-sidepanel-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+}
+.livemap-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted, #64748b);
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+}
+.livemap-close-btn:hover {
+  background: var(--bg-hover, #f1f5f9);
+  color: var(--text, #0f172a);
+}
+.livemap-sidepanel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  font-size: 0.85rem;
+}
+.livemap-user-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+.livemap-user-avatar-wrap {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  overflow: hidden;
+  border-width: 3px;
+  border-style: solid;
+  flex-shrink: 0;
+  background: #FFE4EE;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.livemap-user-meta {
+  min-width: 0;
+  flex: 1;
+}
+.livemap-user-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text, #0f172a);
+  line-height: 1.3;
+  word-break: break-word;
+}
+.livemap-user-email {
+  font-size: 0.82rem;
+  color: var(--text-muted, #64748b);
+  word-break: break-all;
+  margin-top: 3px;
+}
+.livemap-detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 15px;
+}
+.livemap-detail-row label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+.livemap-detail-row span {
+  color: #0f172a;
+  font-weight: 600;
+  font-size: 0.94rem;
+  word-break: break-word;
+}
+.livemap-detail-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  width: fit-content;
+}
+.livemap-detail-badge.online { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.livemap-detail-badge.recent { background: #fef9c3; color: #92400e; border: 1px solid #fde68a; }
+.livemap-detail-badge.offline { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+.livemap-detail-badge.sos { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+.livemap-detail-badge.report { background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; }
+
+/* ── Dark Mode Contrast Enhancements ── */
+body.dark-mode .livemap-sidepanel,
+.dark-mode .livemap-sidepanel {
+  background: #182234 !important;
+  border-color: #27354A !important;
+  color: #F9FAFB !important;
+}
+body.dark-mode .livemap-sidepanel-header,
+.dark-mode .livemap-sidepanel-header,
+body.dark-mode .livemap-user-header,
+.dark-mode .livemap-user-header {
+  border-color: #27354A !important;
+}
+body.dark-mode .livemap-sidepanel-header h3,
+.dark-mode .livemap-sidepanel-header h3,
+body.dark-mode .livemap-user-name,
+.dark-mode .livemap-user-name {
+  color: #FFFFFF !important;
+}
+body.dark-mode .livemap-user-email,
+.dark-mode .livemap-user-email {
+  color: #CBD5E1 !important;
+}
+body.dark-mode .livemap-close-btn,
+.dark-mode .livemap-close-btn {
+  color: #CBD5E1 !important;
+}
+body.dark-mode .livemap-close-btn:hover,
+.dark-mode .livemap-close-btn:hover {
+  background: #27354A !important;
+  color: #FFFFFF !important;
+}
+body.dark-mode .livemap-detail-row label,
+.dark-mode .livemap-detail-row label {
+  color: #94A3B8 !important;
+}
+body.dark-mode .livemap-detail-row span,
+.dark-mode .livemap-detail-row span {
+  color: #F9FAFB !important;
+}
+body.dark-mode .livemap-detail-badge.offline,
+.dark-mode .livemap-detail-badge.offline {
+  background: #27354A !important;
+  color: #E2E8F0 !important;
+  border: 1px solid #3B4D66 !important;
+}
+body.dark-mode .livemap-detail-badge.online,
+.dark-mode .livemap-detail-badge.online {
+  background: rgba(34, 197, 94, 0.22) !important;
+  color: #4ADE80 !important;
+  border: 1px solid rgba(34, 197, 94, 0.45) !important;
+}
+body.dark-mode .livemap-detail-badge.recent,
+.dark-mode .livemap-detail-badge.recent {
+  background: rgba(245, 158, 11, 0.22) !important;
+  color: #FBBF24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.45) !important;
+}
+body.dark-mode .livemap-detail-badge.sos,
+.dark-mode .livemap-detail-badge.sos {
+  background: rgba(239, 68, 68, 0.28) !important;
+  color: #F87171 !important;
+  border: 1px solid rgba(239, 68, 68, 0.55) !important;
+}
+body.dark-mode .livemap-detail-badge.report,
+.dark-mode .livemap-detail-badge.report {
+  background: rgba(139, 92, 246, 0.28) !important;
+  color: #C084FC !important;
+  border: 1px solid rgba(139, 92, 246, 0.55) !important;
 }
 
 .view-section:not(.hidden) {
@@ -7875,6 +8101,169 @@ body.dark-mode.admin-site-active .livechat-selected-attachment button:hover {
   background: rgba(230, 0, 103, 0.2) !important;
   color: #FF4081 !important;
 }
+
+/* ==========================================================================
+   SOS EMERGENCY ALARM BANNER (30s LIVE ALARM)
+   ========================================================================== */
+.sos-alarm-banner {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #e11d48, #be123c);
+  color: #ffffff;
+  border-radius: 9999px;
+  box-shadow: 0 10px 32px rgba(225, 29, 72, 0.45), 0 0 0 2.5px rgba(255, 255, 255, 0.4);
+  animation: sosBannerPulse 1.2s infinite ease-in-out;
+  max-width: 92vw;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+.sos-alarm-banner.hidden {
+  display: none !important;
+}
+@keyframes sosBannerPulse {
+  0%, 100% {
+    transform: translateX(-50%) scale(1);
+    box-shadow: 0 10px 32px rgba(225, 29, 72, 0.45), 0 0 0 2.5px rgba(255, 255, 255, 0.4);
+  }
+  50% {
+    transform: translateX(-50%) scale(1.025);
+    box-shadow: 0 14px 44px rgba(225, 29, 72, 0.75), 0 0 0 5px rgba(255, 255, 255, 0.65);
+  }
+}
+.sos-alarm-icon {
+  font-size: 24px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: sosIconWiggle 0.45s infinite alternate ease-in-out;
+}
+@keyframes sosIconWiggle {
+  from { transform: rotate(-14deg) scale(0.95); }
+  to { transform: rotate(14deg) scale(1.1); }
+}
+.sos-alarm-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.sos-alarm-title {
+  font-weight: 800;
+  font-size: 0.88rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.sos-alarm-subtitle {
+  font-size: 0.76rem;
+  opacity: 0.95;
+  font-weight: 500;
+}
+.sos-alarm-timer {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.5px;
+}
+.sos-alarm-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sos-alarm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+.sos-alarm-btn-serve {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+  font-weight: 700;
+}
+.sos-alarm-btn-serve:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
+}
+.sos-alarm-btn-serve.is-served {
+  background: #047857 !important;
+  color: #a7f3d0 !important;
+  cursor: default !important;
+  opacity: 0.95;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.sos-alarm-btn-view {
+  background: #ffffff;
+  color: #be123c;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+.sos-alarm-btn-view:hover {
+  background: #fff1f2;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+.sos-alarm-btn-mute {
+  background: rgba(0, 0, 0, 0.28);
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+}
+.sos-alarm-btn-mute:hover {
+  background: rgba(0, 0, 0, 0.48);
+}
+
+.leaflet-marker-icon {
+  overflow: visible !important;
+}
+.lm-marker-wrap {
+  position: relative !important;
+  overflow: visible !important;
+}
+.lm-avatar-frame {
+  position: relative !important;
+  z-index: 1 !important;
+}
+.lm-sos-badge {
+  position: absolute !important;
+  bottom: -18px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  padding: 2.5px 8px !important;
+  border-radius: 9999px !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6) !important;
+  letter-spacing: 0.8px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  z-index: 99999 !important;
+  pointer-events: none !important;
+  display: block !important;
+}
+
+
 
 
 

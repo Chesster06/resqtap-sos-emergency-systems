@@ -28,7 +28,9 @@ const server = http.createServer((req, res) => {
   let pathname = decodeURIComponent(urlObj.pathname);
 
   // Rewrites matching serve.json & firebase.json
-  if (pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/download') {
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    pathname = '/admin.html';
+  } else if (pathname === '/download') {
     pathname = '/index.html';
   }
 
@@ -62,7 +64,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, {
       'Content-Type': contentType,
       'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'no-cache'
+      'Cache-Control': 'no-cache, no-store, must-revalidate'
     });
     res.end(data);
   });

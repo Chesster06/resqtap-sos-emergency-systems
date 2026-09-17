@@ -11,7 +11,7 @@ if (!admin.apps.length) {
 const db = admin.database();
 
 async function triggerLiveSos() {
-  const roomId = "ROOM-72HH3K";
+  const roomId = "ROOM-629S7X";
   const alertRef = db.ref(`rooms/${roomId}/sosAlerts`).push();
   const alertId = alertRef.key;
   const now = Date.now();
@@ -20,11 +20,11 @@ async function triggerLiveSos() {
     alertId: alertId,
     createdAt: now,
     status: "active",
-    senderUid: "TEST_USER_EXTERNAL_999",
-    senderName: "SARAH CONNOR",
+    senderUid: "ZtIsALOniDcSpL3d5DIhXcDS8cE2",
+    senderName: "CHESSTER",
     roomId: roomId,
-    latitude: 3.1390,
-    longitude: 101.6869
+    latitude: 5.2802,
+    longitude: 100.4963
   };
 
   console.log("Pushing SOS alert to Firebase RTDB:", payload);

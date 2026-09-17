@@ -1523,7 +1523,14 @@ public final class FirebaseRoomClient {
             int memberCount = -1;
 
             Task<DataSnapshot> t = roomTasks.get(code);
-            if (t != null && t.isSuccessful() && t.getResult() != null && t.getResult().exists()) {
+            if (t != null && t.isSuccessful() && t.getResult() != null) {
+                if (!t.getResult().exists()) {
+                    try {
+                        db().child("userRooms").child(u).child(code).removeValue();
+                    } catch (Exception ignored) {
+                    }
+                    continue;
+                }
                 DataSnapshot roomSnap = t.getResult();
                 if (roomName.isEmpty()) {
                     roomName = String.valueOf(roomSnap.child("name").getValue() == null ? "" : roomSnap.child("name").getValue()).trim();

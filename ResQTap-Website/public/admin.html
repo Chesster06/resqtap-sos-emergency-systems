@@ -8,7 +8,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=admin-darkmode-v6">
+  <link rel="stylesheet" href="/styles.css?v=admin-darkmode-v8">
+  <!-- Leaflet.js — open-source map library for Live Map view -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+  <!-- Capture Leaflet IMMEDIATELY before anything else can overwrite window.L -->
+  <script>window._LeafletMap = window.L;</script>
   <script>
     (function() {
       try {
@@ -439,10 +444,14 @@
           <span>Dashboard</span>
         </button>
 
-        <span class="nav-group-label">Emergency & Safety</span>
+        <span class="nav-group-label">Emergency &amp; Safety</span>
         <button class="nav-button" data-view="sos" data-label="SOS Alerts" type="button">
           <i data-lucide="siren" aria-hidden="true"></i>
           <span>SOS Alerts</span>
+        </button>
+        <button class="nav-button" data-view="livemap" data-label="Live Map" type="button">
+          <i data-lucide="map-pin" aria-hidden="true"></i>
+          <span>Live Map</span>
         </button>
         <button class="nav-button" data-view="reports" data-label="Reports" type="button">
           <i data-lucide="clipboard-list" aria-hidden="true"></i>
@@ -943,6 +952,16 @@
           <div id="adminsList" class="compact-list"></div>
         </div>
       </section>
+
+      <!-- ============================================================
+           LIVE MAP VIEW
+           Real-time satellite map monitoring all room member locations,
+           active SOS alerts, and incident reports.
+      ============================================================ -->
+      <section id="livemapView" class="view-section hidden">
+        <!-- Leaflet Map Container -->
+        <div id="livemapContainer" class="livemap-container" role="application" aria-label="Live user location map" style="flex:1;min-height:0;position:relative;"></div>
+      </section>
     </main>
 
     <aside id="detailPanel" class="detail-panel hidden" aria-live="polite">
@@ -1043,7 +1062,7 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js?v=admin-nav-fix-223"></script>
+  <script type="module" src="/app.js?v=admin-sos-clear-v226"></script>
 </body>
 </html>
 
