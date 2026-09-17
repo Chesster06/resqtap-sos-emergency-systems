@@ -227,6 +227,8 @@
     <string name="sos_progress_responder_label">RESPONDER DITUGASKAN</string>
     <string name="sos_progress_latest_note">NOTA STATUS TERKINI</string>
     <string name="sos_progress_cannot_exit">Kes SOS masih aktif. Sila batalkan amaran SOS jika ingin keluar.</string>
+    <string name="sos_call_responder">Hubungi Petugas</string>
+    <string name="sos_message_responder">Mesej Petugas</string>
 
     <string name="settings_title">Tetapan</string>
 
