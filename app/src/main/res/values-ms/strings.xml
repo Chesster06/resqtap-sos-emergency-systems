@@ -211,6 +211,23 @@
     <string name="toast_contact_duplicate">Kenalan ini sudah wujud.</string>
     <string name="toast_contact_phone_duplicate">Kenalan kecemasan sudah wujud.</string>
 
+    <string name="sos_progress_title">Kemajuan Kecemasan SOS</string>
+    <string name="sos_progress_subtitle">Status masa nyata kes SOS aktif anda</string>
+    <string name="sos_progress_active_badge">DITEMPAH OLEH ADMIN</string>
+    <string name="sos_progress_step1_title">Amaran SOS Ditempah</string>
+    <string name="sos_progress_step1_desc">Pasukan kecemasan menerima amaran dan menugaskan responder</string>
+    <string name="sos_progress_step2_title">Responder Dalam Perjalanan</string>
+    <string name="sos_progress_step2_desc">Petugas kecemasan sedang menuju ke lokasi anda</string>
+    <string name="sos_progress_step3_title">Tiba Di Lokasi</string>
+    <string name="sos_progress_step3_desc">Responder telah tiba di lokasi dan memberi bantuan</string>
+    <string name="sos_progress_step4_title">Kes Selesai</string>
+    <string name="sos_progress_step4_desc">Kecemasan berjaya diselesaikan dengan selamat dan kes ditutup</string>
+    <string name="sos_progress_cancel_sos">Batalkan Kecemasan SOS</string>
+    <string name="sos_progress_cancelled">Kecemasan SOS telah dibatalkan.</string>
+    <string name="sos_progress_responder_label">RESPONDER DITUGASKAN</string>
+    <string name="sos_progress_latest_note">NOTA STATUS TERKINI</string>
+    <string name="sos_progress_cannot_exit">Kes SOS masih aktif. Sila batalkan amaran SOS jika ingin keluar.</string>
+
     <string name="settings_title">Tetapan</string>
 
     <string name="settings_appearance">Penampilan</string>

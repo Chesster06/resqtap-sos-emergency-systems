@@ -217,6 +217,7 @@
     <string name="sos_progress_cancelled">Emergency SOS has been cancelled.</string>
     <string name="sos_progress_responder_label">ASSIGNED RESPONDER</string>
     <string name="sos_progress_latest_note">LATEST STATUS NOTE</string>
+    <string name="sos_progress_cannot_exit">SOS is currently active. Please cancel the SOS alert to exit.</string>
 
     <string name="open_menu">Open menu</string>
     <string name="nav_home">Home</string>

@@ -73,6 +73,8 @@ public class SosProgressActivity extends BaseActivity {
     private TextView tvStep4Desc;
 
     private MaterialButton btnCancelSos;
+    private View btnBack;
+    private boolean isResolved = false;
 
     private DatabaseReference alertRef;
     private ValueEventListener alertListener;
@@ -112,9 +114,10 @@ public class SosProgressActivity extends BaseActivity {
     }
 
     private void bindViews() {
-        View back = findViewById(R.id.btn_back_sos_progress);
-        if (back != null) {
-            back.setOnClickListener(v -> finish());
+        btnBack = findViewById(R.id.btn_back_sos_progress);
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> finish());
+            btnBack.setVisibility(View.GONE);
         }
 
         tvRoomCode = findViewById(R.id.tv_sos_room_code);
@@ -158,6 +161,17 @@ public class SosProgressActivity extends BaseActivity {
         if (btnCancelSos != null) {
             btnCancelSos.setOnClickListener(v -> cancelSosByVictim());
         }
+
+        getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (isResolved) {
+                    finish();
+                } else {
+                    Toast.makeText(SosProgressActivity.this, R.string.sos_progress_cannot_exit, Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 
     private void cancelSosByVictim() {
@@ -311,17 +325,21 @@ public class SosProgressActivity extends BaseActivity {
 
         // Step 4
         if (step >= 4) {
+            isResolved = true;
             step4Circle.setBackgroundResource(R.drawable.bg_step_circle_done);
             step4Icon.setColorFilter(0xFFFFFFFF);
             tvStep4Title.setTextColor(textDark);
             tvStep4Desc.setTextColor(textMuted);
             if (btnCancelSos != null) btnCancelSos.setVisibility(View.GONE);
+            if (btnBack != null) btnBack.setVisibility(View.VISIBLE);
         } else {
+            isResolved = false;
             step4Circle.setBackgroundResource(R.drawable.bg_step_circle_pending);
             step4Icon.setColorFilter(0xFF64748B);
             tvStep4Title.setTextColor(textMuted);
             tvStep4Desc.setTextColor(textMuted);
             if (btnCancelSos != null) btnCancelSos.setVisibility(View.VISIBLE);
+            if (btnBack != null) btnBack.setVisibility(View.GONE);
         }
     }
 
