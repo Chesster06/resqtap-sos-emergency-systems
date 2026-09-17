@@ -1256,6 +1256,14 @@ function alertCreatedAt(alert) {
 
 function isCancelled(alert) {
   if (!alert) return true;
+  if (alert.served || alert.servedBy || (alert.progressStep && Number(alert.progressStep) >= 1)) {
+    const servedAt = millis(alert.servedAt);
+    const cancelledAt = millis(alert.cancelledAt) || millis(alert.cancelledClientAt);
+    if (!cancelledAt || (servedAt && servedAt >= cancelledAt)) {
+      const status = text(alert.status || "").toLowerCase();
+      if (status !== "cancelled" && status !== "resolved") return false;
+    }
+  }
   if (alert.active === false) return true;
   const status = text(alert.status || "").toLowerCase();
   return status === "cancelled" || status === "resolved" || Boolean(alert.cancelledAt || alert.cancelledClientAt || alert.resolvedAt);
@@ -2476,6 +2484,17 @@ function updateSosAlarmSystem() {
       // Immediately refresh SOS alarm system so ticker sees 0 active unserved alerts
       updateSosAlarmSystem();
 
+      // Ensure local alert state reflects active served case so sidebar renders active immediately
+      latestAlert.active = true;
+      latestAlert.cancelledAt = 0;
+      if (latestAlert.data) {
+        latestAlert.data.active = true;
+        latestAlert.data.status = "active";
+        latestAlert.data.served = true;
+        delete latestAlert.data.cancelledAt;
+        delete latestAlert.data.cancelledClientAt;
+      }
+
       // Zoom to user location on Live Map and open the detail sidebar!
       focusSosSenderOnMap(latestAlert);
     };
@@ -3435,8 +3454,11 @@ function renderSosDetail(roomId, alertId) {
 
   const senderUser = asRecord(state.users[alert.senderUid]);
   const senderPhone = senderUser.phoneNumber || senderUser.phone || "";
-  const label = alert.active ? (alert.stale ? "Stale active" : "Active") : "Cancelled";
-  const canCancel = alert.source === "room" && alert.active;
+  const isCurrentlyServed = Boolean(alert.data && (alert.data.served || alert.data.servedBy));
+  const isResolved = Boolean(alert.data && (alert.data.resolvedAt || alert.data.status === "resolved" || Number(alert.data.progressStep) >= 4));
+  const isCaseActive = alert.active || (isCurrentlyServed && !isResolved && !(alert.cancelledAt && alert.cancelledAt > (alert.data && alert.data.servedAt ? alert.data.servedAt : 0)));
+  const label = isCaseActive ? (alert.stale ? "Stale active" : "Active") : (isResolved ? "Resolved" : "Cancelled");
+  const canCancel = alert.source === "room" && isCaseActive;
   const body = `
     <section class="detail-section">
       ${kv("Alert ID", alert.id)}
@@ -3444,13 +3466,13 @@ function renderSosDetail(roomId, alertId) {
       ${kv("Source", alert.source)}
       ${kv("Status", label)}
       ${kv("Created", formatDate(alert.createdAt))}
-      ${kv("Cancelled", alert.cancelledAt ? formatDate(alert.cancelledAt) : "-")}
+      ${kv("Cancelled", isCaseActive ? "-" : (alert.cancelledAt ? formatDate(alert.cancelledAt) : "-"))}
       ${kv("Sender UID", alert.senderUid)}
       ${kv("Sender name", alert.senderName)}
       ${senderPhone ? kv("Phone", senderPhone) : ""}
     </section>
     <section class="detail-section">
-      ${alert.active ? `<button class="primary-button icon-button" data-action="manage-sos-case" data-room="${escapeHtml(alert.roomId)}" data-alert="${escapeHtml(alert.key)}" data-uid="${escapeHtml(alert.senderUid)}" data-name="${escapeHtml(alert.senderName || "Sender")}" type="button">${icon("shield-alert")}<span>${alert.data && alert.data.served ? "Update Case" : "Reserve Case"}</span></button>` : ""}
+      ${isCaseActive ? `<button class="primary-button icon-button" data-action="manage-sos-case" data-room="${escapeHtml(alert.roomId)}" data-alert="${escapeHtml(alert.key)}" data-uid="${escapeHtml(alert.senderUid)}" data-name="${escapeHtml(alert.senderName || "Sender")}" type="button">${icon("shield-alert")}<span>${isCurrentlyServed ? "Update Case" : "Reserve Case"}</span></button>` : ""}
       ${alert.senderUid ? `<button class="secondary-button icon-button" data-action="call-sos" data-uid="${escapeHtml(alert.senderUid)}" data-name="${escapeHtml(alert.senderName || "Sender")}" type="button">${icon("phone-call")}<span>Call sender</span></button>` : ""}
       <button class="secondary-button icon-button" data-action="view-room" data-room="${escapeHtml(alert.roomId)}" type="button">${icon("external-link")}<span>Open room</span></button>
       ${alert.senderUid ? `<button class="secondary-button icon-button" data-action="view-user" data-uid="${escapeHtml(alert.senderUid)}" data-force-profile="true" type="button">${icon("user-round")}<span>Open sender</span></button>` : ""}
@@ -4070,6 +4092,8 @@ async function reserveSosCase(roomId, alertId, senderUid, senderName) {
   const adminName = getAdminDisplayName();
   const adminUid = state.currentUser ? state.currentUser.uid : "admin";
   const updates = {};
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/status`] = "active";
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/active`] = true;
   updates[`rooms/${roomId}/sosAlerts/${alertId}/served`] = true;
   updates[`rooms/${roomId}/sosAlerts/${alertId}/servedBy`] = adminUid;
   updates[`rooms/${roomId}/sosAlerts/${alertId}/servedByName`] = adminName;
@@ -4077,12 +4101,17 @@ async function reserveSosCase(roomId, alertId, senderUid, senderName) {
   updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStep`] = 1;
   updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStatus`] = "Admin Dispatched";
   updates[`rooms/${roomId}/sosAlerts/${alertId}/progressNotes`] = "Emergency assistance is assigned and responders have been notified.";
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/cancelledAt`] = null;
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/cancelledClientAt`] = null;
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/cancelledByDeviceId`] = null;
 
   // Cross-room synchronization for the same sender
   if (senderUid) {
     getSosAlerts().forEach((a) => {
       if (a.senderUid === senderUid && a.key !== alertId) {
         if (validPathSegment(a.roomId) && validPathSegment(a.key)) {
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/status`] = "active";
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/active`] = true;
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/served`] = true;
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/servedBy`] = adminUid;
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/servedByName`] = adminName;
@@ -4090,6 +4119,9 @@ async function reserveSosCase(roomId, alertId, senderUid, senderName) {
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStep`] = 1;
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStatus`] = "Admin Dispatched";
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressNotes`] = "Emergency assistance is assigned and responders have been notified.";
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/cancelledAt`] = null;
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/cancelledClientAt`] = null;
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/cancelledByDeviceId`] = null;
         }
       }
     });

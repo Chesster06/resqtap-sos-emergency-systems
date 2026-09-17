@@ -855,9 +855,14 @@ public final class FirebaseRoomClient {
 
     /** Batalkan semua amaran SOS aktif untuk pengguna ini merentasi semua bilik. */
     public static void cancelAllActiveSosForUser(String uid, String fromDeviceId) {
+        cancelAllActiveSosForUser(uid, fromDeviceId, System.currentTimeMillis());
+    }
+
+    public static void cancelAllActiveSosForUser(String uid, String fromDeviceId, long beforeTimestampMs) {
         if (uid == null || uid.trim().isEmpty()) return;
         final String u = uid.trim();
         final String dev = String.valueOf(fromDeviceId == null ? "" : fromDeviceId).trim();
+        final long maxTimestamp = beforeTimestampMs > 0 ? beforeTimestampMs + 1000L : System.currentTimeMillis() + 1000L;
 
         try {
             db().child("userRooms").child(u).get().addOnSuccessListener(snap -> {
@@ -876,6 +881,15 @@ public final class FirebaseRoomClient {
                                     String senderUid = String.valueOf(alertChild.child("senderUid").getValue() == null
                                             ? alertChild.child("fromUid").getValue() : alertChild.child("senderUid").getValue()).trim();
                                     if (!u.equals(senderUid)) continue;
+
+                                    // Jangan batalkan jika kes sedang diuruskan (served) oleh admin
+                                    Boolean served = alertChild.child("served").getValue(Boolean.class);
+                                    if (served != null && served) continue;
+
+                                    // Jangan batalkan amaran yang baru dicipta SELEPAS arahan cancel dikeluarkan
+                                    Long createdAt = alertChild.child("createdAt").getValue(Long.class);
+                                    if (createdAt == null) createdAt = alertChild.child("clientAt").getValue(Long.class);
+                                    if (createdAt != null && createdAt > maxTimestamp) continue;
 
                                     String status = String.valueOf(alertChild.child("status").getValue() == null ? "active" : alertChild.child("status").getValue());
                                     boolean alreadyCancelled = "cancelled".equalsIgnoreCase(status) || alertChild.child("cancelledAt").exists();

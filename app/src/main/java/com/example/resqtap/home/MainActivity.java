@@ -582,13 +582,7 @@ public class MainActivity extends BaseActivity {
                         } catch (Exception ignored) {}
                     }
 
-                    // Batalkan amaran di bilik-bilik lain yang turut dihantar tadi supaya tidak tertinggal amaran aktif
-                    final String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
-                    for (java.util.Map.Entry<String, String> e : new java.util.HashMap<>(activeSosIds).entrySet()) {
-                        if (!roomCode.equalsIgnoreCase(e.getKey()) && !e.getValue().isEmpty()) {
-                            FirebaseRoomClient.cancelRoomSosQueued(e.getKey(), e.getValue(), dev);
-                        }
-                    }
+                    // Bersihkan activeSosIds supaya tidak mengganggu sesi seterusnya
                     activeSosIds.clear();
 
                     // Bawa pengguna ke SosProgressActivity!
