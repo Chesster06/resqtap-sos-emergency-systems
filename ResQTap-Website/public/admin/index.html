@@ -1043,7 +1043,97 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js?v=admin-call-sender-234"></script>
+  <!-- Floating SOS Case Update Modal -->
+  <div id="sosCaseUpdateModal" class="sos-case-modal hidden" aria-modal="true" role="dialog">
+    <div class="sos-case-backdrop" data-action="close-case-modal"></div>
+    <div class="sos-case-card">
+      <header class="sos-case-header">
+        <div class="sos-case-header-main">
+          <div class="sos-case-badge-pulse">
+            <i data-lucide="shield-alert" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h2 id="caseModalTitle" class="sos-case-title">Active SOS Case</h2>
+            <p id="caseModalSubtitle" class="sos-case-subtitle">Manage emergency response progress</p>
+          </div>
+        </div>
+        <button class="sos-case-close-btn" data-action="close-case-modal" type="button" aria-label="Close modal">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </header>
+
+      <div class="sos-case-body">
+        <!-- Progress Stepper Selector -->
+        <div class="sos-case-section">
+          <label class="sos-case-label">Emergency Response Stage</label>
+          <div class="sos-case-steps-grid" id="caseStepsGrid">
+            <button class="sos-case-step-btn is-active" type="button" data-step="1" data-label="Dispatched" data-status="Admin Dispatched" data-desc="Emergency responder assigned and notified.">
+              <div class="step-num">1</div>
+              <div class="step-text">
+                <strong>Dispatched</strong>
+                <span>Assigned</span>
+              </div>
+            </button>
+            <button class="sos-case-step-btn" type="button" data-step="2" data-label="En Route" data-status="Responder En Route" data-desc="Emergency team is moving towards location.">
+              <div class="step-num">2</div>
+              <div class="step-text">
+                <strong>En Route</strong>
+                <span>On the way</span>
+              </div>
+            </button>
+            <button class="sos-case-step-btn" type="button" data-step="3" data-label="On Scene" data-status="Arrived on Scene" data-desc="Responder has arrived and providing aid.">
+              <div class="step-num">3</div>
+              <div class="step-text">
+                <strong>On Scene</strong>
+                <span>Arrived</span>
+              </div>
+            </button>
+            <button class="sos-case-step-btn" type="button" data-step="4" data-label="Resolved" data-status="Emergency Resolved" data-desc="Incident handled safely and closed.">
+              <div class="step-num">4</div>
+              <div class="step-text">
+                <strong>Resolved</strong>
+                <span>Completed</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Responder / Admin Notes -->
+        <div class="sos-case-section">
+          <label class="sos-case-label" for="caseNotesInput">Live Progress Note to Victim / App</label>
+          <div class="sos-case-quick-tags">
+            <button type="button" class="sos-tag-chip" data-note="Emergency team has been dispatched to your GPS location.">Team Dispatched</button>
+            <button type="button" class="sos-tag-chip" data-note="Responders are 5 minutes away, stay safe and keep phone active.">5 Mins Away</button>
+            <button type="button" class="sos-tag-chip" data-note="Responders have arrived at your building/area.">At Location</button>
+            <button type="button" class="sos-tag-chip" data-note="Situation contained. Safe to resume normal activities.">Safe / Contained</button>
+          </div>
+          <textarea id="caseNotesInput" class="sos-case-textarea" rows="3" placeholder="Enter instructions or status update for the user..."></textarea>
+        </div>
+
+        <!-- Emergency Quick Actions -->
+        <div class="sos-case-quick-actions">
+          <button id="caseCallBtn" class="secondary-button icon-button" type="button">
+            <i data-lucide="phone-call" aria-hidden="true"></i>
+            <span>Call Sender</span>
+          </button>
+          <button id="caseRoomBtn" class="secondary-button icon-button" type="button">
+            <i data-lucide="external-link" aria-hidden="true"></i>
+            <span>Open Room</span>
+          </button>
+        </div>
+      </div>
+
+      <footer class="sos-case-footer">
+        <button class="secondary-button" data-action="close-case-modal" type="button">Dismiss</button>
+        <button id="caseSaveBtn" class="primary-button" type="button">
+          <i data-lucide="send" aria-hidden="true"></i>
+          <span>Send Update to User</span>
+        </button>
+      </footer>
+    </div>
+  </div>
+
+  <script type="module" src="/app.js?v=admin-sos-progress-235"></script>
 </body>
 </html>
 

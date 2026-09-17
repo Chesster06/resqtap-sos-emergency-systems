@@ -242,6 +242,11 @@
             android:launchMode="singleTop"
             android:exported="true" />
 
+        <activity
+            android:name=".sos.SosProgressActivity"
+            android:exported="false"
+            android:launchMode="singleTop" />
+
         <receiver
             android:name=".sos.SosSnoozeReceiver"
             android:exported="false">

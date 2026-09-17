@@ -2372,7 +2372,7 @@ function updateSosAlarmSystem() {
     btnServe.innerHTML = `${SHIELD_SVG}<span>Serve Case</span>`;
     btnServe.classList.remove("is-served");
     btnServe.disabled = false;
-    btnServe.onclick = () => {
+    btnServe.onclick = async () => {
       state.servedCases = state.servedCases || new Set();
       state.servedCases.add(alertId);
 
@@ -2385,10 +2385,16 @@ function updateSosAlarmSystem() {
         banner.classList.add("hidden");
       }
 
-      showToast(`Case served for ${latestAlert.senderName || "user"}.`);
+      showToast(`Case reserved for ${latestAlert.senderName || "user"}.`);
+
+      // Reserve case in RTDB so Android user gets taken to SOS Progress page!
+      await reserveSosCase(latestAlert.roomId, alertId, latestAlert.senderUid, latestAlert.senderName);
 
       // Immediately refresh SOS alarm system so ticker sees 0 active unserved alerts
       updateSosAlarmSystem();
+
+      // Open floating modal to update case
+      openCaseModal(latestAlert.roomId, alertId, latestAlert.senderUid, latestAlert.senderName);
 
       // Navigate to Live Map & focus on sender
       setActiveView("livemap");
@@ -3396,6 +3402,7 @@ function renderSosDetail(roomId, alertId) {
       ${senderPhone ? kv("Phone", senderPhone) : ""}
     </section>
     <section class="detail-section">
+      ${alert.active ? `<button class="primary-button icon-button" data-action="manage-sos-case" data-room="${escapeHtml(alert.roomId)}" data-alert="${escapeHtml(alert.key)}" data-uid="${escapeHtml(alert.senderUid)}" data-name="${escapeHtml(alert.senderName || "Sender")}" type="button">${icon("shield-alert")}<span>${alert.data && alert.data.served ? "Update Case" : "Reserve Case"}</span></button>` : ""}
       ${alert.senderUid ? `<button class="secondary-button icon-button" data-action="call-sos" data-uid="${escapeHtml(alert.senderUid)}" data-name="${escapeHtml(alert.senderName || "Sender")}" type="button">${icon("phone-call")}<span>Call sender</span></button>` : ""}
       <button class="secondary-button icon-button" data-action="view-room" data-room="${escapeHtml(alert.roomId)}" type="button">${icon("external-link")}<span>Open room</span></button>
       ${alert.senderUid ? `<button class="secondary-button icon-button" data-action="view-user" data-uid="${escapeHtml(alert.senderUid)}" data-force-profile="true" type="button">${icon("user-round")}<span>Open sender</span></button>` : ""}
@@ -3971,6 +3978,137 @@ async function cleanupExpiredAiChats() {
   }
 }
 
+async function reserveSosCase(roomId, alertId, senderUid, senderName) {
+  if (!validPathSegment(roomId) || !validPathSegment(alertId)) return;
+  const adminName = state.currentUser ? (state.currentUser.displayName || state.currentUser.email || "Admin Responder") : "Admin Responder";
+  const adminUid = state.currentUser ? state.currentUser.uid : "admin";
+  const updates = {};
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/served`] = true;
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/servedBy`] = adminUid;
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/servedByName`] = adminName;
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/servedAt`] = serverTimestamp();
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStep`] = 1;
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStatus`] = "Admin Dispatched";
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/progressNotes`] = "Emergency assistance is assigned and responders have been notified.";
+
+  // Cross-room synchronization for the same sender
+  if (senderUid) {
+    getSosAlerts().forEach((a) => {
+      if (a.senderUid === senderUid && a.active && a.key !== alertId) {
+        if (validPathSegment(a.roomId) && validPathSegment(a.key)) {
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/served`] = true;
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/servedBy`] = adminUid;
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/servedByName`] = adminName;
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/servedAt`] = serverTimestamp();
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStep`] = 1;
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStatus`] = "Admin Dispatched";
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressNotes`] = "Emergency assistance is assigned and responders have been notified.";
+        }
+      }
+    });
+  }
+
+  await update(ref(db), updates);
+  state.servedCases = state.servedCases || new Set();
+  state.servedCases.add(alertId);
+}
+
+let activeCaseModalData = null;
+
+function openCaseModal(roomId, alertId, senderUid, senderName) {
+  const modal = document.getElementById("sosCaseUpdateModal");
+  if (!modal) return;
+
+  activeCaseModalData = { roomId, alertId, senderUid, senderName, step: 1, status: "Admin Dispatched", desc: "Emergency responder assigned and notified." };
+
+  const title = document.getElementById("caseModalTitle");
+  const sub = document.getElementById("caseModalSubtitle");
+  const notesInput = document.getElementById("caseNotesInput");
+  const callBtn = document.getElementById("caseCallBtn");
+  const roomBtn = document.getElementById("caseRoomBtn");
+
+  if (title) title.textContent = `SOS: ${senderName || "User"}`;
+  if (sub) sub.textContent = `Room ${roomId || "-"} • Active Emergency Case`;
+  if (notesInput) notesInput.value = "Emergency assistance is assigned and responders have been notified.";
+
+  // Reset steps
+  document.querySelectorAll(".sos-case-step-btn").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.step === "1");
+  });
+
+  if (callBtn) {
+    callBtn.onclick = () => {
+      if (senderUid) startAdminCall(senderUid, senderName || "Sender", "video");
+    };
+  }
+  if (roomBtn) {
+    roomBtn.onclick = () => {
+      state.selected = { type: "room", id: roomId };
+      closeCaseModal();
+      render();
+    };
+  }
+
+  modal.classList.remove("hidden");
+  refreshIcons();
+}
+
+function closeCaseModal() {
+  const modal = document.getElementById("sosCaseUpdateModal");
+  if (modal) modal.classList.add("hidden");
+  activeCaseModalData = null;
+}
+
+async function saveCaseProgress() {
+  if (!activeCaseModalData) return;
+  const { roomId, alertId, senderUid, step, status } = activeCaseModalData;
+  const notesInput = document.getElementById("caseNotesInput");
+  const notes = notesInput ? notesInput.value.trim() : "";
+  const adminName = state.currentUser ? (state.currentUser.displayName || state.currentUser.email || "Admin Responder") : "Admin Responder";
+  const adminUid = state.currentUser ? state.currentUser.uid : "admin";
+
+  const updates = {};
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStep`] = Number(step) || 1;
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStatus`] = status || "In Progress";
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/progressNotes`] = notes || "Responder updating status.";
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/updatedAt`] = serverTimestamp();
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/updatedBy`] = adminUid;
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/updatedByName`] = adminName;
+
+  if (Number(step) === 4) {
+    // Step 4 is Resolved
+    updates[`rooms/${roomId}/sosAlerts/${alertId}/status`] = "resolved";
+    updates[`rooms/${roomId}/sosAlerts/${alertId}/resolvedAt`] = serverTimestamp();
+    updates[`rooms/${roomId}/sosAlerts/${alertId}/resolvedBy`] = adminUid;
+  }
+
+  // Cross-room synchronization
+  if (senderUid) {
+    getSosAlerts().forEach((a) => {
+      if (a.senderUid === senderUid && a.active && a.key !== alertId) {
+        if (validPathSegment(a.roomId) && validPathSegment(a.key)) {
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStep`] = Number(step) || 1;
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStatus`] = status || "In Progress";
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressNotes`] = notes || "Responder updating status.";
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedAt`] = serverTimestamp();
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedBy`] = adminUid;
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedByName`] = adminName;
+          if (Number(step) === 4) {
+            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/status`] = "resolved";
+            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/resolvedAt`] = serverTimestamp();
+            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/resolvedBy`] = adminUid;
+          }
+        }
+      }
+    });
+  }
+
+  await update(ref(db), updates);
+  showToast(`Case update sent to ${activeCaseModalData.senderName || "user"}.`);
+  closeCaseModal();
+  render();
+}
+
 async function cancelSos(roomId, alertId) {
   if (!validPathSegment(roomId) || !validPathSegment(alertId)) {
     showToast("Invalid SOS path.");
@@ -4358,6 +4496,15 @@ function handleAction(button) {
       state.activeView = "aichat";
     }
     if (action === "clear-detail") state.selected = null;
+    if (action === "manage-sos-case") {
+      await reserveSosCase(room, alert, uid, button.dataset.name || "Sender");
+      openCaseModal(room, alert, uid, button.dataset.name || "Sender");
+      return;
+    }
+    if (action === "close-case-modal") {
+      closeCaseModal();
+      return;
+    }
     if (action === "cancel-sos") await cancelSos(room, alert);
     if (action === "set-report-status") await setReportStatus(report, status);
     if (action === "delete-report") await deleteReport(report);
@@ -5675,3 +5822,47 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
     watchLivemapView();
   }
 })();
+
+// SOS Case Modal Listeners & Stepper Setup
+(function initSosCaseModalListeners() {
+  function setup() {
+    const saveBtn = document.getElementById("caseSaveBtn");
+    if (saveBtn) {
+      saveBtn.onclick = () => saveCaseProgress();
+    }
+
+    // Stepper buttons
+    document.querySelectorAll(".sos-case-step-btn").forEach((btn) => {
+      btn.onclick = () => {
+        document.querySelectorAll(".sos-case-step-btn").forEach((b) => b.classList.remove("is-active"));
+        btn.classList.add("is-active");
+        if (activeCaseModalData) {
+          activeCaseModalData.step = Number(btn.dataset.step) || 1;
+          activeCaseModalData.status = btn.dataset.status || "In Progress";
+          activeCaseModalData.desc = btn.dataset.desc || "";
+        }
+        const notesInput = document.getElementById("caseNotesInput");
+        if (notesInput && !notesInput.value.trim()) {
+          notesInput.value = btn.dataset.desc || "";
+        }
+      };
+    });
+
+    // Quick tag chips
+    document.querySelectorAll(".sos-tag-chip").forEach((chip) => {
+      chip.onclick = () => {
+        const notesInput = document.getElementById("caseNotesInput");
+        if (notesInput && chip.dataset.note) {
+          notesInput.value = chip.dataset.note;
+        }
+      };
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setup);
+  } else {
+    setup();
+  }
+})();
+

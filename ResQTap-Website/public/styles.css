@@ -8271,6 +8271,254 @@ body.dark-mode.admin-site-active .livechat-selected-attachment button:hover {
   display: block !important;
 }
 
+/* ==========================================================================
+   FLOATING SOS CASE UPDATE MODAL (RESERVE / SERVE SOS CASE)
+   ========================================================================== */
+.sos-case-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100005;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.sos-case-modal.hidden {
+  display: none !important;
+}
+.sos-case-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.sos-case-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 580px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalPopIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes modalPopIn {
+  from {
+    opacity: 0;
+    transform: scale(0.93) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.sos-case-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.08), rgba(244, 63, 94, 0.03));
+  border-bottom: 1px solid var(--line);
+}
+.sos-case-header-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.sos-case-badge-pulse {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #ffe4ee;
+  color: #e60067;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 14px rgba(230, 0, 103, 0.25);
+  flex-shrink: 0;
+}
+.dark-mode .sos-case-badge-pulse {
+  background: rgba(230, 0, 103, 0.2);
+  color: #ff4081;
+}
+.sos-case-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.25;
+}
+.sos-case-subtitle {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.sos-case-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.sos-case-close-btn:hover {
+  background: var(--line);
+  color: #e11d48;
+}
+.sos-case-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.sos-case-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sos-case-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.sos-case-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.sos-case-step-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px 6px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  background: var(--panel-soft);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative;
+}
+.sos-case-step-btn .step-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  transition: all 0.18s ease;
+}
+.sos-case-step-btn .step-text strong {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.sos-case-step-btn .step-text span {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.sos-case-step-btn:hover {
+  border-color: #3b82f6;
+  background: var(--panel);
+}
+.sos-case-step-btn.is-active {
+  border-color: #e11d48;
+  background: linear-gradient(180deg, rgba(225, 29, 72, 0.08), rgba(225, 29, 72, 0.02));
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.18);
+}
+.sos-case-step-btn.is-active .step-num {
+  background: #e11d48;
+  color: #ffffff;
+}
+.sos-case-step-btn.is-active .step-text strong {
+  color: #e11d48;
+}
+.sos-case-quick-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.sos-tag-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  color: var(--ink);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+.sos-tag-chip:hover {
+  background: #ffe4ee;
+  border-color: #f43f5e;
+  color: #e11d48;
+}
+.dark-mode .sos-tag-chip:hover {
+  background: rgba(225, 29, 72, 0.2);
+  border-color: #f43f5e;
+  color: #fda4af;
+}
+.sos-case-textarea {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.88rem;
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.45;
+  transition: border-color 0.15s ease;
+}
+.sos-case-textarea:focus {
+  outline: none;
+  border-color: #e11d48;
+  box-shadow: 0 0 0 2.5px rgba(225, 29, 72, 0.2);
+}
+.sos-case-quick-actions {
+  display: flex;
+  gap: 10px;
+}
+.sos-case-quick-actions button {
+  flex: 1;
+}
+.sos-case-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--line);
+  background: var(--panel-soft);
+}
+
+
 
 
 

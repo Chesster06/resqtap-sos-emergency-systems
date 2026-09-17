@@ -198,6 +198,8 @@ public class MainActivity extends BaseActivity {
                                         FirebaseRoomClient.cancelRoomSosQueued(code, sosId, dev);
                                     } else {
                                         activeSosIds.put(code, sosId);
+                                        // Listen for admin reservation (served: true)
+                                        watchSosCaseReservation(code, sosId);
                                     }
                                 });
                             }
@@ -205,9 +207,10 @@ public class MainActivity extends BaseActivity {
             }
 
             /** Cancel SOS on every room we fired to. */
-    @Override
+            @Override
             public void onSosCancelled() {
                 sosCancelledWhilePending = true;
+                stopWatchingSosCaseReservations();
                 final String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
                 // Cancel all rooms whose IDs have already arrived
                 for (java.util.Map.Entry<String, String> e : new java.util.HashMap<>(activeSosIds).entrySet()) {
@@ -526,6 +529,7 @@ public class MainActivity extends BaseActivity {
 
     private void cancelActiveSosIfAny() {
         sosCancelledWhilePending = true;
+        stopWatchingSosCaseReservations();
         final String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
         for (java.util.Map.Entry<String, String> e : new java.util.HashMap<>(activeSosIds).entrySet()) {
             if (!e.getKey().isEmpty() && !e.getValue().isEmpty()) {
@@ -538,6 +542,61 @@ public class MainActivity extends BaseActivity {
                 sosSheet.cancel();
             } catch (Exception ignored) {
             }
+        }
+    }
+
+    private final java.util.Map<DatabaseReference, ValueEventListener> sosReservationListeners = new java.util.HashMap<>();
+
+    private void watchSosCaseReservation(String roomCode, String sosAlertId) {
+        if (roomCode == null || sosAlertId == null || roomCode.isEmpty() || sosAlertId.isEmpty()) return;
+        DatabaseReference ref = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                .getReference("rooms")
+                .child(roomCode.toUpperCase(java.util.Locale.ROOT))
+                .child("sosAlerts")
+                .child(sosAlertId);
+
+        ValueEventListener listener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                if (snapshot == null || !snapshot.exists()) return;
+                Boolean served = snapshot.child("served").getValue(Boolean.class);
+                String servedBy = snapshot.child("servedBy").getValue(String.class);
+
+                // Jika admin reserve kes (served == true atau servedBy ada value)
+                if ((served != null && served) || (servedBy != null && !servedBy.trim().isEmpty())) {
+                    // Berhenti mendengar reservation listener yang lain untuk elak duplicate launch
+                    stopWatchingSosCaseReservations();
+
+                    // Tutup bottom sheet SOS jika sedang terbuka
+                    if (sosSheet != null) {
+                        try {
+                            sosSheet.cancel();
+                        } catch (Exception ignored) {}
+                    }
+
+                    // Bawa pengguna ke SosProgressActivity!
+                    com.example.resqtap.sos.SosProgressActivity.launch(MainActivity.this, roomCode, sosAlertId);
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {}
+        };
+
+        synchronized (sosReservationListeners) {
+            sosReservationListeners.put(ref, listener);
+        }
+        ref.addValueEventListener(listener);
+    }
+
+    private void stopWatchingSosCaseReservations() {
+        synchronized (sosReservationListeners) {
+            for (java.util.Map.Entry<DatabaseReference, ValueEventListener> entry : sosReservationListeners.entrySet()) {
+                try {
+                    entry.getKey().removeEventListener(entry.getValue());
+                } catch (Exception ignored) {}
+            }
+            sosReservationListeners.clear();
         }
     }
 
@@ -769,6 +828,7 @@ public class MainActivity extends BaseActivity {
     /** Pembersihan memori, buang listener, dan tutup sambungan. */
     @Override
     protected void onDestroy() {
+        stopWatchingSosCaseReservations();
         stopAdminNotificationListener();
         super.onDestroy();
     }
