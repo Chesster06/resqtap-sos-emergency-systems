@@ -2260,14 +2260,34 @@ let sosAlarmTicker = null;
 function getActiveSosForUser(uid) {
   if (!uid) return null;
   const now = Date.now();
-  return getSosAlerts().find((a) => {
+  const found = getSosAlerts().find((a) => {
     if (a.senderUid !== uid) return false;
     if (!a.active) return false;
-    if (a.stale) return false;
     if (isCancelled(a.data)) return false;
     const age = now - (a.createdAt || 0);
     return age >= 0 && age <= 30000;
   });
+  if (found) return found;
+
+  for (const room of getRooms()) {
+    const alert = (room.alerts || []).find((a) => {
+      const sUid = a.data.senderUid || a.data.fromUid;
+      if (sUid !== uid) return false;
+      if (isCancelled(a.data)) return false;
+      const created = alertCreatedAt(a.data);
+      const age = now - created;
+      return age >= 0 && age <= 30000;
+    });
+    if (alert) {
+      return {
+        roomId: room.code,
+        key: alert.key,
+        id: alert.data.alertId || alert.key,
+        senderUid: uid
+      };
+    }
+  }
+  return null;
 }
 
 function updateSosAlarmSystem() {
@@ -3166,7 +3186,14 @@ function renderDetail() {
     return;
   }
 
-  if (state.selected.type === "user") renderUserDetail(state.selected.id);
+  if (state.selected.type === "user") {
+    const activeSos = getActiveSosForUser(state.selected.id);
+    if (activeSos && !state.selected.forceProfile) {
+      renderSosDetail(activeSos.roomId, activeSos.key || activeSos.id);
+      return;
+    }
+    renderUserDetail(state.selected.id);
+  }
   if (state.selected.type === "room") renderRoomDetail(state.selected.id);
   if (state.selected.type === "sos") renderSosDetail(state.selected.roomId, state.selected.alertId);
   if (state.selected.type === "report") renderReportDetail(state.selected.id);
@@ -5340,7 +5367,12 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
     const icon = mkIcon(iconOpts);
     const ll   = window._LeafletMap.latLng(lat, lng);
     if (ms.markers.has(key)) {
-      ms.markers.get(key).setLatLng(ll).setIcon(icon).bindPopup(popup);
+      const m = ms.markers.get(key);
+      m.setLatLng(ll).setIcon(icon).bindPopup(popup);
+      if (cb) {
+        m.off("click");
+        m.on("click", cb);
+      }
     } else {
       const m = window._LeafletMap.marker(ll, {icon}).addTo(ms.leaflet).bindPopup(popup);
       if (cb) m.on("click", cb);
