@@ -91,10 +91,10 @@ public final class EmergencyCheckinHelper {
     }
 
     private static void handleDefaultSafe(Activity activity) {
-        String code = UserPrefs.getActiveRoomCode(activity);
-        if (code != null && !code.trim().isEmpty()) {
-            String dev = UserPrefs.getOrCreateDeviceId(activity);
-            FirebaseRoomClient.cancelRoomSosQueued(code.trim(), "", dev);
+        String dev = UserPrefs.getOrCreateDeviceId(activity);
+        FirebaseUser cu = FirebaseAuth.getInstance().getCurrentUser();
+        if (cu != null) {
+            FirebaseRoomClient.cancelAllActiveSosForUser(cu.getUid(), dev);
         }
     }
 

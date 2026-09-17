@@ -216,7 +216,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
             }
 
             /** Fungsi untuk onSosCancelled. */
-    @Override
+            @Override
             public void onSosCancelled() {
                 String id = String.valueOf(myActiveSosId == null ? "" : myActiveSosId).trim();
                 if (!id.isEmpty()) {
@@ -225,6 +225,9 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                     cancelMySosWhenIdArrives = true;
                 }
                 myActiveSosId = "";
+                if (uid != null && !uid.trim().isEmpty()) {
+                    FirebaseRoomClient.cancelAllActiveSosForUser(uid.trim(), deviceId);
+                }
             }
         });
         try {

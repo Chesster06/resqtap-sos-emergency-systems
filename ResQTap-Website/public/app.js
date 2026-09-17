@@ -1257,18 +1257,11 @@ function alertCreatedAt(alert) {
 function isCancelled(alert) {
   if (!alert) return true;
   const status = text(alert.status || "").toLowerCase();
-  if (status === "resolved" || alert.resolvedAt || (alert.progressStep && Number(alert.progressStep) >= 4)) {
-    return true;
-  }
-  if (alert.served || alert.servedBy || (alert.progressStep && Number(alert.progressStep) >= 1)) {
-    const servedAt = millis(alert.servedAt);
-    const cancelledAt = millis(alert.cancelledAt) || millis(alert.cancelledClientAt);
-    if (!cancelledAt || (servedAt && servedAt >= cancelledAt)) {
-      if (status !== "cancelled") return false;
-    }
-  }
+  if (status === "cancelled" || status === "canceled" || status === "resolved") return true;
   if (alert.active === false) return true;
-  return status === "cancelled" || Boolean(alert.cancelledAt || alert.cancelledClientAt);
+  if (alert.resolvedAt || (alert.progressStep && Number(alert.progressStep) >= 4)) return true;
+  if (alert.cancelledAt || alert.cancelledClientAt) return true;
+  return false;
 }
 
 function getSosAlerts() {
@@ -1297,8 +1290,11 @@ function getSosAlerts() {
 
   entries(state.legacyAlerts).forEach(([alertId, alertValue]) => {
     const alert = asRecord(alertValue);
+    if (alert.type === "bell") return;
     const createdAt = alertCreatedAt(alert);
     const senderUid = text(alert.fromUid || alert.senderUid).trim();
+    const isOld = !createdAt || Date.now() - createdAt > SOS_STALE_MS;
+    const active = !isOld && !isCancelled(alert);
     roomAlerts.push({
       id: alertId,
       key: alertId,
@@ -1307,8 +1303,8 @@ function getSosAlerts() {
       senderName: text(alert.fromName || alert.senderName || userName(senderUid)).trim(),
       createdAt,
       cancelledAt: 0,
-      active: !isCancelled(alert),
-      stale: false,
+      active,
+      stale: isOld,
       source: "legacy",
       data: alert
     });
@@ -3458,9 +3454,10 @@ function renderSosDetail(roomId, alertId) {
 
   const senderUser = asRecord(state.users[alert.senderUid]);
   const senderPhone = senderUser.phoneNumber || senderUser.phone || "";
-  const isCurrentlyServed = Boolean(alert.data && (alert.data.served || alert.data.servedBy));
+  const isCancelledState = isCancelled(alert.data) || !alert.active;
+  const isCurrentlyServed = !isCancelledState && Boolean(alert.data && (alert.data.served || alert.data.servedBy));
   const isResolved = Boolean(alert.data && (alert.data.resolvedAt || alert.data.status === "resolved" || Number(alert.data.progressStep) >= 4));
-  const isCaseActive = alert.active || (isCurrentlyServed && !isResolved && !(alert.cancelledAt && alert.cancelledAt > (alert.data && alert.data.servedAt ? alert.data.servedAt : 0)));
+  const isCaseActive = alert.active && !isCancelledState && !isResolved;
   const label = isCaseActive ? (alert.stale ? "Stale active" : "Active") : (isResolved ? "Resolved" : "Cancelled");
   const canCancel = alert.source === "room" && isCaseActive;
   const body = `

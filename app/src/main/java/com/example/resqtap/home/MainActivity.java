@@ -225,7 +225,13 @@ public class MainActivity extends BaseActivity {
                 // Also cancel any active SOS alerts across all rooms for this user
                 FirebaseUser cu = FirebaseAuth.getInstance().getCurrentUser();
                 if (cu != null) {
-                    FirebaseRoomClient.cancelAllActiveSosForUser(cu.getUid(), dev);
+                    final String uid = cu.getUid();
+                    FirebaseRoomClient.cancelAllActiveSosForUser(uid, dev);
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        try {
+                            FirebaseRoomClient.cancelAllActiveSosForUser(uid, dev);
+                        } catch (Exception ignored) {}
+                    }, 1200L);
                 }
             }
         });
