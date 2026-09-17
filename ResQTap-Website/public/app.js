@@ -2200,8 +2200,19 @@ class SosAlarmSound {
   play(alertId) {
     if (alertId && this.mutedAlerts.has(alertId)) return;
     this.ensureContext();
-    if (!this.ctx || this.isPlaying) return;
+    if (!this.ctx) return;
 
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume().then(() => {
+        if (!this.isPlaying) this.startOscillator();
+      }).catch(() => {});
+    } else {
+      if (!this.isPlaying) this.startOscillator();
+    }
+  }
+
+  startOscillator() {
+    if (this.isPlaying || !this.ctx) return;
     try {
       this.isPlaying = true;
       const now = this.ctx.currentTime;
@@ -2210,7 +2221,7 @@ class SosAlarmSound {
 
       this.osc.type = "sawtooth";
       this.osc.frequency.setValueAtTime(720, now);
-      this.gain.gain.setValueAtTime(0.18, now);
+      this.gain.gain.setValueAtTime(0.2, now);
 
       let hi = false;
       this.timer = setInterval(() => {
@@ -2257,7 +2268,9 @@ class SosAlarmSound {
 }
 
 const sosAlarmSound = new SosAlarmSound();
-window.addEventListener("pointerdown", () => sosAlarmSound.ensureContext(), { passive: true });
+["pointerdown", "click", "keydown", "touchstart"].forEach((evt) => {
+  window.addEventListener(evt, () => sosAlarmSound.ensureContext(), { passive: true });
+});
 
 let sosAlarmTicker = null;
 
@@ -2292,17 +2305,19 @@ function getActiveSosForUser(uid) {
 
 function updateSosAlarmSystem() {
   const now = Date.now();
-  // Filter active, non-cancelled, UN-SERVED SOS alerts created within the last 30 seconds
+  // Filter active, non-cancelled, UN-SERVED SOS alerts created within the last 60 seconds (with clock-skew tolerance)
   const activeAlerts = getSosAlerts().filter((alert) => {
     if (!alert.active) return false;
     if (isCancelled(alert.data)) return false;
-    if (!alert.createdAt || alert.createdAt <= 0) return false;
     if (alert.data && (alert.data.served || alert.data.servedBy || alert.data.resolvedAt || (alert.data.progressStep && Number(alert.data.progressStep) >= 1))) return false;
     const aId = alert.key || alert.id;
     if (state.servedCases && (state.servedCases.has(aId) || state.servedCases.has(alert.key) || state.servedCases.has(alert.id))) return false;
-    if (alert.senderUid && state.servedSenders && state.servedSenders.has(alert.senderUid)) return false;
-    const age = now - alert.createdAt;
-    return age >= 0 && age <= 30000;
+
+    // Use alert's createdAt or fallback to current time if missing/zero
+    const createdAt = alert.createdAt && alert.createdAt > 0 ? alert.createdAt : now;
+    const age = now - createdAt;
+    // Allow age between -120s (Google server time ahead of local PC clock) and +60s (active alarm window)
+    return age >= -120000 && age <= 60000;
   });
 
   let banner = document.getElementById("sosAlarmBanner");
@@ -2348,8 +2363,11 @@ function updateSosAlarmSystem() {
 
   const latestAlert = activeAlerts.sort((a, b) => b.createdAt - a.createdAt)[0];
   const alertId = latestAlert.key || latestAlert.id;
-  const remainingMs = Math.max(0, 30000 - (now - latestAlert.createdAt));
-  const remainingSec = Math.ceil(remainingMs / 1000);
+  const alertCreated = latestAlert.createdAt && latestAlert.createdAt > 0 ? latestAlert.createdAt : now;
+  // If PC clock is behind Google NTP (now < alertCreated), treat elapsed as 0 so full 30s is shown
+  const elapsedMs = Math.max(0, now - alertCreated);
+  const remainingMs = Math.max(0, 30000 - elapsedMs);
+  const remainingSec = Math.max(1, Math.ceil(remainingMs / 1000));
 
   // Play audio alarm (will skip if already muted/served)
   sosAlarmSound.play(alertId);
@@ -2373,18 +2391,8 @@ function updateSosAlarmSystem() {
     btnServe.onclick = async () => {
       state.servedCases = state.servedCases || new Set();
       state.servedCases.add(alertId);
-      if (latestAlert.senderUid) {
-        state.servedSenders = state.servedSenders || new Set();
-        state.servedSenders.add(latestAlert.senderUid);
-        getSosAlerts().forEach((a) => {
-          if (a.senderUid === latestAlert.senderUid) {
-            state.servedCases.add(a.key);
-            state.servedCases.add(a.id);
-            sosAlarmSound.mute(a.key);
-            sosAlarmSound.mute(a.id);
-          }
-        });
-      }
+      if (latestAlert.key) state.servedCases.add(latestAlert.key);
+      if (latestAlert.id) state.servedCases.add(latestAlert.id);
 
       // AUTOMATICALLY MUTE & STOP SIREN IMMEDIATELY
       sosAlarmSound.mute(alertId);
@@ -4021,25 +4029,10 @@ async function reserveSosCase(roomId, alertId, senderUid, senderName) {
 
   state.servedCases = state.servedCases || new Set();
   state.servedCases.add(alertId);
-  if (senderUid) {
-    state.servedSenders = state.servedSenders || new Set();
-    state.servedSenders.add(senderUid);
-  }
 
   // AUTOMATICALLY MUTE & STOP SIREN IMMEDIATELY ON FIRST CLICK
   sosAlarmSound.mute(alertId);
   sosAlarmSound.stop();
-
-  if (senderUid) {
-    getSosAlerts().forEach((a) => {
-      if (a.senderUid === senderUid) {
-        state.servedCases.add(a.key);
-        state.servedCases.add(a.id);
-        sosAlarmSound.mute(a.key);
-        sosAlarmSound.mute(a.id);
-      }
-    });
-  }
 
   const banner = document.getElementById("sosAlarmBanner");
   if (banner) banner.classList.add("hidden");
@@ -4590,10 +4583,8 @@ function handleAction(button) {
     if (action === "manage-sos-case") {
       sosAlarmSound.mute(alert);
       sosAlarmSound.stop();
-      if (uid) {
-        state.servedSenders = state.servedSenders || new Set();
-        state.servedSenders.add(uid);
-      }
+      state.servedCases = state.servedCases || new Set();
+      if (alert) state.servedCases.add(alert);
       const banner = document.getElementById("sosAlarmBanner");
       if (banner) banner.classList.add("hidden");
       await reserveSosCase(room, alert, uid, button.dataset.name || "Sender");
