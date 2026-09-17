@@ -4095,43 +4095,47 @@ async function reserveSosCase(roomId, alertId, senderUid, senderName) {
 
   const adminName = getAdminDisplayName();
   const adminUid = state.currentUser ? state.currentUser.uid : "admin";
-  const updates = {};
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/status`] = "active";
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/active`] = true;
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/served`] = true;
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/servedBy`] = adminUid;
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/servedByName`] = adminName;
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/servedAt`] = serverTimestamp();
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStep`] = 1;
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStatus`] = "Admin Dispatched";
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/progressNotes`] = "Emergency assistance is assigned and responders have been notified.";
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/cancelledAt`] = null;
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/cancelledClientAt`] = null;
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/cancelledByDeviceId`] = null;
+  const primaryUpdates = {
+    status: "active",
+    active: true,
+    served: true,
+    servedBy: adminUid,
+    servedByName: adminName,
+    servedAt: serverTimestamp(),
+    progressStep: 1,
+    progressStatus: "Admin Dispatched",
+    progressNotes: "Emergency assistance is assigned and responders have been notified."
+  };
 
-  // Cross-room synchronization for the same sender
+  const crossRoomUpdates = {};
   if (senderUid) {
     getSosAlerts().forEach((a) => {
-      if (a.senderUid === senderUid && a.key !== alertId) {
-        if (validPathSegment(a.roomId) && validPathSegment(a.key)) {
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/status`] = "active";
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/active`] = true;
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/served`] = true;
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/servedBy`] = adminUid;
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/servedByName`] = adminName;
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/servedAt`] = serverTimestamp();
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStep`] = 1;
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStatus`] = "Admin Dispatched";
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressNotes`] = "Emergency assistance is assigned and responders have been notified.";
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/cancelledAt`] = null;
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/cancelledClientAt`] = null;
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/cancelledByDeviceId`] = null;
+      if (a.source === "room" && a.senderUid === senderUid && a.key !== alertId && validPathSegment(a.roomId) && validPathSegment(a.key)) {
+        if (state.rooms && state.rooms[a.roomId] && state.rooms[a.roomId].sosAlerts && state.rooms[a.roomId].sosAlerts[a.key]) {
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/status`] = "active";
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/active`] = true;
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/served`] = true;
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/servedBy`] = adminUid;
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/servedByName`] = adminName;
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/servedAt`] = serverTimestamp();
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStep`] = 1;
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStatus`] = "Admin Dispatched";
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressNotes`] = "Emergency assistance is assigned and responders have been notified.";
         }
       }
     });
   }
 
-  await update(ref(db), updates);
+  try {
+    await update(ref(db, `rooms/${roomId}/sosAlerts/${alertId}`), primaryUpdates);
+    if (Object.keys(crossRoomUpdates).length > 0) {
+      try {
+        await update(ref(db), crossRoomUpdates);
+      } catch (ignored) {}
+    }
+  } catch (err) {
+    console.error("reserveSosCase error:", err);
+  }
 }
 
 let activeCaseModalData = null;
@@ -4200,42 +4204,44 @@ async function saveCaseProgress() {
   const adminName = getAdminDisplayName();
   const adminUid = state.currentUser ? state.currentUser.uid : "admin";
 
-  const updates = {};
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStep`] = Number(step) || 1;
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStatus`] = status || "In Progress";
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/progressNotes`] = notes || "Responder updating status.";
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/updatedAt`] = serverTimestamp();
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/updatedBy`] = adminUid;
-  updates[`rooms/${roomId}/sosAlerts/${alertId}/updatedByName`] = adminName;
+  const primaryUpdates = {
+    progressStep: Number(step) || 1,
+    progressStatus: status || "In Progress",
+    progressNotes: notes || "Responder updating status.",
+    updatedAt: serverTimestamp(),
+    updatedBy: adminUid,
+    updatedByName: adminName
+  };
 
   if (Number(step) === 4) {
     // Step 4 is Resolved
-    updates[`rooms/${roomId}/sosAlerts/${alertId}/status`] = "resolved";
-    updates[`rooms/${roomId}/sosAlerts/${alertId}/active`] = false;
-    updates[`rooms/${roomId}/sosAlerts/${alertId}/resolvedAt`] = serverTimestamp();
-    updates[`rooms/${roomId}/sosAlerts/${alertId}/resolvedBy`] = adminUid;
-    updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStep`] = 4;
-    updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStatus`] = "Case Resolved";
+    primaryUpdates.status = "resolved";
+    primaryUpdates.active = false;
+    primaryUpdates.resolvedAt = serverTimestamp();
+    primaryUpdates.resolvedBy = adminUid;
+    primaryUpdates.progressStep = 4;
+    primaryUpdates.progressStatus = "Case Resolved";
   }
 
   // Cross-room synchronization: sync to all rooms for this sender
+  const crossRoomUpdates = {};
   if (senderUid) {
     getSosAlerts().forEach((a) => {
-      if (a.senderUid === senderUid && a.key !== alertId) {
-        if (validPathSegment(a.roomId) && validPathSegment(a.key)) {
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStep`] = Number(step) || 1;
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStatus`] = status || "In Progress";
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressNotes`] = notes || "Responder updating status.";
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedAt`] = serverTimestamp();
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedBy`] = adminUid;
-          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedByName`] = adminName;
+      if (a.source === "room" && a.senderUid === senderUid && a.key !== alertId && validPathSegment(a.roomId) && validPathSegment(a.key)) {
+        if (state.rooms && state.rooms[a.roomId] && state.rooms[a.roomId].sosAlerts && state.rooms[a.roomId].sosAlerts[a.key]) {
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStep`] = Number(step) || 1;
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStatus`] = status || "In Progress";
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressNotes`] = notes || "Responder updating status.";
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedAt`] = serverTimestamp();
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedBy`] = adminUid;
+          crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedByName`] = adminName;
           if (Number(step) === 4) {
-            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/status`] = "resolved";
-            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/active`] = false;
-            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/resolvedAt`] = serverTimestamp();
-            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/resolvedBy`] = adminUid;
-            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStep`] = 4;
-            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStatus`] = "Case Resolved";
+            crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/status`] = "resolved";
+            crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/active`] = false;
+            crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/resolvedAt`] = serverTimestamp();
+            crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/resolvedBy`] = adminUid;
+            crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStep`] = 4;
+            crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStatus`] = "Case Resolved";
           }
         }
       }
@@ -4250,7 +4256,14 @@ async function saveCaseProgress() {
   }
 
   try {
-    await update(ref(db), updates);
+    await update(ref(db, `rooms/${roomId}/sosAlerts/${alertId}`), primaryUpdates);
+    if (Object.keys(crossRoomUpdates).length > 0) {
+      try {
+        await update(ref(db), crossRoomUpdates);
+      } catch (crossErr) {
+        console.warn("Non-blocking cross-room update notice:", crossErr);
+      }
+    }
     showToast(`Case update sent to ${targetSenderName}.`);
 
     if (Number(step) === 4) {
