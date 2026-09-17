@@ -2471,6 +2471,9 @@ function render() {
   renderHighlights();
   renderDetail();
   refreshIcons();
+  if (typeof window.__resqRefreshMarkers === "function") {
+    window.__resqRefreshMarkers();
+  }
 }
 
 function renderNav() {
@@ -3967,12 +3970,34 @@ async function cancelSos(roomId, alertId) {
     return;
   }
   if (!window.confirm(`Cancel SOS alert ${alertId}?`)) return;
-  await update(ref(db, `rooms/${roomId}/sosAlerts/${alertId}`), {
-    status: "cancelled",
-    cancelledAt: serverTimestamp(),
-    cancelledByAdmin: state.currentUser.uid
-  });
+
+  const alertObj = getSosAlerts().find((a) => a.roomId === roomId && a.key === alertId);
+  const senderUid = alertObj ? alertObj.senderUid : "";
+
+  const updates = {};
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/status`] = "cancelled";
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/cancelledAt`] = serverTimestamp();
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/cancelledByAdmin`] = state.currentUser.uid;
+
+  // Also cancel any other active alerts from the same sender in any room so stray alerts don't hijack coordinates
+  if (senderUid) {
+    getSosAlerts().forEach((a) => {
+      if (a.senderUid === senderUid && a.active && a.key !== alertId) {
+        if (validPathSegment(a.roomId) && validPathSegment(a.key)) {
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/status`] = "cancelled";
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/cancelledAt`] = serverTimestamp();
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/cancelledByAdmin`] = state.currentUser.uid;
+        }
+      }
+    });
+  }
+
+  await update(ref(db), updates);
   showToast("SOS alert cancelled.");
+  if (typeof window.__resqRefreshMarkers === "function") {
+    window.__resqRefreshMarkers();
+  }
+  render();
 }
 
 async function deleteNotification(noticeId) {
@@ -5413,22 +5438,35 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
           const uid = mem.uid;
           if (state.userRooms && state.userRooms[uid] && !state.userRooms[uid][room.code]) return;
           const existing = activeUserMap.get(uid);
-          const hasSos = room.alerts.some((a) => {
+          const roomHasSos = (room.alerts || []).some((a) => {
             if (a.data.senderUid !== uid) return false;
             if (isCancelled(a.data)) return false;
             const created = alertCreatedAt(a.data);
             const age = Date.now() - created;
             return age >= 0 && age <= 30000;
           });
-          if (!existing || hasSos || (!existing.hasSos && mem.updatedAt > existing.updatedAt)) {
+          if (!existing) {
             activeUserMap.set(uid, {
               room,
               mem,
               lat,
               lng,
-              hasSos,
+              hasSos: roomHasSos,
               updatedAt: mem.updatedAt
             });
+          } else {
+            // Keep the most recent live location
+            if (mem.updatedAt > existing.updatedAt) {
+              existing.room = room;
+              existing.mem = mem;
+              existing.lat = lat;
+              existing.lng = lng;
+              existing.updatedAt = mem.updatedAt;
+            }
+            // If any room has active SOS for this user, flag hasSos
+            if (roomHasSos) {
+              existing.hasSos = true;
+            }
           }
         });
       });
