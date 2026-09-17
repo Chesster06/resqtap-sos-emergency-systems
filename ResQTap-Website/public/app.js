@@ -2600,7 +2600,7 @@ function renderUsers() {
         <td>${pill(live ? "Online" : ageLabel(user.lastSeen), live ? "good" : "")}</td>
         <td>
           <div class="row-actions">
-            <button class="small-button" data-action="view-user" data-uid="${escapeHtml(user.uid)}" type="button">${icon("eye")}<span>View</span></button>
+            <button class="small-button" data-action="view-user" data-uid="${escapeHtml(user.uid)}" data-force-profile="true" type="button">${icon("eye")}<span>View</span></button>
             <button class="small-button danger" data-action="delete-user" data-uid="${escapeHtml(user.uid)}" type="button">${icon("trash-2")}<span>Delete</span></button>
           </div>
         </td>
@@ -3202,12 +3202,8 @@ function renderDetail() {
 }
 
 function renderUserDetail(uid) {
-  const user = asRecord(state.users[uid]);
-  if (!Object.keys(user).length) {
-    state.selected = null;
-    renderDetail();
-    return;
-  }
+  const rawUser = asRecord(state.users[uid]);
+  const user = Object.keys(rawUser).length ? rawUser : { uid, name: uid, email: "" };
   const myRooms = userRoomsFor(uid);
   const roomEntries = entries(myRooms);
   const contactEntries = contactsFor(user);
@@ -3252,19 +3248,36 @@ function renderUserDetail(uid) {
     `;
   }).join("") : `<span class="muted">No online room location.</span>`;
 
+  const activeSos = getActiveSosForUser(uid);
+  const sosBanner = activeSos ? `
+    <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        ${icon("siren")}
+        <div>
+          <strong style="color: #ef4444; font-size: 13px; display: block;">Active SOS Triggered</strong>
+          <span style="font-size: 12px; color: var(--text-dim, #888);">Room: ${escapeHtml(activeSos.roomId || "-")}</span>
+        </div>
+      </div>
+      <button class="small-button danger" data-action="view-sos" data-room="${escapeHtml(activeSos.roomId)}" data-alert="${escapeHtml(activeSos.key || activeSos.id)}" type="button">
+        ${icon("external-link")}<span>View Alert</span>
+      </button>
+    </div>
+  ` : "";
+
   const body = `
+    ${sosBanner}
     <section class="detail-section">
       ${kv("UID", uid)}
       ${kv("Public ID", user.publicId)}
       ${kv("Email", user.email)}
-      ${kv("Phone", user.phoneNumber)}
+      ${kv("Phone", user.phoneNumber || user.phone)}
       ${kv("Last seen", ageLabel(getUserLastSeen(uid, user)))}
     </section>
     <section class="detail-section">
       ${kv("Blood type", user.bloodType)}
       ${kv("Allergies", user.allergies)}
       ${kv("Conditions", user.existingConditions)}
-      ${kv("Date of birth", user.dateOfBirth)}
+      ${kv("Date of birth", user.dateOfBirth || user.dob)}
       ${kv("Address", user.address)}
     </section>
     <section class="detail-section">
@@ -3431,7 +3444,7 @@ function renderReportDetail(reportKey) {
       ${kv("Email", report.senderEmail)}
       ${kv("UID", report.senderUid)}
       ${kv("Public ID", report.publicId)}
-      ${report.senderUid ? `<button class="secondary-button icon-button" data-action="view-user" data-uid="${escapeHtml(report.senderUid)}" type="button">${icon("user-round")}<span>Open reporter</span></button>` : ""}
+      ${report.senderUid ? `<button class="secondary-button icon-button" data-action="view-user" data-uid="${escapeHtml(report.senderUid)}" data-force-profile="true" type="button">${icon("user-round")}<span>Open reporter</span></button>` : ""}
       ${report.senderUid ? `<button class="secondary-button icon-button" data-action="call-reporter" data-uid="${escapeHtml(report.senderUid)}" data-name="${escapeHtml(report.senderName || report.senderEmail || "Reporter")}" type="button">${icon("phone-call")}<span>Call Reporter</span></button>` : ""}
     </section>
     <section class="detail-section">
@@ -4274,7 +4287,7 @@ function handleAction(button) {
       if (activeSos) {
         state.selected = { type: "sos", roomId: activeSos.roomId, alertId: activeSos.key || activeSos.id };
       } else {
-        state.selected = { type: "user", id: uid };
+        state.selected = { type: "user", id: uid, forceProfile: true };
       }
     }
     if (action === "view-room") state.selected = { type: "room", id: room };
