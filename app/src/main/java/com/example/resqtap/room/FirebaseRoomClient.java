@@ -844,10 +844,48 @@ public final class FirebaseRoomClient {
             if (id.isEmpty()) return;
             Map<String, Object> updates = new HashMap<>();
             updates.put("status", "cancelled");
+            updates.put("active", false);
             updates.put("cancelledAt", ServerValue.TIMESTAMP);
             updates.put("cancelledClientAt", System.currentTimeMillis());
             if (!dev.isEmpty()) updates.put("cancelledByDeviceId", dev);
             db().child("rooms").child(code).child("sosAlerts").child(id).updateChildren(updates);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** Batalkan semua amaran SOS aktif untuk pengguna ini merentasi semua bilik. */
+    public static void cancelAllActiveSosForUser(String uid, String fromDeviceId) {
+        if (uid == null || uid.trim().isEmpty()) return;
+        final String u = uid.trim();
+        final String dev = String.valueOf(fromDeviceId == null ? "" : fromDeviceId).trim();
+
+        try {
+            db().child("userRooms").child(u).get().addOnSuccessListener(snap -> {
+                if (snap == null || !snap.exists()) return;
+                for (DataSnapshot roomChild : snap.getChildren()) {
+                    if (roomChild == null || roomChild.getKey() == null) continue;
+                    final String roomCode = roomChild.getKey().trim().toUpperCase(java.util.Locale.ROOT);
+                    if (roomCode.length() < 4) continue;
+
+                    db().child("rooms").child(roomCode).child("sosAlerts")
+                            .get()
+                            .addOnSuccessListener(alertSnap -> {
+                                if (alertSnap == null || !alertSnap.exists()) return;
+                                for (DataSnapshot alertChild : alertSnap.getChildren()) {
+                                    if (alertChild == null || alertChild.getKey() == null) continue;
+                                    String senderUid = String.valueOf(alertChild.child("senderUid").getValue() == null
+                                            ? alertChild.child("fromUid").getValue() : alertChild.child("senderUid").getValue()).trim();
+                                    if (!u.equals(senderUid)) continue;
+
+                                    String status = String.valueOf(alertChild.child("status").getValue() == null ? "active" : alertChild.child("status").getValue());
+                                    boolean alreadyCancelled = "cancelled".equalsIgnoreCase(status) || alertChild.child("cancelledAt").exists();
+                                    if (!alreadyCancelled) {
+                                        cancelRoomSosQueued(roomCode, alertChild.getKey(), dev);
+                                    }
+                                }
+                            });
+                }
+            });
         } catch (Exception ignored) {
         }
     }

@@ -186,8 +186,10 @@ public class MainActivity extends BaseActivity {
                         .get()
                         .addOnSuccessListener(snapshot -> {
                             if (snapshot == null || !snapshot.exists()) return;
+                            if (sosCancelledWhilePending) return;
                             for (DataSnapshot child : snapshot.getChildren()) {
                                 if (child == null || child.getKey() == null) continue;
+                                if (sosCancelledWhilePending) return;
                                 final String code = child.getKey().trim().toUpperCase(java.util.Locale.ROOT);
                                 if (code.isEmpty()) continue;
                                 FirebaseRoomClient.sendRoomSosQueued(code, uid, dev, name, id -> {
@@ -219,6 +221,12 @@ public class MainActivity extends BaseActivity {
                     }
                 }
                 activeSosIds.clear();
+
+                // Also cancel any active SOS alerts across all rooms for this user
+                FirebaseUser cu = FirebaseAuth.getInstance().getCurrentUser();
+                if (cu != null) {
+                    FirebaseRoomClient.cancelAllActiveSosForUser(cu.getUid(), dev);
+                }
             }
         });
 
@@ -573,6 +581,15 @@ public class MainActivity extends BaseActivity {
                             sosSheet.cancel();
                         } catch (Exception ignored) {}
                     }
+
+                    // Batalkan amaran di bilik-bilik lain yang turut dihantar tadi supaya tidak tertinggal amaran aktif
+                    final String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
+                    for (java.util.Map.Entry<String, String> e : new java.util.HashMap<>(activeSosIds).entrySet()) {
+                        if (!roomCode.equalsIgnoreCase(e.getKey()) && !e.getValue().isEmpty()) {
+                            FirebaseRoomClient.cancelRoomSosQueued(e.getKey(), e.getValue(), dev);
+                        }
+                    }
+                    activeSosIds.clear();
 
                     // Bawa pengguna ke SosProgressActivity!
                     com.example.resqtap.sos.SosProgressActivity.launch(MainActivity.this, roomCode, sosAlertId);

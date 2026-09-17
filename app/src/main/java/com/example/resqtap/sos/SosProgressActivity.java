@@ -175,13 +175,16 @@ public class SosProgressActivity extends BaseActivity {
     }
 
     private void cancelSosByVictim() {
-        if (roomCode.isEmpty() || alertId.isEmpty()) {
-            finish();
-            return;
+        String dev = UserPrefs.getOrCreateDeviceId(this);
+        if (!roomCode.isEmpty() && !alertId.isEmpty()) {
+            FirebaseRoomClient.cancelRoomSosQueued(roomCode, alertId, dev);
         }
 
-        String dev = UserPrefs.getOrCreateDeviceId(this);
-        FirebaseRoomClient.cancelRoomSosQueued(roomCode, alertId, dev);
+        com.google.firebase.auth.FirebaseUser cu = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        if (cu != null) {
+            FirebaseRoomClient.cancelAllActiveSosForUser(cu.getUid(), dev);
+        }
+
         Toast.makeText(this, R.string.sos_progress_cancelled, Toast.LENGTH_SHORT).show();
         finish();
     }

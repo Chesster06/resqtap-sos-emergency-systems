@@ -1255,6 +1255,8 @@ function alertCreatedAt(alert) {
 }
 
 function isCancelled(alert) {
+  if (!alert) return true;
+  if (alert.active === false) return true;
   const status = text(alert.status || "").toLowerCase();
   return status === "cancelled" || status === "resolved" || Boolean(alert.cancelledAt || alert.cancelledClientAt || alert.resolvedAt);
 }
@@ -2498,6 +2500,19 @@ function render() {
   renderAdmins();
   renderHighlights();
   renderDetail();
+
+  // If case update modal is open and the victim cancelled the alert, auto-close modal
+  if (activeCaseModalData) {
+    const modalAlert = getSosAlerts().find(
+      (a) => a.roomId === activeCaseModalData.roomId && (a.key === activeCaseModalData.alertId || a.id === activeCaseModalData.alertId)
+    );
+    if (!modalAlert || isCancelled(modalAlert.data) || !modalAlert.active) {
+      const sName = activeCaseModalData.senderName || "User";
+      closeCaseModal();
+      showToast(`Emergency SOS was cancelled by ${sName}.`);
+    }
+  }
+
   refreshIcons();
   if (typeof window.__resqRefreshMarkers === "function") {
     window.__resqRefreshMarkers();
