@@ -90,7 +90,15 @@ public class SosProgressActivity extends BaseActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         ThemeUtils.applySavedNightMode(this);
         super.onCreate(savedInstanceState);
+        androidx.activity.EdgeToEdge.enable(this);
         setContentView(R.layout.activity_sos_progress);
+
+        View root = findViewById(R.id.sos_progress_root);
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            androidx.core.graphics.Insets systemBars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
 
         roomCode = getIntent().getStringExtra(EXTRA_ROOM_CODE);
         alertId = getIntent().getStringExtra(EXTRA_ALERT_ID);
