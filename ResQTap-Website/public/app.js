@@ -2263,13 +2263,11 @@ let sosAlarmTicker = null;
 
 function getActiveSosForUser(uid) {
   if (!uid) return null;
-  const now = Date.now();
   const found = getSosAlerts().find((a) => {
     if (a.senderUid !== uid) return false;
     if (!a.active) return false;
     if (isCancelled(a.data)) return false;
-    const age = now - (a.createdAt || 0);
-    return age >= 0 && age <= 30000;
+    return true;
   });
   if (found) return found;
 
@@ -2278,9 +2276,7 @@ function getActiveSosForUser(uid) {
       const sUid = a.data.senderUid || a.data.fromUid;
       if (sUid !== uid) return false;
       if (isCancelled(a.data)) return false;
-      const created = alertCreatedAt(a.data);
-      const age = now - created;
-      return age >= 0 && age <= 30000;
+      return true;
     });
     if (alert) {
       return {
@@ -5675,17 +5671,16 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
           const roomHasSos = (room.alerts || []).some((a) => {
             if (a.data.senderUid !== uid) return false;
             if (isCancelled(a.data)) return false;
-            const created = alertCreatedAt(a.data);
-            const age = Date.now() - created;
-            return age >= 0 && age <= 30000;
+            return true;
           });
+          const userHasActiveSos = roomHasSos || Boolean(getActiveSosForUser(uid));
           if (!existing) {
             activeUserMap.set(uid, {
               room,
               mem,
               lat,
               lng,
-              hasSos: roomHasSos,
+              hasSos: userHasActiveSos,
               updatedAt: mem.updatedAt
             });
           } else {
@@ -5698,7 +5693,7 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
               existing.updatedAt = mem.updatedAt;
             }
             // If any room has active SOS for this user, flag hasSos
-            if (roomHasSos) {
+            if (userHasActiveSos) {
               existing.hasSos = true;
             }
           }
@@ -5730,7 +5725,7 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
         </div>`;
         upsert(key, lat, lng, { type: it, photo, uid, name: nm }, popup, () => {
           if (hasSos) {
-            const activeSos = getActiveSosForUser(uid) || (room.alerts || []).find((a) => a.data.senderUid === uid && !isCancelled(a.data) && (Date.now() - alertCreatedAt(a.data) <= 30000));
+            const activeSos = getActiveSosForUser(uid);
             if (activeSos) {
               const rId = activeSos.roomId || room.code;
               const aId = activeSos.key || activeSos.id;
@@ -5748,7 +5743,7 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
     }
 
     if (f === "sos") {
-      getSosAlerts().filter((a) => a.active && !a.stale && (Date.now() - a.createdAt <= 30000)).forEach((alert) => {
+      getSosAlerts().filter((a) => a.active && !isCancelled(a.data)).forEach((alert) => {
         let lat=0, lng=0;
         getRooms().forEach((rm)=>{
           const m=rm.members.find((item) => item.uid === alert.senderUid);
