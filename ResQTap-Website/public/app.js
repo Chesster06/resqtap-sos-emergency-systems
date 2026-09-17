@@ -1256,17 +1256,19 @@ function alertCreatedAt(alert) {
 
 function isCancelled(alert) {
   if (!alert) return true;
+  const status = text(alert.status || "").toLowerCase();
+  if (status === "resolved" || alert.resolvedAt || (alert.progressStep && Number(alert.progressStep) >= 4)) {
+    return true;
+  }
   if (alert.served || alert.servedBy || (alert.progressStep && Number(alert.progressStep) >= 1)) {
     const servedAt = millis(alert.servedAt);
     const cancelledAt = millis(alert.cancelledAt) || millis(alert.cancelledClientAt);
     if (!cancelledAt || (servedAt && servedAt >= cancelledAt)) {
-      const status = text(alert.status || "").toLowerCase();
-      if (status !== "cancelled" && status !== "resolved") return false;
+      if (status !== "cancelled") return false;
     }
   }
   if (alert.active === false) return true;
-  const status = text(alert.status || "").toLowerCase();
-  return status === "cancelled" || status === "resolved" || Boolean(alert.cancelledAt || alert.cancelledClientAt || alert.resolvedAt);
+  return status === "cancelled" || Boolean(alert.cancelledAt || alert.cancelledClientAt);
 }
 
 function getSosAlerts() {
@@ -2737,9 +2739,10 @@ function renderSos() {
 
   els.sosCount.textContent = `${rows.length} shown`;
   els.sosTableBody.innerHTML = rows.length ? rows.map((alert) => {
-    const label = alert.active ? (alert.stale ? "Stale" : "Active") : "Cancelled";
-    const tone = alert.active ? (alert.stale ? "warn" : "alert") : "good";
-    const canCancel = alert.source === "room" && alert.active;
+    const isResolved = Boolean(alert.data && (alert.data.resolvedAt || alert.data.status === "resolved" || Number(alert.data.progressStep) >= 4));
+    const label = alert.active ? (alert.stale ? "Stale" : "Active") : (isResolved ? "Resolved" : "Cancelled");
+    const tone = alert.active ? (alert.stale ? "warn" : "alert") : (isResolved ? "good" : "neutral");
+    const canCancel = alert.source === "room" && alert.active && !isResolved;
     return `
       <tr>
         <td>${pill(label, tone)}</td>
@@ -3406,8 +3409,9 @@ function renderRoomDetail(roomCode) {
   }).join("") : `<span class="muted">No members in this room.</span>`;
 
   const alertHtml = alerts.length ? alerts.slice(0, 8).map((alert) => {
-    const label = alert.active ? (alert.stale ? "Stale" : "Active") : "Cancelled";
-    const tone = alert.active ? (alert.stale ? "warn" : "alert") : "good";
+    const isResolved = Boolean(alert.data && (alert.data.resolvedAt || alert.data.status === "resolved" || Number(alert.data.progressStep) >= 4));
+    const label = alert.active ? (alert.stale ? "Stale" : "Active") : (isResolved ? "Resolved" : "Cancelled");
+    const tone = alert.active ? (alert.stale ? "warn" : "alert") : (isResolved ? "good" : "neutral");
     return `
       <div class="member-row">
         <div class="member-row-head">
@@ -4206,8 +4210,12 @@ async function saveCaseProgress() {
 
   if (Number(step) === 4) {
     // Step 4 is Resolved
+    updates[`rooms/${roomId}/sosAlerts/${alertId}/status`] = "resolved";
+    updates[`rooms/${roomId}/sosAlerts/${alertId}/active`] = false;
     updates[`rooms/${roomId}/sosAlerts/${alertId}/resolvedAt`] = serverTimestamp();
     updates[`rooms/${roomId}/sosAlerts/${alertId}/resolvedBy`] = adminUid;
+    updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStep`] = 4;
+    updates[`rooms/${roomId}/sosAlerts/${alertId}/progressStatus`] = "Case Resolved";
   }
 
   // Cross-room synchronization: sync to all rooms for this sender
@@ -4222,8 +4230,12 @@ async function saveCaseProgress() {
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedBy`] = adminUid;
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/updatedByName`] = adminName;
           if (Number(step) === 4) {
+            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/status`] = "resolved";
+            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/active`] = false;
             updates[`rooms/${a.roomId}/sosAlerts/${a.key}/resolvedAt`] = serverTimestamp();
             updates[`rooms/${a.roomId}/sosAlerts/${a.key}/resolvedBy`] = adminUid;
+            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStep`] = 4;
+            updates[`rooms/${a.roomId}/sosAlerts/${a.key}/progressStatus`] = "Case Resolved";
           }
         }
       }
@@ -4240,6 +4252,27 @@ async function saveCaseProgress() {
   try {
     await update(ref(db), updates);
     showToast(`Case update sent to ${targetSenderName}.`);
+
+    if (Number(step) === 4) {
+      sosAlarmSound.mute(alertId);
+      sosAlarmSound.stop();
+      if (state.servedCases) {
+        state.servedCases.delete(alertId);
+        if (activeCaseModalData && activeCaseModalData.alertId) {
+          state.servedCases.delete(activeCaseModalData.alertId);
+        }
+      }
+      const banner = document.getElementById("sosAlarmBanner");
+      if (banner) banner.classList.add("hidden");
+
+      if (state.selected && state.selected.type === "sos") {
+        state.selected = null;
+      }
+      if (typeof window.__resqRefreshMarkers === "function") {
+        window.__resqRefreshMarkers();
+      }
+    }
+
     closeCaseModal();
     render();
   } catch (err) {
