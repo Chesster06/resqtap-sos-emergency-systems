@@ -647,13 +647,17 @@ code {
 .nav-button[data-view="rooms"]:hover svg { color: #0284C7; }
 
 .nav-button[data-view="sos"]:hover,
-.nav-button[data-view="sos"].is-active {
+.nav-button[data-view="sos"].is-active,
+.nav-button[data-view="livemap"]:hover,
+.nav-button[data-view="livemap"].is-active {
   background: #FFF1F2;
   border-color: #FFE4E6;
   color: #E11D48;
 }
 .nav-button[data-view="sos"].is-active svg,
-.nav-button[data-view="sos"]:hover svg { color: #E11D48; }
+.nav-button[data-view="sos"]:hover svg,
+.nav-button[data-view="livemap"].is-active svg,
+.nav-button[data-view="livemap"]:hover svg { color: #E11D48; }
 
 .nav-button[data-view="reports"]:hover,
 .nav-button[data-view="reports"].is-active {
@@ -7303,13 +7307,17 @@ body.dark-mode .nav-button[data-view="rooms"].is-active svg,
 body.dark-mode .nav-button[data-view="rooms"]:hover svg { color: #38BDF8 !important; }
 
 body.dark-mode .nav-button[data-view="sos"].is-active,
-body.dark-mode .nav-button[data-view="sos"]:hover {
+body.dark-mode .nav-button[data-view="sos"]:hover,
+body.dark-mode .nav-button[data-view="livemap"].is-active,
+body.dark-mode .nav-button[data-view="livemap"]:hover {
   background: rgba(225, 29, 72, 0.18) !important;
   border-color: rgba(225, 29, 72, 0.4) !important;
   color: #FB7185 !important;
 }
 body.dark-mode .nav-button[data-view="sos"].is-active svg,
-body.dark-mode .nav-button[data-view="sos"]:hover svg { color: #FB7185 !important; }
+body.dark-mode .nav-button[data-view="sos"]:hover svg,
+body.dark-mode .nav-button[data-view="livemap"].is-active svg,
+body.dark-mode .nav-button[data-view="livemap"]:hover svg { color: #FB7185 !important; }
 
 body.dark-mode .nav-button[data-view="reports"].is-active,
 body.dark-mode .nav-button[data-view="reports"]:hover {

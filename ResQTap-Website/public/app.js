@@ -1414,6 +1414,10 @@ function getNavAttentionState() {
       count: activeSos.length,
       signature: signatureFromItems(activeSos.map((alert) => `${alert.source}:${alert.roomId}:${alert.key}:${alert.createdAt}:${alert.cancelledAt}`))
     },
+    livemap: {
+      count: activeSos.length,
+      signature: signatureFromItems(activeSos.map((alert) => `${alert.source}:${alert.roomId}:${alert.key}:${alert.createdAt}:${alert.cancelledAt}`))
+    },
     reports: {
       count: openReports.length,
       signature: signatureFromItems(openReports.map((report) => `${report.key}:${report.status}:${report.createdAt}:${report.updatedAt}`))
@@ -2481,7 +2485,7 @@ function renderNav() {
     dashboard: "Dashboard",
     users: "Users",
     rooms: "Rooms",
-    sos: "SOS Alerts",
+    livemap: "SOS Alert",
     reports: "Reports",
     notices: "Notifications",
     livechat: "Livechat",
