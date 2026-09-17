@@ -152,8 +152,8 @@ public class SosProgressActivity extends BaseActivity {
 
         btnCancelSos = findViewById(R.id.btn_cancel_sos_progress);
 
-        if (!roomCode.isEmpty()) {
-            tvRoomCode.setText("ROOM: " + roomCode.toUpperCase(Locale.ROOT));
+        if (tvRoomCode != null) {
+            tvRoomCode.setVisibility(View.GONE);
         }
     }
 
