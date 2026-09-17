@@ -2259,18 +2259,19 @@ let sosAlarmTicker = null;
 
 function updateSosAlarmSystem() {
   const now = Date.now();
-  // Filter active, non-cancelled SOS alerts created within the last 30 seconds
+  // Filter active, non-cancelled, UN-SERVED SOS alerts created within the last 30 seconds
   const activeAlerts = getSosAlerts().filter((alert) => {
     if (!alert.active) return false;
     if (isCancelled(alert.data)) return false;
     if (!alert.createdAt || alert.createdAt <= 0) return false;
+    const aId = alert.key || alert.id;
+    if (state.servedCases && state.servedCases.has(aId)) return false;
     const age = now - alert.createdAt;
     return age >= 0 && age <= 30000;
   });
 
   let banner = document.getElementById("sosAlarmBanner");
   const SHIELD_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
-  const SHIELD_CHECK_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>`;
   const MAP_PIN_SVG = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`;
 
   if (!banner) {
@@ -2330,51 +2331,49 @@ function updateSosAlarmSystem() {
     timerEl.textContent = `${remainingSec}s`;
   }
 
-  const isServed = state.servedCases && state.servedCases.has(alertId);
-
   if (btnServe) {
-    if (isServed) {
-      btnServe.innerHTML = `${SHIELD_CHECK_SVG}<span>Case Served</span>`;
-      btnServe.classList.add("is-served");
-      btnServe.disabled = true;
-    } else {
-      btnServe.innerHTML = `${SHIELD_SVG}<span>Serve Case</span>`;
-      btnServe.classList.remove("is-served");
-      btnServe.disabled = false;
-      btnServe.onclick = () => {
-        state.servedCases = state.servedCases || new Set();
-        state.servedCases.add(alertId);
+    btnServe.innerHTML = `${SHIELD_SVG}<span>Serve Case</span>`;
+    btnServe.classList.remove("is-served");
+    btnServe.disabled = false;
+    btnServe.onclick = () => {
+      state.servedCases = state.servedCases || new Set();
+      state.servedCases.add(alertId);
 
-        // AUTOMATICALLY MUTE SIREN
-        sosAlarmSound.mute(alertId);
-        btnServe.innerHTML = `${SHIELD_CHECK_SVG}<span>Case Served</span>`;
-        btnServe.classList.add("is-served");
-        btnServe.disabled = true;
+      // AUTOMATICALLY MUTE & STOP SIREN
+      sosAlarmSound.mute(alertId);
+      sosAlarmSound.stop();
 
-        showToast(`Serving case for ${latestAlert.senderName || "user"}. Alarm muted.`);
+      // HILANGKAN TERUS BANNER
+      if (banner) {
+        banner.classList.add("hidden");
+      }
 
-        // Navigate to Live Map & focus on sender
-        setActiveView("livemap");
-        const senderUid = latestAlert.senderUid;
-        if (senderUid) {
-          state.selected = { type: "user", id: senderUid };
-          renderDetail();
-          let lat = 0, lng = 0;
-          getRooms().forEach((rm) => {
-            const m = rm.members.find((item) => item.uid === senderUid);
-            if (m && Number(m.lat) && Number(m.lng)) {
-              lat = Number(m.lat);
-              lng = Number(m.lng);
-            }
-          });
-          if (lat && lng && window.__resqLiveMap && window.__resqLiveMap.leaflet) {
-            try {
-              window.__resqLiveMap.leaflet.setView([lat, lng], 16, { animate: true });
-            } catch (e) {}
+      showToast(`Case served for ${latestAlert.senderName || "user"}.`);
+
+      // Immediately refresh SOS alarm system so ticker sees 0 active unserved alerts
+      updateSosAlarmSystem();
+
+      // Navigate to Live Map & focus on sender
+      setActiveView("livemap");
+      const senderUid = latestAlert.senderUid;
+      if (senderUid) {
+        state.selected = { type: "user", id: senderUid };
+        renderDetail();
+        let lat = 0, lng = 0;
+        getRooms().forEach((rm) => {
+          const m = rm.members.find((item) => item.uid === senderUid);
+          if (m && Number(m.lat) && Number(m.lng)) {
+            lat = Number(m.lat);
+            lng = Number(m.lng);
           }
+        });
+        if (lat && lng && window.__resqLiveMap && window.__resqLiveMap.leaflet) {
+          try {
+            window.__resqLiveMap.leaflet.setView([lat, lng], 16, { animate: true });
+          } catch (e) {}
         }
-      };
-    }
+      }
+    };
   }
 
   if (btnView) {
