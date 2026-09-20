@@ -20,7 +20,15 @@
       var s = window.location.search;
       var h = window.location.hash;
       if (p === "/admin" || p === "/admin.html" || p.startsWith("/admin/") || s.indexOf("admin=true") !== -1 || h === "#admin") {
-        document.documentElement.classList.add("admin-route-loading");
+        var hasAdminSession = false;
+        try {
+          hasAdminSession = localStorage.getItem("resqtap_admin_session") === "active";
+        } catch (e) {}
+        if (hasAdminSession) {
+          document.documentElement.classList.add("has-admin-session");
+        } else {
+          document.documentElement.classList.add("admin-route-loading");
+        }
         // Immediately set title and prep body when available
         document.title = "ResQTap Admin";
         window.addEventListener("DOMContentLoaded", function() {
@@ -28,8 +36,18 @@
           document.body.classList.add("admin-site-active");
           var ps = document.getElementById("publicSite");
           if (ps) ps.classList.add("hidden");
-          var as = document.getElementById("authScreen");
-          if (as) as.classList.remove("hidden");
+          if (hasAdminSession) {
+            var app = document.getElementById("appShell");
+            if (app) app.classList.remove("hidden");
+            var as = document.getElementById("authScreen");
+            if (as) as.classList.add("hidden");
+            var ldr = document.getElementById("adminRouteLoader");
+            if (ldr) ldr.classList.add("hidden");
+            document.documentElement.classList.remove("admin-route-loading");
+          } else {
+            var ldr = document.getElementById("adminRouteLoader");
+            if (ldr) ldr.classList.remove("hidden");
+          }
         });
       }
     })();
@@ -38,6 +56,15 @@
   <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
 </head>
 <body class="public-site-active">
+  <div id="adminRouteLoader" class="admin-route-loader hidden" aria-label="Loading admin portal">
+    <div class="admin-loader-content">
+      <div class="admin-loader-ring">
+        <img src="/assets/resqtap_launcher.png" alt="ResQTap Logo" class="admin-loader-logo">
+      </div>
+      <span class="admin-loader-title">ResQTap Admin</span>
+      <span class="admin-loader-text">Memuatkan sesi pentadbir...</span>
+    </div>
+  </div>
   <main id="publicSite" class="public-site">
     <div class="public-nav-wrapper">
       <header class="public-nav">
@@ -449,6 +476,10 @@
           <i data-lucide="siren" aria-hidden="true"></i>
           <span>SOS Alert</span>
         </button>
+        <button class="nav-button" data-view="soslivechat" data-label="SOS Livechat" type="button">
+          <i data-lucide="radio" aria-hidden="true"></i>
+          <span>SOS Livechat</span>
+        </button>
         <button class="nav-button" data-view="reports" data-label="Reports" type="button">
           <i data-lucide="clipboard-list" aria-hidden="true"></i>
           <span>Reports</span>
@@ -629,6 +660,67 @@
               </thead>
               <tbody id="sosTableBody"></tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="soslivechatView" class="view-section hidden">
+        <div class="panel livechat-panel sos-livechat-panel">
+          <div class="panel-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="radio" style="color:var(--danger, #e11d48);" aria-hidden="true"></i>
+              <h3>SOS Livechat</h3>
+            </div>
+            <span id="soslivechatCount" class="muted"></span>
+          </div>
+          <div class="livechat-layout">
+            <aside class="livechat-thread-pane" aria-label="SOS Alert chat sessions">
+              <div class="sos-thread-search-wrap" style="padding:10px 14px; border-bottom:1px solid var(--border, #e2e8f0);">
+                <input id="soslivechatSearchInput" type="text" placeholder="Search victim..." class="search-input" style="width:100%; padding:7px 12px; font-size:13px; border-radius:8px; border:1px solid var(--border, #cbd5e1); background:var(--surface, #fff); color:var(--text-primary, #0f172a);">
+              </div>
+              <div id="soslivechatThreadList" class="livechat-thread-list"></div>
+            </aside>
+            <section class="livechat-conversation" aria-label="Selected SOS conversation">
+              <div class="livechat-conversation-header">
+                <div>
+                  <h3 id="soslivechatSelectedTitle">Select an SOS Incident</h3>
+                  <span id="soslivechatSelectedSubtitle" class="muted">Active emergency alerts and responder livechats appear here.</span>
+                </div>
+                <div class="livechat-header-actions">
+                  <button id="soslivechatCallVideoBtn" class="secondary-button slim icon-button" type="button" disabled title="Start emergency video call">
+                    <i data-lucide="video" aria-hidden="true"></i>
+                    <span>Video Call</span>
+                  </button>
+                  <button id="soslivechatCallVoiceBtn" class="secondary-button slim icon-button" type="button" disabled title="Start emergency voice call">
+                    <i data-lucide="phone" aria-hidden="true"></i>
+                    <span>Voice Call</span>
+                  </button>
+                  <button id="soslivechatViewAlertBtn" class="secondary-button slim icon-button" type="button" disabled title="View SOS Case details on map">
+                    <i data-lucide="siren" aria-hidden="true"></i>
+                    <span>SOS Details</span>
+                  </button>
+                  <button id="soslivechatClearBtn" class="secondary-button danger slim icon-button" type="button" disabled title="Clear chat messages for this SOS session">
+                    <i data-lucide="trash-2" aria-hidden="true"></i>
+                    <span>Clear Messages</span>
+                  </button>
+                </div>
+              </div>
+              <div id="soslivechatMessages" class="livechat-messages">
+                <div id="soslivechatEmptyState" class="livechat-empty">
+                  <strong>No SOS incident selected</strong>
+                  <span>Select an SOS livechat session from the left to communicate with the victim.</span>
+                </div>
+              </div>
+              <form id="soslivechatReplyForm" class="livechat-reply-form">
+                <textarea id="soslivechatReplyInput" maxlength="1000" placeholder="Type urgent reply to victim..." disabled></textarea>
+                <div class="livechat-reply-actions" style="justify-content: flex-end;">
+                  <button id="soslivechatReplyButton" class="primary-button slim icon-button" style="background:#e11d48;" type="submit" disabled>
+                    <i data-lucide="send" aria-hidden="true"></i>
+                    <span>Send Urgently</span>
+                  </button>
+                </div>
+              </form>
+            </section>
           </div>
         </div>
       </section>
@@ -839,6 +931,14 @@
                   <span id="livechatSelectedSubtitle" class="muted">App users will appear here after they send a message.</span>
                 </div>
                 <div class="livechat-header-actions">
+                  <button id="livechatCallVideoBtn" class="secondary-button slim icon-button" type="button" disabled title="Start video call with user">
+                    <i data-lucide="video" aria-hidden="true"></i>
+                    <span>Video Call</span>
+                  </button>
+                  <button id="livechatCallVoiceBtn" class="secondary-button slim icon-button" type="button" disabled title="Start voice call with user">
+                    <i data-lucide="phone" aria-hidden="true"></i>
+                    <span>Voice Call</span>
+                  </button>
                   <button id="resolveChatButton" class="secondary-button slim icon-button" type="button" disabled>
                     <i data-lucide="check-circle-2" aria-hidden="true"></i>
                     <span>Resolve</span>
@@ -1121,6 +1221,10 @@
             <i data-lucide="phone-call" aria-hidden="true"></i>
             <span>Call Sender</span>
           </button>
+          <button id="caseMessageBtn" class="secondary-button icon-button" type="button">
+            <i data-lucide="message-square" aria-hidden="true"></i>
+            <span>Message Sender</span>
+          </button>
           <button id="caseRoomBtn" class="secondary-button icon-button" type="button">
             <i data-lucide="external-link" aria-hidden="true"></i>
             <span>Open Room</span>
@@ -1138,7 +1242,82 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js?v=admin-sos-phone-cancel-249"></script>
+  <!-- Emergency Call Options Modal -->
+  <div id="caseCallOptionsModal" class="sos-case-modal hidden" aria-modal="true" role="dialog">
+    <div class="sos-case-backdrop" id="caseCallOptionsBackdrop"></div>
+    <div class="sos-case-card call-options-card">
+      <header class="sos-case-header">
+        <div class="sos-case-header-main">
+          <div class="sos-case-badge-pulse">
+            <i data-lucide="phone" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h2 id="caseCallOptionsTitle" class="sos-case-title">Panggilan Kecemasan SOS</h2>
+            <p id="caseCallOptionsSubtitle" class="sos-case-subtitle">Pilih mod panggilan untuk menghubungi pengadu/mangsa</p>
+          </div>
+        </div>
+        <button class="sos-case-close-btn" id="caseCallOptionsCloseBtn" type="button" aria-label="Close modal">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </header>
+
+      <div class="sos-case-body">
+        <div class="call-options-grid">
+          <button id="adminStartVideoCallBtn" class="call-option-btn call-video-btn" type="button">
+            <div class="call-option-icon">
+              <i data-lucide="video" aria-hidden="true"></i>
+            </div>
+            <div class="call-option-text">
+              <strong>Panggilan Video (Video Call)</strong>
+              <span>Berhubung dengan video langsung dan audio dua hala</span>
+            </div>
+            <i data-lucide="chevron-right" class="call-option-arrow" aria-hidden="true"></i>
+          </button>
+
+          <button id="adminStartVoiceCallBtn" class="call-option-btn call-voice-btn" type="button">
+            <div class="call-option-icon">
+              <i data-lucide="phone-call" aria-hidden="true"></i>
+            </div>
+            <div class="call-option-text">
+              <strong>Panggilan Suara (Voice Call)</strong>
+              <span>Panggilan audio berkualiti tinggi terus ke peranti pengadu</span>
+            </div>
+            <i data-lucide="chevron-right" class="call-option-arrow" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+
+      <footer class="sos-case-footer">
+        <button class="secondary-button" id="caseCallOptionsCancelBtn" type="button">Batal</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Floating Incoming SOS Call Alert for Admin -->
+  <div id="adminIncomingCallAlert" class="admin-call-alert hidden" role="alert" aria-live="assertive">
+    <div class="admin-call-alert-content">
+      <div class="admin-call-pulse-avatar">
+        <i data-lucide="phone-incoming" aria-hidden="true"></i>
+      </div>
+      <div class="admin-call-details">
+        <div class="admin-call-badge">🚨 PANGGILAN KECEMASAN SOS</div>
+        <h4 id="adminIncomingCallerName" class="admin-call-caller-name">Mangsa SOS</h4>
+        <p id="adminIncomingCallDesc" class="admin-call-desc">Membuat panggilan kecemasan...</p>
+      </div>
+      <div class="admin-call-actions">
+        <button id="adminAcceptCallBtn" class="primary-button call-accept-btn" type="button">
+          <i data-lucide="phone" aria-hidden="true"></i>
+          <span id="adminAcceptCallBtnText">Jawab Panggilan</span>
+        </button>
+        <button id="adminDeclineCallBtn" class="secondary-button danger call-decline-btn" type="button">
+          <i data-lucide="phone-off" aria-hidden="true"></i>
+          <span>Abaikan</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/app.js?v=admin-sos-livechat-104"></script>
 </body>
 </html>
 

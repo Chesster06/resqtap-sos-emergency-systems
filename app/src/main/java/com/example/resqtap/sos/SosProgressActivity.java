@@ -27,7 +27,18 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
+
+import android.view.LayoutInflater;
+import com.example.resqtap.call.CallSignalingClient;
+import com.example.resqtap.call.VideoCallActivity;
+import com.example.resqtap.call.VoiceCallActivity;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.ServerValue;
 
 /**
  * SosProgressActivity
@@ -73,11 +84,20 @@ public class SosProgressActivity extends BaseActivity {
     private TextView tvStep4Desc;
 
     private MaterialButton btnCancelSos;
+    private MaterialButton btnCallPlaceholder;
+    private MaterialButton btnMessagePlaceholder;
     private View btnBack;
     private boolean isResolved = false;
 
+    private String currentResponderName = "Admin Responder";
+    private String currentResponderUid = "";
+
     private DatabaseReference alertRef;
     private ValueEventListener alertListener;
+
+    private com.google.android.material.bottomsheet.BottomSheetDialog callWaitDialog;
+    private DatabaseReference userCallRef;
+    private ValueEventListener userCallListener;
 
     public static void launch(Context context, String roomCode, String alertId) {
         if (context == null) return;
@@ -151,6 +171,8 @@ public class SosProgressActivity extends BaseActivity {
         tvStep4Desc = findViewById(R.id.tv_sos_step_4_desc);
 
         btnCancelSos = findViewById(R.id.btn_cancel_sos_progress);
+        btnCallPlaceholder = findViewById(R.id.btn_sos_call_placeholder);
+        btnMessagePlaceholder = findViewById(R.id.btn_sos_message_placeholder);
 
         if (tvRoomCode != null) {
             tvRoomCode.setVisibility(View.GONE);
@@ -160,6 +182,16 @@ public class SosProgressActivity extends BaseActivity {
     private void setupListeners() {
         if (btnCancelSos != null) {
             btnCancelSos.setOnClickListener(v -> cancelSosByVictim());
+        }
+
+        if (btnCallPlaceholder != null) {
+            btnCallPlaceholder.setOnClickListener(v -> showCallOptionsBottomSheet());
+        }
+
+        if (btnMessagePlaceholder != null) {
+            btnMessagePlaceholder.setOnClickListener(v -> {
+                SosLivechatActivity.launch(SosProgressActivity.this, roomCode, alertId, currentResponderName, currentResponderUid);
+            });
         }
 
         getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
@@ -221,6 +253,10 @@ public class SosProgressActivity extends BaseActivity {
 
                 String rawResponder = String.valueOf(snapshot.child("servedByName").getValue() == null ? "" : snapshot.child("servedByName").getValue()).trim();
                 String responderName = formatResponderName(rawResponder);
+                currentResponderName = responderName;
+                if (snapshot.hasChild("servedBy") && snapshot.child("servedBy").getValue() != null) {
+                    currentResponderUid = String.valueOf(snapshot.child("servedBy").getValue()).trim();
+                }
                 String progressStatus = String.valueOf(snapshot.child("progressStatus").getValue() == null ? "Admin Dispatched" : snapshot.child("progressStatus").getValue());
                 String notes = String.valueOf(snapshot.child("progressNotes").getValue() == null ? "Emergency assistance is assigned and responders have been notified." : snapshot.child("progressNotes").getValue());
 
@@ -346,9 +382,165 @@ public class SosProgressActivity extends BaseActivity {
         }
     }
 
+    /**
+     * Paparkan Pilihan Panggilan (Video Call / Voice Call)
+     */
+    private void showCallOptionsBottomSheet() {
+        BottomSheetDialog dialog = new BottomSheetDialog(this, R.style.Theme_ResQTap_BottomSheetDialog);
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_sos_call_options, null);
+        dialog.setContentView(view);
+
+        View optVideo = view.findViewById(R.id.option_call_video);
+        View optVoice = view.findViewById(R.id.option_call_voice);
+        View btnClose = view.findViewById(R.id.btn_close_call_options);
+
+        if (optVideo != null) {
+            optVideo.setOnClickListener(v -> {
+                dialog.dismiss();
+                initiateEmergencyCall("video");
+            });
+        }
+
+        if (optVoice != null) {
+            optVoice.setOnClickListener(v -> {
+                dialog.dismiss();
+                initiateEmergencyCall("voice");
+            });
+        }
+
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> dialog.dismiss());
+        }
+
+        dialog.show();
+    }
+
+    private void initiateEmergencyCall(String callType) {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        String myUid = user != null ? user.getUid() : "";
+        String myName = UserPrefs.getName(this);
+        if (myName.isEmpty() && user != null && user.getDisplayName() != null) {
+            myName = user.getDisplayName();
+        }
+        if (myName.isEmpty()) myName = "Mangsa SOS";
+
+        DatabaseReference rtdb = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL).getReference();
+
+        Map<String, Object> callReq = new HashMap<>();
+        callReq.put("status", "ringing");
+        callReq.put("callType", callType);
+        callReq.put("alertId", alertId);
+        callReq.put("roomId", roomCode);
+        callReq.put("callerUid", myUid);
+        callReq.put("callerName", myName);
+        callReq.put("timestamp", ServerValue.TIMESTAMP);
+
+        if (!roomCode.isEmpty() && !alertId.isEmpty()) {
+            rtdb.child("rooms").child(roomCode.toUpperCase(Locale.ROOT)).child("sosAlerts").child(alertId).child("callRequest").setValue(callReq);
+        }
+        rtdb.child("adminCalls").child("incoming").setValue(callReq);
+
+        // Paparkan dialog menunggu panggilan disambungkan
+        showCallWaitBottomSheet(callType, myUid);
+    }
+
+    private void showCallWaitBottomSheet(String callType, String myUid) {
+        stopCallListening();
+
+        callWaitDialog = new BottomSheetDialog(this, R.style.Theme_ResQTap_BottomSheetDialog);
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_sos_call_options, null);
+        callWaitDialog.setContentView(view);
+
+        // Customize the view for ringing state
+        TextView tvTitle = view.findViewById(R.id.tv_call_options_title);
+        TextView tvSub = view.findViewById(R.id.tv_call_options_subtitle);
+        View optVideo = view.findViewById(R.id.option_call_video);
+        View optVoice = view.findViewById(R.id.option_call_voice);
+        View btnClose = view.findViewById(R.id.btn_close_call_options);
+
+        if (tvTitle != null) {
+            tvTitle.setText("Menghubungi Responder...");
+        }
+        if (tvSub != null) {
+            tvSub.setText("Sila tunggu sebentar sementara responder admin menjawab " + ("voice".equals(callType) ? "Panggilan Suara" : "Panggilan Video") + " anda.");
+        }
+        if (optVideo != null) optVideo.setVisibility(View.GONE);
+        if (optVoice != null) optVoice.setVisibility(View.GONE);
+
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> {
+                cancelCallRequest();
+                if (callWaitDialog != null) callWaitDialog.dismiss();
+            });
+        }
+
+        callWaitDialog.setOnDismissListener(d -> stopCallListening());
+        callWaitDialog.show();
+
+        // Dengar userCalls/<myUid>/currentCall sekiranya admin menjawab dan mula WebRTC
+        if (myUid != null && !myUid.isEmpty()) {
+            userCallRef = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                    .getReference("userCalls").child(myUid).child("currentCall");
+
+            userCallListener = new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                    if (!snapshot.exists()) return;
+                    String status = snapshot.child("status").getValue(String.class);
+                    String callId = snapshot.child("callId").getValue(String.class);
+                    String serverCallType = snapshot.child("callType").getValue(String.class);
+                    if (serverCallType == null || serverCallType.isEmpty()) serverCallType = callType;
+
+                    if ("ringing".equalsIgnoreCase(status) && callId != null && !callId.isEmpty()) {
+                        // Admin telah menjawab dan menghantar panggilan balik!
+                        stopCallListening();
+                        if (callWaitDialog != null && callWaitDialog.isShowing()) {
+                            callWaitDialog.dismiss();
+                        }
+
+                        // Accept call
+                        CallSignalingClient.getInstance().acceptCall(myUid, callId);
+
+                        // Launch video/voice call activity
+                        Intent intent = new Intent(SosProgressActivity.this, "voice".equalsIgnoreCase(serverCallType) ? VoiceCallActivity.class : VideoCallActivity.class);
+                        intent.putExtra("callId", callId);
+                        intent.putExtra("callerName", currentResponderName);
+                        intent.putExtra("callType", serverCallType);
+                        startActivity(intent);
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {}
+            };
+            userCallRef.addValueEventListener(userCallListener);
+        }
+    }
+
+    private void cancelCallRequest() {
+        DatabaseReference rtdb = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL).getReference();
+        rtdb.child("adminCalls").child("incoming").child("status").setValue("cancelled");
+        if (!roomCode.isEmpty() && !alertId.isEmpty()) {
+            rtdb.child("rooms").child(roomCode.toUpperCase(Locale.ROOT)).child("sosAlerts").child(alertId).child("callRequest").child("status").setValue("cancelled");
+        }
+    }
+
+    private void stopCallListening() {
+        if (userCallRef != null && userCallListener != null) {
+            userCallRef.removeEventListener(userCallListener);
+            userCallListener = null;
+            userCallRef = null;
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        stopCallListening();
+        if (callWaitDialog != null && callWaitDialog.isShowing()) {
+            callWaitDialog.dismiss();
+            callWaitDialog = null;
+        }
         if (alertRef != null && alertListener != null) {
             alertRef.removeEventListener(alertListener);
             alertListener = null;

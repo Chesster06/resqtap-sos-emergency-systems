@@ -6593,18 +6593,119 @@ body.admin-site-active .auth-screen {
 /* When on admin route, ensure public site is hidden immediately */
 html.admin-route-loading #publicSite,
 html.admin-route-loading .public-site,
+html.has-admin-session #publicSite,
+html.has-admin-session .public-site,
 body.admin-site-active #publicSite,
 body.admin-site-active .public-site {
   display: none !important;
 }
 
-/* Enforce strict hidden specificity so deniedScreen, authScreen, and appShell properly hide when requested */
+/* Enforce strict hidden specificity so deniedScreen, authScreen, appShell, and loader properly hide when requested */
 .auth-screen.hidden,
 body.admin-site-active .auth-screen.hidden,
 #authScreen.hidden,
 #deniedScreen.hidden,
-#appShell.hidden {
+#appShell.hidden,
+#adminRouteLoader.hidden {
   display: none !important;
+}
+
+/* Admin Route Loader */
+.admin-route-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #F6F7FB;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+html.dark-mode .admin-route-loader,
+body.dark-mode .admin-route-loader {
+  background-color: #0F172A;
+  color: #F1F5F9;
+}
+
+.admin-loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.admin-loader-ring {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-loader-ring::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 3px solid rgba(230, 0, 103, 0.15);
+  border-top-color: #E60067;
+  animation: adminLoaderSpin 1s linear infinite;
+}
+
+.admin-loader-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  object-fit: contain;
+  animation: adminLoaderPulse 2s ease-in-out infinite;
+}
+
+.admin-loader-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1C1E21;
+  letter-spacing: -0.01em;
+}
+
+html.dark-mode .admin-loader-title,
+body.dark-mode .admin-loader-title {
+  color: #F8FAFC;
+}
+
+.admin-loader-text {
+  font-size: 0.88rem;
+  color: #64748B;
+  font-weight: 500;
+}
+
+html.dark-mode .admin-loader-text,
+body.dark-mode .admin-loader-text {
+  color: #94A3B8;
+}
+
+@keyframes adminLoaderSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes adminLoaderPulse {
+  0%, 100% { transform: scale(1); opacity: 0.95; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+html.has-admin-session #adminRouteLoader,
+html:not(.admin-route-loading) #adminRouteLoader {
+  display: none !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* Top Pink Wave Banner */
@@ -8517,6 +8618,254 @@ body.dark-mode.admin-site-active .livechat-selected-attachment button:hover {
   border-top: 1px solid var(--line);
   background: var(--panel-soft);
 }
+
+/* Call Options Modal & Cards */
+.call-options-card {
+  max-width: 480px;
+  width: 92%;
+}
+.call-options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+.call-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1.5px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+.call-option-btn:hover {
+  border-color: #e11d48;
+  background: rgba(225, 29, 72, 0.04);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(225, 29, 72, 0.12);
+}
+.call-option-icon {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.call-video-btn .call-option-icon {
+  background: linear-gradient(135deg, #e11d48, #be123c);
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.35);
+}
+.call-voice-btn .call-option-icon {
+  background: linear-gradient(135deg, #059669, #047857);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
+}
+.call-option-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.call-option-text strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.call-option-text span {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.call-option-arrow {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+.call-option-btn:hover .call-option-arrow {
+  transform: translateX(4px);
+  color: #e11d48;
+}
+
+/* Floating Incoming SOS Call Alert for Admin */
+.admin-call-alert {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999999;
+  width: 92%;
+  max-width: 520px;
+  animation: slideDownFade 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -24px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+.admin-call-alert-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(225, 29, 72, 0.4);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), 0 0 24px rgba(225, 29, 72, 0.35);
+  color: #fff;
+}
+.admin-call-pulse-avatar {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 50%;
+  background: #e11d48;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  animation: emergencyPulse 1.4s infinite ease-in-out;
+}
+@keyframes emergencyPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(225, 29, 72, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(225, 29, 72, 0);
+  }
+}
+.admin-call-details {
+  flex: 1;
+  min-width: 0;
+}
+.admin-call-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ff6b8b;
+  margin-bottom: 2px;
+}
+.admin-call-caller-name {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ffffff;
+}
+.admin-call-desc {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  margin: 2px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.admin-call-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.call-accept-btn {
+  background: #059669 !important;
+  color: #fff !important;
+  border: none !important;
+  padding: 8px 14px !important;
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease !important;
+}
+.call-accept-btn:hover {
+  background: #047857 !important;
+}
+.call-decline-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(248, 113, 113, 0.3) !important;
+  padding: 8px 12px !important;
+  font-size: 0.85rem !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+}
+.call-decline-btn:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* ==========================================================================
+   SOS Livechat Dedicated Styles
+   ========================================================================== */
+.sos-livechat-panel {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px);
+  min-height: 600px;
+}
+
+.sos-livechat-panel .livechat-layout {
+  flex: 1;
+  min-height: 0;
+}
+
+.sos-thread-search-wrap input:focus {
+  outline: none;
+  border-color: var(--danger, #e11d48) !important;
+  box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.2);
+}
+
+.livechat-bubble-row {
+  display: flex;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.livechat-bubble-row.is-admin {
+  justify-content: flex-end;
+}
+
+.livechat-bubble-row.is-user {
+  justify-content: flex-start;
+}
+
+body.dark-mode .livechat-bubble-row.is-user .livechat-bubble {
+  background: #3B0716 !important;
+  color: #FECDD3 !important;
+  border-color: #831843 !important;
+}
+
+body.dark-mode .sos-thread-search-wrap input {
+  background: #111827 !important;
+  border-color: #374151 !important;
+  color: #F9FAFB !important;
+}
+
 
 
 

@@ -247,6 +247,12 @@
             android:exported="false"
             android:launchMode="singleTop" />
 
+        <activity
+            android:name=".sos.SosLivechatActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:launchMode="singleTop" />
+
         <receiver
             android:name=".sos.SosSnoozeReceiver"
             android:exported="false">

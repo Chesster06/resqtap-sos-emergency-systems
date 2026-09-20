@@ -139,6 +139,20 @@ const els = {
   notificationNextPageButton: document.getElementById("notificationNextPageButton"),
   notificationsCount: document.getElementById("notificationsCount"),
   notificationsTableBody: document.getElementById("notificationsTableBody"),
+  soslivechatCount: document.getElementById("soslivechatCount"),
+  soslivechatSearchInput: document.getElementById("soslivechatSearchInput"),
+  soslivechatThreadList: document.getElementById("soslivechatThreadList"),
+  soslivechatSelectedTitle: document.getElementById("soslivechatSelectedTitle"),
+  soslivechatSelectedSubtitle: document.getElementById("soslivechatSelectedSubtitle"),
+  soslivechatMessages: document.getElementById("soslivechatMessages"),
+  soslivechatEmptyState: document.getElementById("soslivechatEmptyState"),
+  soslivechatReplyForm: document.getElementById("soslivechatReplyForm"),
+  soslivechatReplyInput: document.getElementById("soslivechatReplyInput"),
+  soslivechatReplyButton: document.getElementById("soslivechatReplyButton"),
+  soslivechatCallVideoBtn: document.getElementById("soslivechatCallVideoBtn"),
+  soslivechatCallVoiceBtn: document.getElementById("soslivechatCallVoiceBtn"),
+  soslivechatViewAlertBtn: document.getElementById("soslivechatViewAlertBtn"),
+  soslivechatClearBtn: document.getElementById("soslivechatClearBtn"),
   livechatCount: document.getElementById("livechatCount"),
   livechatThreadList: document.getElementById("livechatThreadList"),
   livechatSelectedTitle: document.getElementById("livechatSelectedTitle"),
@@ -152,6 +166,8 @@ const els = {
   livechatAttachmentInput: document.getElementById("livechatAttachmentInput"),
   livechatAttachmentLabel: document.getElementById("livechatAttachmentLabel"),
   livechatReplyButton: document.getElementById("livechatReplyButton"),
+  livechatCallVideoBtn: document.getElementById("livechatCallVideoBtn"),
+  livechatCallVoiceBtn: document.getElementById("livechatCallVoiceBtn"),
   resolveChatButton: document.getElementById("resolveChatButton"),
   deleteChatButton: document.getElementById("deleteChatButton"),
   aiChatCount: document.getElementById("aiChatCount"),
@@ -190,6 +206,10 @@ function showPublicSite() {
   }
 
   cleanupDataListeners();
+  document.documentElement.classList.remove("admin-route-loading");
+  document.documentElement.classList.remove("has-admin-session");
+  const loader = document.getElementById("adminRouteLoader");
+  if (loader) loader.classList.add("hidden");
   document.body.classList.add("public-site-active");
   document.body.classList.remove("admin-site-active");
   if (els.publicSite) els.publicSite.classList.remove("hidden");
@@ -202,7 +222,6 @@ function showPublicSite() {
 }
 
 function enterAdminRoute() {
-  document.documentElement.classList.remove("admin-route-loading");
   document.body.classList.remove("public-site-active");
   document.body.classList.add("admin-site-active");
   if (els.publicSite) els.publicSite.classList.add("hidden");
@@ -814,6 +833,8 @@ const state = {
   aiChats: {},
   highlights: {},
   servedCases: new Set(),
+  selectedSosSessionId: "",
+  soslivechatSending: false,
   selectedChatUid: "",
   selectedAiChatUid: "",
   livechatAttachment: null,
@@ -924,6 +945,15 @@ function formatDate(value) {
     month: "short",
     day: "2-digit",
     hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(ms));
+}
+
+function formatTimeOnly(value) {
+  const ms = millis(value);
+  if (!ms) return "-";
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
     minute: "2-digit"
   }).format(new Date(ms));
 }
@@ -1063,6 +1093,21 @@ function audienceLabel(audience) {
 function setScreen(name) {
   enterAdminRoute();
   document.documentElement.classList.remove("admin-route-loading");
+  const loader = document.getElementById("adminRouteLoader");
+  if (loader) loader.classList.add("hidden");
+
+  if (name === "app") {
+    try {
+      localStorage.setItem("resqtap_admin_session", "active");
+      document.documentElement.classList.add("has-admin-session");
+    } catch (e) {}
+  } else {
+    try {
+      localStorage.removeItem("resqtap_admin_session");
+      document.documentElement.classList.remove("has-admin-session");
+    } catch (e) {}
+  }
+
   if (els.authScreen) els.authScreen.classList.toggle("hidden", name !== "auth");
   if (els.deniedScreen) els.deniedScreen.classList.toggle("hidden", name !== "denied");
   if (els.appShell) els.appShell.classList.toggle("hidden", name !== "app");
@@ -1147,6 +1192,9 @@ function startDataListeners() {
   });
   subscribe("highlights", (value) => {
     state.highlights = asRecord(value);
+  });
+  subscribe("adminCalls/incoming", (value) => {
+    handleAdminIncomingCall(value);
   });
   state.aiChatCleanupTimer = window.setInterval(() => {
     cleanupExpiredAiChats().catch((error) => console.warn(error));
@@ -1423,6 +1471,10 @@ function getNavAttentionState() {
       signature: signatureFromItems(activeSos.map((alert) => `${alert.source}:${alert.roomId}:${alert.key}:${alert.createdAt}:${alert.cancelledAt}`))
     },
     livemap: {
+      count: activeSos.length,
+      signature: signatureFromItems(activeSos.map((alert) => `${alert.source}:${alert.roomId}:${alert.key}:${alert.createdAt}:${alert.cancelledAt}`))
+    },
+    soslivechat: {
       count: activeSos.length,
       signature: signatureFromItems(activeSos.map((alert) => `${alert.source}:${alert.roomId}:${alert.key}:${alert.createdAt}:${alert.cancelledAt}`))
     },
@@ -2280,6 +2332,140 @@ const sosAlarmSound = new SosAlarmSound();
   window.addEventListener(evt, () => sosAlarmSound.ensureContext(), { passive: true });
 });
 
+class CallRingtoneSound {
+  constructor() {
+    this.ctx = null;
+    this.timer = null;
+    this.isPlaying = false;
+  }
+  ensureContext() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) this.ctx = new AudioCtx();
+    }
+    if (this.ctx && this.ctx.state === "suspended") {
+      this.ctx.resume().catch(() => {});
+    }
+  }
+  play() {
+    this.ensureContext();
+    if (!this.ctx || this.isPlaying) return;
+    this.isPlaying = true;
+    const playRingCycle = () => {
+      if (!this.isPlaying || !this.ctx) return;
+      try {
+        const now = this.ctx.currentTime;
+        const osc1 = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc1.frequency.setValueAtTime(440, now);
+        osc2.frequency.setValueAtTime(480, now);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.6);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 1.6);
+        osc2.stop(now + 1.6);
+      } catch (e) {}
+    };
+    playRingCycle();
+    this.timer = setInterval(playRingCycle, 3000);
+  }
+  stop() {
+    this.isPlaying = false;
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  }
+}
+
+const callRingtoneSound = new CallRingtoneSound();
+["pointerdown", "click", "keydown", "touchstart"].forEach((evt) => {
+  window.addEventListener(evt, () => callRingtoneSound.ensureContext(), { passive: true });
+});
+
+function handleAdminIncomingCall(data) {
+  const alertEl = document.getElementById("adminIncomingCallAlert");
+  if (!alertEl) return;
+
+  if (data && data.status === "ringing") {
+    const now = Date.now();
+    const callTime = Number(data.timestamp) || now;
+    if (now - callTime < 90000) {
+      const callerName = data.callerName || "Mangsa SOS";
+      const isVoice = data.callType === "voice";
+      const callTypeDesc = isVoice ? "Panggilan Suara" : "Panggilan Video";
+      const roomText = data.roomId ? ` (Bilik: ${data.roomId})` : "";
+
+      const nameEl = document.getElementById("adminIncomingCallerName");
+      const descEl = document.getElementById("adminIncomingCallDesc");
+      const acceptBtnText = document.getElementById("adminAcceptCallBtnText");
+
+      if (nameEl) nameEl.textContent = callerName;
+      if (descEl) descEl.textContent = `${callTypeDesc} masuk${roomText}`;
+      if (acceptBtnText) acceptBtnText.textContent = `Jawab ${isVoice ? "Suara" : "Video"}`;
+
+      alertEl.classList.remove("hidden");
+      callRingtoneSound.play();
+      refreshIcons();
+
+      const acceptBtn = document.getElementById("adminAcceptCallBtn");
+      const declineBtn = document.getElementById("adminDeclineCallBtn");
+
+      if (acceptBtn) {
+        acceptBtn.onclick = async () => {
+          alertEl.classList.add("hidden");
+          callRingtoneSound.stop();
+          try {
+            await update(ref(db, "adminCalls/incoming"), {
+              status: "answered",
+              answeredAt: serverTimestamp()
+            });
+            if (data.roomId && data.alertId) {
+              await update(ref(db, `rooms/${data.roomId}/sosAlerts/${data.alertId}/callRequest`), {
+                status: "answered",
+                answeredAt: serverTimestamp()
+              });
+            }
+          } catch (e) {}
+          startAdminCall(data.callerUid, callerName, data.callType || "video");
+        };
+      }
+
+      if (declineBtn) {
+        declineBtn.onclick = async () => {
+          alertEl.classList.add("hidden");
+          callRingtoneSound.stop();
+          try {
+            await update(ref(db, "adminCalls/incoming"), {
+              status: "declined",
+              declinedAt: serverTimestamp()
+            });
+            if (data.roomId && data.alertId) {
+              await update(ref(db, `rooms/${data.roomId}/sosAlerts/${data.alertId}/callRequest`), {
+                status: "declined",
+                declinedAt: serverTimestamp()
+              });
+            }
+          } catch (e) {}
+        };
+      }
+      return;
+    }
+  }
+
+  alertEl.classList.add("hidden");
+  callRingtoneSound.stop();
+}
+
 let sosAlarmTicker = null;
 
 function getActiveSosForUser(uid) {
@@ -2526,6 +2712,7 @@ function render() {
   renderSos();
   renderReports();
   renderNotices();
+  renderSosLivechat();
   renderLivechat();
   renderAiChat();
   renderAdmins();
@@ -2556,6 +2743,7 @@ function renderNav() {
     users: "Users",
     rooms: "Rooms",
     livemap: "SOS Alert",
+    soslivechat: "SOS Livechat",
     reports: "Reports",
     notices: "Notifications",
     livechat: "Livechat",
@@ -2887,6 +3075,369 @@ function renderNotices() {
   }).join("") : emptyRow(7, `No ${activeCategory.label.toLowerCase()} history matches the current search.`);
 }
 
+function getSosLivechatSessions() {
+  const alerts = getSosAlerts();
+  const activeAlertsByUser = new Map();
+  const resolvedAlerts = [];
+
+  alerts.forEach((alert) => {
+    const data = asRecord(alert.data);
+    const chat = asRecord(data.chat);
+    const meta = asRecord(chat.meta);
+    const rawMessages = asRecord(chat.messages);
+    const messages = entries(rawMessages).map(([id, m]) => {
+      const val = asRecord(m);
+      return {
+        id,
+        text: text(val.text || val.message),
+        sender: text(val.sender || (val.senderType === "admin" ? "admin" : "user")),
+        senderName: text(val.senderName || (val.sender === "admin" ? "Admin Responder" : alert.senderName)),
+        senderUid: text(val.senderUid),
+        createdAt: millis(val.createdAt || val.timestamp)
+      };
+    }).sort((a, b) => a.createdAt - b.createdAt);
+
+    const isAlertActive = alert.active && !isCancelled(alert.data);
+    const lastMsg = text(meta.lastMessage) || (messages.length ? messages[messages.length - 1].text : "");
+    const lastTime = millis(meta.updatedAt) || (messages.length ? messages[messages.length - 1].createdAt : alert.createdAt);
+
+    const activeAlertKey = alert.key || alert.id;
+    const sessionObj = {
+      sessionId: `${alert.roomId}__${activeAlertKey}`,
+      roomId: alert.roomId,
+      alertId: activeAlertKey,
+      senderUid: alert.senderUid,
+      senderName: alert.senderName,
+      active: isAlertActive,
+      status: isAlertActive ? (data.servedBy ? "served" : "active") : (data.status || "resolved"),
+      lastMessage: lastMsg,
+      updatedAt: lastTime,
+      createdAt: alert.createdAt,
+      messageCount: messages.length,
+      messages,
+      meta,
+      data: alert
+    };
+
+    if (isAlertActive && alert.senderUid) {
+      if (!activeAlertsByUser.has(alert.senderUid)) {
+        activeAlertsByUser.set(alert.senderUid, []);
+      }
+      activeAlertsByUser.get(alert.senderUid).push(sessionObj);
+    } else {
+      // Only keep resolved cases that actually have chat messages
+      if (messages.length > 0) {
+        resolvedAlerts.push(sessionObj);
+      }
+    }
+  });
+
+  const finalSessions = [];
+
+  // Merge multi-room active alerts for the same victim into one single session
+  activeAlertsByUser.forEach((userSessions) => {
+    if (userSessions.length === 1) {
+      const s = userSessions[0];
+      s.allRooms = [s.roomId];
+      s.allAlerts = [{ roomId: s.roomId, alertId: s.alertId }];
+      s.allSessionIds = [s.sessionId];
+      s.roomDisplay = s.roomId;
+      finalSessions.push(s);
+      return;
+    }
+
+    // Sort to prioritize the room that already has messages, then latest update
+    userSessions.sort((a, b) => {
+      if (b.messageCount !== a.messageCount) {
+        return b.messageCount - a.messageCount;
+      }
+      return b.updatedAt - a.updatedAt;
+    });
+
+    const primary = userSessions[0];
+    const allRooms = [...new Set(userSessions.map((s) => s.roomId).filter(Boolean))];
+    const allAlerts = userSessions.map((s) => ({ roomId: s.roomId, alertId: s.alertId }));
+    const allSessionIds = userSessions.map((s) => s.sessionId);
+
+    // Merge any messages from secondary rooms
+    const messageMap = new Map();
+    userSessions.forEach((s) => {
+      (s.messages || []).forEach((m) => {
+        if (!messageMap.has(m.id)) {
+          messageMap.set(m.id, m);
+        }
+      });
+    });
+    const combinedMessages = Array.from(messageMap.values()).sort((a, b) => a.createdAt - b.createdAt);
+
+    primary.allRooms = allRooms;
+    primary.roomDisplay = allRooms.length > 1 ? `${primary.roomId} (+${allRooms.length - 1} rooms)` : primary.roomId;
+    primary.allAlerts = allAlerts;
+    primary.allSessionIds = allSessionIds;
+    primary.messages = combinedMessages;
+    primary.messageCount = combinedMessages.length;
+    if (combinedMessages.length > 0) {
+      primary.lastMessage = combinedMessages[combinedMessages.length - 1].text;
+      primary.updatedAt = combinedMessages[combinedMessages.length - 1].createdAt || primary.updatedAt;
+    }
+
+    finalSessions.push(primary);
+  });
+
+  resolvedAlerts.forEach((r) => {
+    r.allRooms = [r.roomId];
+    r.allAlerts = [{ roomId: r.roomId, alertId: r.alertId }];
+    r.allSessionIds = [r.sessionId];
+    r.roomDisplay = r.roomId;
+    finalSessions.push(r);
+  });
+
+  return finalSessions.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+function renderSosLivechat() {
+  const allSessions = getSosLivechatSessions();
+  const searchVal = text(els.soslivechatSearchInput ? els.soslivechatSearchInput.value : "").trim().toLowerCase();
+  const searchedSessions = allSessions.filter((s) => {
+    if (!searchVal) return true;
+    return s.roomId.toLowerCase().includes(searchVal)
+      || (s.allRooms && s.allRooms.some((r) => r.toLowerCase().includes(searchVal)))
+      || s.senderName.toLowerCase().includes(searchVal)
+      || s.alertId.toLowerCase().includes(searchVal)
+      || s.lastMessage.toLowerCase().includes(searchVal);
+  });
+
+  if (els.soslivechatCount) {
+    els.soslivechatCount.textContent = `${searchedSessions.length} session${searchedSessions.length === 1 ? "" : "s"}`;
+  }
+
+  const selectedExists = state.selectedSosSessionId
+    && allSessions.some((s) => s.sessionId === state.selectedSosSessionId || (s.allSessionIds && s.allSessionIds.includes(state.selectedSosSessionId)));
+
+  if (!selectedExists) {
+    const firstActive = searchedSessions.find((s) => s.active);
+    if (firstActive && state.activeView === "soslivechat" && !state.selectedSosSessionId) {
+      state.selectedSosSessionId = firstActive.sessionId;
+    } else if (!firstActive && !allSessions.some((s) => s.sessionId === state.selectedSosSessionId || (s.allSessionIds && s.allSessionIds.includes(state.selectedSosSessionId)))) {
+      state.selectedSosSessionId = "";
+    }
+  }
+
+  if (els.soslivechatThreadList) {
+    els.soslivechatThreadList.innerHTML = searchedSessions.length ? searchedSessions.map((session) => {
+      const isSelected = session.sessionId === state.selectedSosSessionId
+        || (session.allSessionIds && session.allSessionIds.includes(state.selectedSosSessionId));
+      const userRec = asRecord(state.users[session.senderUid]);
+      const avatar = avatarHtml({
+        name: session.senderName,
+        email: userRec.email,
+        photoUrl: userRec.photoUrl,
+        photoB64: userRec.photoB64
+      }, session.senderUid);
+
+      const statusTone = session.active ? (session.status === "served" ? "warning" : "danger") : "slate";
+      const statusLabel = session.active ? (session.status === "served" ? "DISPATCHED" : "ACTIVE SOS") : "RESOLVED";
+
+      return `
+        <button class="livechat-thread${isSelected ? " is-active" : ""}" data-action="select-sos-chat" data-session-id="${escapeHtml(session.sessionId)}" type="button">
+          ${avatar}
+          <span class="livechat-thread-main">
+            <span class="livechat-thread-head">
+              <strong>${escapeHtml(session.senderName || "Unknown")}</strong>
+              ${pill(statusLabel, statusTone)}
+            </span>
+            <span style="font-size:12.5px; opacity:0.9;">${escapeHtml(session.lastMessage || "No messages sent yet")}</span>
+            <span class="cell-meta">${escapeHtml(ageLabel(session.updatedAt))} • ${session.messageCount} msg</span>
+          </span>
+          ${session.active ? `<span class="livechat-unread" style="background:#e11d48;" aria-label="Active SOS session"></span>` : ""}
+        </button>
+      `;
+    }).join("") : `<div class="livechat-empty inline"><strong>No SOS Chat Sessions</strong><span>Active and resolved SOS cases will appear here.</span></div>`;
+  }
+
+  const selectedSession = allSessions.find((s) => s.sessionId === state.selectedSosSessionId || (s.allSessionIds && s.allSessionIds.includes(state.selectedSosSessionId)));
+
+  if (!selectedSession) {
+    if (els.soslivechatSelectedTitle) els.soslivechatSelectedTitle.textContent = "Select an SOS Incident";
+    if (els.soslivechatSelectedSubtitle) els.soslivechatSelectedSubtitle.textContent = "Active emergency alerts and responder livechats appear here.";
+    if (els.soslivechatMessages) {
+      els.soslivechatMessages.innerHTML = `
+        <div class="livechat-empty">
+          <strong>No SOS incident selected</strong>
+          <span>Select an SOS livechat session from the left to communicate with the victim.</span>
+        </div>
+      `;
+    }
+    if (els.soslivechatReplyInput) els.soslivechatReplyInput.disabled = true;
+    if (els.soslivechatReplyButton) els.soslivechatReplyButton.disabled = true;
+    if (els.soslivechatCallVideoBtn) els.soslivechatCallVideoBtn.disabled = true;
+    if (els.soslivechatCallVoiceBtn) els.soslivechatCallVoiceBtn.disabled = true;
+    if (els.soslivechatViewAlertBtn) els.soslivechatViewAlertBtn.disabled = true;
+    if (els.soslivechatClearBtn) els.soslivechatClearBtn.disabled = true;
+    return;
+  }
+
+  if (els.soslivechatSelectedTitle) {
+    els.soslivechatSelectedTitle.textContent = `SOS: ${selectedSession.senderName || "Mangsa"}`;
+  }
+  if (els.soslivechatSelectedSubtitle) {
+    const isAct = selectedSession.active;
+    els.soslivechatSelectedSubtitle.textContent = `${isAct ? "🚨 KES SOS AKTIF" : "KES SELESAI"} • ${selectedSession.messageCount} messages • Created ${formatDate(selectedSession.createdAt)}`;
+  }
+
+  if (els.soslivechatCallVideoBtn) {
+    els.soslivechatCallVideoBtn.disabled = false;
+    els.soslivechatCallVideoBtn.onclick = () => {
+      startAdminCall(selectedSession.senderUid, selectedSession.senderName, "video");
+    };
+  }
+  if (els.soslivechatCallVoiceBtn) {
+    els.soslivechatCallVoiceBtn.disabled = false;
+    els.soslivechatCallVoiceBtn.onclick = () => {
+      startAdminCall(selectedSession.senderUid, selectedSession.senderName, "voice");
+    };
+  }
+  if (els.soslivechatViewAlertBtn) {
+    els.soslivechatViewAlertBtn.disabled = false;
+    els.soslivechatViewAlertBtn.onclick = () => {
+      openCaseModal(selectedSession.roomId, selectedSession.alertId, selectedSession.senderUid, selectedSession.senderName);
+    };
+  }
+  if (els.soslivechatClearBtn) {
+    els.soslivechatClearBtn.disabled = !selectedSession.messages || selectedSession.messages.length === 0;
+    els.soslivechatClearBtn.onclick = () => {
+      clearSosLivechatMessages(selectedSession);
+    };
+  }
+
+  if (els.soslivechatReplyInput) {
+    els.soslivechatReplyInput.disabled = state.soslivechatSending;
+    if (els.soslivechatReplyButton) {
+      els.soslivechatReplyButton.disabled = !els.soslivechatReplyInput.value.trim() || state.soslivechatSending;
+    }
+  }
+
+  // Render message stream
+  if (els.soslivechatMessages) {
+    if (!selectedSession.messages || selectedSession.messages.length === 0) {
+      els.soslivechatMessages.innerHTML = `
+        <div class="livechat-empty">
+          <strong style="color:var(--danger, #e11d48);">Saluran SOS Langsung Dibuka</strong>
+          <span>Mangsa belum menghantar mesej teks. Anda boleh hantar balasan kecemasan pertama sekarang di bawah.</span>
+        </div>
+      `;
+    } else {
+      els.soslivechatMessages.innerHTML = selectedSession.messages.map((m) => {
+        const isAdmin = m.sender === "admin";
+        const timeStr = m.createdAt ? formatTimeOnly(m.createdAt) : "";
+        const senderName = m.senderName || (isAdmin ? "Admin Responder" : selectedSession.senderName);
+        const msgClass = isAdmin ? "from-admin" : "from-user is-sos-victim";
+        return `
+          <div class="livechat-message ${msgClass}">
+            <div class="livechat-bubble" style="${!isAdmin ? "background:#FFE4EE !important; color:#9F1239 !important; border:1px solid #FECDD3 !important;" : ""}">
+              <span class="livechat-sender" style="font-weight:700; ${!isAdmin ? "color:#E11D48 !important;" : ""}">${escapeHtml(senderName)}</span>
+              <p style="margin:4px 0 6px 0; font-size:14.5px; line-height:1.45; word-break:break-word;">${escapeHtml(m.text)}</p>
+              <time style="font-size:11px; opacity:0.75; display:block; text-align:right;">${escapeHtml(timeStr)}</time>
+            </div>
+          </div>
+        `;
+      }).join("");
+      els.soslivechatMessages.scrollTop = els.soslivechatMessages.scrollHeight;
+    }
+  }
+}
+
+async function clearSosLivechatMessages(sessionParam) {
+  const allSessions = getSosLivechatSessions();
+  const session = sessionParam || allSessions.find((s) => s.sessionId === state.selectedSosSessionId || (s.allSessionIds && s.allSessionIds.includes(state.selectedSosSessionId)));
+  if (!session) {
+    showToast("SOS Session not found.");
+    return;
+  }
+
+  if (!window.confirm(`Adakah anda pasti ingin memadam semua mesej dalam sesi SOS Livechat (${session.senderName || "Mangsa"}) ini?`)) {
+    return;
+  }
+
+  try {
+    const alertsToClear = session.allAlerts && session.allAlerts.length
+      ? session.allAlerts
+      : [{ roomId: session.roomId, alertId: session.alertId }];
+
+    const updates = {};
+    alertsToClear.forEach((item) => {
+      updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/messages`] = null;
+      updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/meta/lastMessage`] = "";
+      updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/meta/updatedAt`] = serverTimestamp();
+    });
+
+    await update(ref(db), updates);
+    showToast("Semua mesej SOS Livechat telah dipadam.");
+  } catch (err) {
+    console.error("Error clearing SOS chat messages:", err);
+    showToast("Gagal memadam mesej: " + (err.message || err));
+  }
+}
+
+async function handleSosLivechatSubmit(event) {
+  if (event) event.preventDefault();
+  if (!els.soslivechatReplyInput) return;
+  const message = els.soslivechatReplyInput.value.trim();
+  if (!message || !state.selectedSosSessionId) return;
+
+  const allSessions = getSosLivechatSessions();
+  const session = allSessions.find((s) => s.sessionId === state.selectedSosSessionId || (s.allSessionIds && s.allSessionIds.includes(state.selectedSosSessionId)));
+  if (!session) {
+    showToast("SOS Session not found.");
+    return;
+  }
+
+  state.soslivechatSending = true;
+  if (els.soslivechatReplyButton) els.soslivechatReplyButton.disabled = true;
+
+  try {
+    const adminName = state.currentUser ? (state.currentUser.displayName || state.currentUser.email || "Admin Responder") : "Admin Responder";
+    const adminUid = state.currentUser ? state.currentUser.uid : "admin";
+
+    const alertsToWrite = session.allAlerts && session.allAlerts.length
+      ? session.allAlerts
+      : [{ roomId: session.roomId, alertId: session.alertId }];
+
+    const updates = {};
+    alertsToWrite.forEach((item) => {
+      const newMsgRef = push(ref(db, `rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/messages`));
+      const msgId = newMsgRef.key;
+
+      const chatMsg = {
+        id: msgId,
+        text: message,
+        sender: "admin",
+        senderType: "admin",
+        senderUid: adminUid,
+        senderName: adminName,
+        createdAt: serverTimestamp()
+      };
+
+      updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/messages/${msgId}`] = chatMsg;
+      updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/meta/lastMessage`] = message;
+      updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/meta/lastSender`] = "admin";
+      updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/meta/lastAdminUid`] = adminUid;
+      updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/meta/lastAdminName`] = adminName;
+      updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/meta/updatedAt`] = serverTimestamp();
+    });
+
+    await update(ref(db), updates);
+    els.soslivechatReplyInput.value = "";
+    showToast("Urgent message sent to victim.");
+  } catch (err) {
+    console.error("Error sending SOS livechat message:", err);
+    showToast("Failed to send message: " + err.message);
+  } finally {
+    state.soslivechatSending = false;
+    renderSosLivechat();
+  }
+}
+
 function renderLivechat() {
   const searchedThreads = getSupportThreads().filter((thread) => matchesSearch([
     thread.uid,
@@ -2945,6 +3496,14 @@ function renderLivechat() {
     updateLivechatComposer();
     els.resolveChatButton.disabled = true;
     els.deleteChatButton.disabled = true;
+    if (els.livechatCallVideoBtn) {
+      els.livechatCallVideoBtn.disabled = true;
+      els.livechatCallVideoBtn.onclick = null;
+    }
+    if (els.livechatCallVoiceBtn) {
+      els.livechatCallVoiceBtn.disabled = true;
+      els.livechatCallVoiceBtn.onclick = null;
+    }
     return;
   }
 
@@ -2958,6 +3517,18 @@ function renderLivechat() {
   const isResolved = text(selectedThread.status).toLowerCase() === "resolved";
   els.resolveChatButton.disabled = isResolved;
   els.deleteChatButton.disabled = !isResolved;
+  if (els.livechatCallVideoBtn) {
+    els.livechatCallVideoBtn.disabled = false;
+    els.livechatCallVideoBtn.onclick = () => {
+      startAdminCall(selectedThread.uid, selectedThread.name, "video");
+    };
+  }
+  if (els.livechatCallVoiceBtn) {
+    els.livechatCallVoiceBtn.disabled = false;
+    els.livechatCallVoiceBtn.onclick = () => {
+      startAdminCall(selectedThread.uid, selectedThread.name, "voice");
+    };
+  }
   updateLivechatComposer();
 
   els.livechatMessages.innerHTML = selectedThread.messages.length ? selectedThread.messages.map((message) => {
@@ -4147,6 +4718,7 @@ function openCaseModal(roomId, alertId, senderUid, senderName) {
   const sub = document.getElementById("caseModalSubtitle");
   const notesInput = document.getElementById("caseNotesInput");
   const callBtn = document.getElementById("caseCallBtn");
+  const msgBtn = document.getElementById("caseMessageBtn");
   const roomBtn = document.getElementById("caseRoomBtn");
 
   if (title) title.textContent = `SOS: ${senderName || "User"}`;
@@ -4160,7 +4732,14 @@ function openCaseModal(roomId, alertId, senderUid, senderName) {
 
   if (callBtn) {
     callBtn.onclick = () => {
-      if (senderUid) startAdminCall(senderUid, senderName || "Sender", "video");
+      openCaseCallOptions(senderUid, senderName || "Sender");
+    };
+  }
+  if (msgBtn) {
+    msgBtn.onclick = () => {
+      closeCaseModal();
+      state.selectedSosSessionId = `${roomId}__${alertId}`;
+      setActiveView("soslivechat");
     };
   }
   if (roomBtn) {
@@ -4173,6 +4752,54 @@ function openCaseModal(roomId, alertId, senderUid, senderName) {
 
   modal.classList.remove("hidden");
   refreshIcons();
+}
+
+let activeCaseCallData = null;
+
+function openCaseCallOptions(uid, name) {
+  activeCaseCallData = { uid, name };
+  const modal = document.getElementById("caseCallOptionsModal");
+  if (!modal) {
+    if (uid) startAdminCall(uid, name || "Sender", "video");
+    return;
+  }
+  const title = document.getElementById("caseCallOptionsTitle");
+  const sub = document.getElementById("caseCallOptionsSubtitle");
+  if (title) title.textContent = `Panggilan Kecemasan: ${name || "Pengadu"}`;
+  if (sub) sub.textContent = "Pilih mod panggilan untuk menghubungi peranti pengadu/mangsa:";
+
+  const vidBtn = document.getElementById("adminStartVideoCallBtn");
+  const voiceBtn = document.getElementById("adminStartVoiceCallBtn");
+  const cancelBtn = document.getElementById("caseCallOptionsCancelBtn");
+  const closeBtn = document.getElementById("caseCallOptionsCloseBtn");
+  const backdrop = document.getElementById("caseCallOptionsBackdrop");
+
+  const cleanup = () => closeCaseCallOptions();
+  if (cancelBtn) cancelBtn.onclick = cleanup;
+  if (closeBtn) closeBtn.onclick = cleanup;
+  if (backdrop) backdrop.onclick = cleanup;
+
+  if (vidBtn) {
+    vidBtn.onclick = () => {
+      cleanup();
+      startAdminCall(uid, name || "Sender", "video");
+    };
+  }
+  if (voiceBtn) {
+    voiceBtn.onclick = () => {
+      cleanup();
+      startAdminCall(uid, name || "Sender", "voice");
+    };
+  }
+
+  modal.classList.remove("hidden");
+  refreshIcons();
+}
+
+function closeCaseCallOptions() {
+  const modal = document.getElementById("caseCallOptionsModal");
+  if (modal) modal.classList.add("hidden");
+  activeCaseCallData = null;
 }
 
 function closeCaseModal() {
@@ -4684,6 +5311,12 @@ function handleAction(button) {
       state.selectedAiChatUid = aiChatUid;
       state.activeView = "aichat";
     }
+    if (action === "select-sos-chat") {
+      state.selectedSosSessionId = button.dataset.sessionId || "";
+      state.activeView = "soslivechat";
+      render();
+      return;
+    }
     if (action === "clear-detail") state.selected = null;
     if (action === "manage-sos-case") {
       sosAlarmSound.mute(alert);
@@ -4860,14 +5493,22 @@ function bindEvents() {
     });
   }
 
+  const handleSignOut = async () => {
+    try {
+      localStorage.removeItem("resqtap_admin_session");
+      document.documentElement.classList.remove("has-admin-session");
+    } catch (e) {}
+    await signOut(auth);
+  };
+
   if (els.signOutButton) {
-    els.signOutButton.addEventListener("click", () => signOut(auth));
+    els.signOutButton.addEventListener("click", handleSignOut);
   }
   if (els.sidebarSignOutBtn && els.sidebarSignOutBtn !== els.signOutButton) {
-    els.sidebarSignOutBtn.addEventListener("click", () => signOut(auth));
+    els.sidebarSignOutBtn.addEventListener("click", handleSignOut);
   }
   if (els.deniedSignOut) {
-    els.deniedSignOut.addEventListener("click", () => signOut(auth));
+    els.deniedSignOut.addEventListener("click", handleSignOut);
   }
 
   // Dark Mode Toggle Logic
@@ -4979,6 +5620,20 @@ function bindEvents() {
       showToast(error.message || "Unable to reset AI chat.");
     });
   });
+
+  if (els.soslivechatReplyInput) {
+    els.soslivechatReplyInput.addEventListener("input", () => {
+      if (els.soslivechatReplyButton) {
+        els.soslivechatReplyButton.disabled = !els.soslivechatReplyInput.value.trim() || state.soslivechatSending;
+      }
+    });
+  }
+  if (els.soslivechatSearchInput) {
+    els.soslivechatSearchInput.addEventListener("input", renderSosLivechat);
+  }
+  if (els.soslivechatReplyForm) {
+    els.soslivechatReplyForm.addEventListener("submit", handleSosLivechatSubmit);
+  }
 
   if (els.exportButton) {
     els.exportButton.addEventListener("click", exportJson);
