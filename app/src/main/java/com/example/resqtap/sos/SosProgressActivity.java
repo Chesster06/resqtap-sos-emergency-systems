@@ -128,6 +128,17 @@ public class SosProgressActivity extends BaseActivity {
         if (roomCode == null) roomCode = "";
         if (alertId == null) alertId = "";
 
+        if (roomCode.isEmpty()) {
+            roomCode = UserPrefs.getActiveSosProgressRoom(this);
+        }
+        if (alertId.isEmpty()) {
+            alertId = UserPrefs.getActiveSosProgressAlert(this);
+        }
+
+        if (!roomCode.isEmpty() && !alertId.isEmpty()) {
+            UserPrefs.setActiveSosProgress(this, roomCode, alertId);
+        }
+
         bindViews();
         setupListeners();
         attachAlertListener();
@@ -207,6 +218,7 @@ public class SosProgressActivity extends BaseActivity {
     }
 
     private void cancelSosByVictim() {
+        UserPrefs.clearActiveSosProgress(this);
         String dev = UserPrefs.getOrCreateDeviceId(this);
         if (!roomCode.isEmpty() && !alertId.isEmpty()) {
             FirebaseRoomClient.cancelRoomSosQueued(roomCode, alertId, dev);
@@ -235,6 +247,7 @@ public class SosProgressActivity extends BaseActivity {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (!snapshot.exists()) {
                     // Alert was removed
+                    UserPrefs.clearActiveSosProgress(SosProgressActivity.this);
                     finish();
                     return;
                 }
@@ -243,12 +256,22 @@ public class SosProgressActivity extends BaseActivity {
                 boolean isCancelled = "cancelled".equalsIgnoreCase(status) || snapshot.child("cancelledAt").exists();
                 Long stepVal = snapshot.child("progressStep").getValue(Long.class);
                 int step = stepVal != null ? stepVal.intValue() : 1;
-                boolean isResolved = "resolved".equalsIgnoreCase(status) || snapshot.child("resolvedAt").exists() || step >= 4;
+                boolean resolved = "resolved".equalsIgnoreCase(status) || snapshot.child("resolvedAt").exists() || step >= 4;
 
                 if (isCancelled) {
+                    UserPrefs.clearActiveSosProgress(SosProgressActivity.this);
                     Toast.makeText(SosProgressActivity.this, R.string.sos_progress_cancelled, Toast.LENGTH_SHORT).show();
                     finish();
                     return;
+                }
+
+                if (resolved) {
+                    UserPrefs.clearActiveSosProgress(SosProgressActivity.this);
+                    isResolved = true;
+                    step = 4;
+                } else {
+                    isResolved = false;
+                    UserPrefs.setActiveSosProgress(SosProgressActivity.this, roomCode, alertId);
                 }
 
                 String rawResponder = String.valueOf(snapshot.child("servedByName").getValue() == null ? "" : snapshot.child("servedByName").getValue()).trim();
@@ -259,8 +282,6 @@ public class SosProgressActivity extends BaseActivity {
                 }
                 String progressStatus = String.valueOf(snapshot.child("progressStatus").getValue() == null ? "Admin Dispatched" : snapshot.child("progressStatus").getValue());
                 String notes = String.valueOf(snapshot.child("progressNotes").getValue() == null ? "Emergency assistance is assigned and responders have been notified." : snapshot.child("progressNotes").getValue());
-
-                if (isResolved) step = 4;
 
                 Long updatedTimeMs = snapshot.child("updatedAt").getValue(Long.class);
                 if (updatedTimeMs == null) updatedTimeMs = snapshot.child("servedAt").getValue(Long.class);

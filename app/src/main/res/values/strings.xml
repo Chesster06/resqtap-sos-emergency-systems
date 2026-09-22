@@ -185,6 +185,9 @@
     <string name="sos_alarm_slide_to_snooze">Slide to snooze alarm</string>
     <string name="sos_alarm_snoozed">Alarm Snoozed</string>
     <string name="sos_alarm_snoozed_success">Alarm snoozed • Siren silenced</string>
+    <string name="sos_alarm_resolved_auto_snoozed">Case resolved by admin • Alarm &amp; vibration snoozed</string>
+    <string name="sos_alarm_cancelled_auto_snoozed">Case cancelled • Alarm &amp; vibration snoozed</string>
+    <string name="sos_alarm_served_by_admin">Case handled by %1$s • Siren silenced</string>
     <string name="sos_alert_title">Emergency SOS</string>
     <string name="sos_room_badge_format">Room: %1$s • %2$s</string>
     <string name="sos_alarm_view_map">View on Map</string>

@@ -598,18 +598,8 @@ public class LiveRoomTrackingService extends Service {
                         }
 
                         try {
-                            Runnable prev = sosStopWatchdog;
-                            if (prev != null) sosHandler.removeCallbacks(prev);
+                            android.util.Log.d("SOS_DEBUG", "LiveRoomTrackingService: SOS alarm started, will keep ringing until user snoozes.");
                         } catch (Exception ignored) {}
-
-                        sosStopWatchdog = () -> {
-                            try {
-                                android.util.Log.d("SOS_DEBUG", "Service watchdog stopping vibration/sound after 10s. alertId=" + sosId);
-                            } catch (Exception ignored) {}
-                            VibrateManager.stopAll(LiveRoomTrackingService.this);
-                            SosAudioManager.stopAll();
-                        };
-                        sosHandler.postDelayed(sosStopWatchdog, 10_000L);
                     }
 
                     @Override
@@ -622,6 +612,11 @@ public class LiveRoomTrackingService extends Service {
 
                         VibrateManager.stopAll(LiveRoomTrackingService.this);
                         SosAudioManager.stopAll();
+                        if (!sosId.isEmpty()) {
+                            try {
+                                NotificationHelper.cancelSos(LiveRoomTrackingService.this, sosId);
+                            } catch (Exception ignored) {}
+                        }
                         try {
                             UserPrefs.clearSosUiBlinkIfAlert(LiveRoomTrackingService.this, code, sosId);
                         } catch (Exception ignored) {}
@@ -631,17 +626,51 @@ public class LiveRoomTrackingService extends Service {
                             Intent cancelIntent = new Intent("com.example.resqtap.SOS_CANCELLED");
                             cancelIntent.putExtra("alertId", sosId);
                             cancelIntent.putExtra("roomId", code);
+                            cancelIntent.putExtra("reason", "cancelled");
                             cancelIntent.setPackage(getPackageName());
                             sendBroadcast(cancelIntent);
                         } catch (Exception e) {
                             android.util.Log.e("SOS_DEBUG", "Failed to broadcast SOS_CANCELLED: " + e.getMessage());
                         }
+                    }
 
+                    @Override
+                    public void onSosResolved(String senderUid, String roomId, String alertId) {
+                        String sosId = String.valueOf(alertId == null ? "" : alertId).trim();
                         try {
-                            Runnable prev = sosStopWatchdog;
-                            if (prev != null) sosHandler.removeCallbacks(prev);
+                            android.util.Log.d("SOS_DEBUG", "SOS resolved received for room " + code + ": " + sosId);
                         } catch (Exception ignored) {}
-                        sosStopWatchdog = null;
+
+                        VibrateManager.stopAll(LiveRoomTrackingService.this);
+                        SosAudioManager.stopAll();
+                        if (!sosId.isEmpty()) {
+                            try {
+                                NotificationHelper.cancelSos(LiveRoomTrackingService.this, sosId);
+                            } catch (Exception ignored) {}
+                        }
+                        try {
+                            UserPrefs.clearSosUiBlinkIfAlert(LiveRoomTrackingService.this, code, sosId);
+                        } catch (Exception ignored) {}
+
+                        // Hantar broadcast resolusi kepada SosAlarmActivity
+                        try {
+                            Intent resolvedIntent = new Intent("com.example.resqtap.SOS_RESOLVED");
+                            resolvedIntent.putExtra("alertId", sosId);
+                            resolvedIntent.putExtra("roomId", code);
+                            resolvedIntent.putExtra("reason", "resolved");
+                            resolvedIntent.setPackage(getPackageName());
+                            sendBroadcast(resolvedIntent);
+                        } catch (Exception e) {
+                            android.util.Log.e("SOS_DEBUG", "Failed to broadcast SOS_RESOLVED: " + e.getMessage());
+                        }
+                    }
+
+                    @Override
+                    public void onSosServed(String senderUid, String roomId, String alertId, String servedByName) {
+                        // Admin serves case in website - alarm on receiver devices MUST REMAIN ACTIVE until user slides to snooze!
+                        try {
+                            android.util.Log.d("SOS_DEBUG", "SOS served by " + servedByName + " - keeping alarm active on receiver phone until snoozed.");
+                        } catch (Exception ignored) {}
                     }
                 });
             });

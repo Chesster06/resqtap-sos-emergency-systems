@@ -81,6 +81,14 @@
             }
           }
         },
+        "messages": {
+          ".indexOn": ["timestamp"],
+          ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true || root.child('rooms').child($roomId).child('creatorUid').val() === auth.uid || (root.child('rooms').child($roomId).child('members').child(auth.uid).exists() && !root.child('roomTombstones').child($roomId).exists()))",
+          "$messageId": {
+            ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true || root.child('rooms').child($roomId).child('creatorUid').val() === auth.uid || (root.child('rooms').child($roomId).child('members').child(auth.uid).exists() && !root.child('roomTombstones').child($roomId).exists()))",
+            ".validate": "!newData.exists() || (newData.hasChildren(['id','senderUid','text','timestamp']) && newData.child('senderUid').val() === auth.uid)"
+          }
+        },
         ".read": "auth != null"
       }
     },

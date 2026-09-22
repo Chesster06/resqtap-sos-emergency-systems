@@ -78,6 +78,9 @@ public final class UserPrefs {
     private static final String KEY_MAP_TRAFFIC_ENABLED = "map_traffic_enabled";
     private static final String KEY_LAST_INCIDENT_REPORT_ID = "last_incident_report_id";
     private static final String KEY_LAST_INCIDENT_REPORT_STATUS = "last_incident_report_status";
+    private static final String KEY_ACTIVE_SOS_PROGRESS_ROOM = "active_sos_progress_room";
+    private static final String KEY_ACTIVE_SOS_PROGRESS_ALERT = "active_sos_progress_alert";
+    private static final String KEY_ACTIVE_SOS_PROGRESS_ACTIVE = "active_sos_progress_active";
 
     private UserPrefs() {
     }
@@ -1164,6 +1167,47 @@ public final class UserPrefs {
     /** Dapatkan status laporan insiden terkini. */
     public static String getLastIncidentReportStatus(Context context) {
         return prefs(context).getString(KEY_LAST_INCIDENT_REPORT_STATUS, null);
+    }
+
+    /** Simpan sesi SOS Progress aktif apabila kes di-reserve oleh admin. */
+    public static void setActiveSosProgress(Context context, String roomCode, String alertId) {
+        if (context == null) return;
+        prefs(context).edit()
+                .putString(KEY_ACTIVE_SOS_PROGRESS_ROOM, roomCode == null ? "" : roomCode.trim())
+                .putString(KEY_ACTIVE_SOS_PROGRESS_ALERT, alertId == null ? "" : alertId.trim())
+                .putBoolean(KEY_ACTIVE_SOS_PROGRESS_ACTIVE, true)
+                .apply();
+    }
+
+    /** Padam sesi SOS Progress aktif apabila kes dibatalkan atau selesai. */
+    public static void clearActiveSosProgress(Context context) {
+        if (context == null) return;
+        prefs(context).edit()
+                .putString(KEY_ACTIVE_SOS_PROGRESS_ROOM, "")
+                .putString(KEY_ACTIVE_SOS_PROGRESS_ALERT, "")
+                .putBoolean(KEY_ACTIVE_SOS_PROGRESS_ACTIVE, false)
+                .apply();
+    }
+
+    /** Semak sama ada pengguna mempunyai sesi SOS Progress aktif yang belum resolved. */
+    public static boolean isSosProgressActive(Context context) {
+        if (context == null) return false;
+        SharedPreferences p = prefs(context);
+        boolean active = p.getBoolean(KEY_ACTIVE_SOS_PROGRESS_ACTIVE, false);
+        String alertId = p.getString(KEY_ACTIVE_SOS_PROGRESS_ALERT, "");
+        return active && !alertId.isEmpty();
+    }
+
+    /** Dapatkan kod bilik untuk sesi SOS Progress aktif. */
+    public static String getActiveSosProgressRoom(Context context) {
+        if (context == null) return "";
+        return prefs(context).getString(KEY_ACTIVE_SOS_PROGRESS_ROOM, "");
+    }
+
+    /** Dapatkan ID amaran untuk sesi SOS Progress aktif. */
+    public static String getActiveSosProgressAlert(Context context) {
+        if (context == null) return "";
+        return prefs(context).getString(KEY_ACTIVE_SOS_PROGRESS_ALERT, "");
     }
 }
 

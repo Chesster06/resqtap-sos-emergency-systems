@@ -476,6 +476,7 @@
     <string name="sos_alarm_slide_to_snooze">滑动暂停警报</string>
     <string name="sos_alarm_snoozed">警报已暂停</string>
     <string name="sos_alarm_snoozed_success">警报已暂停 • 警笛已关闭</string>
+    <string name="sos_alarm_served_by_admin">%1$s 已接管处理 • 警笛已关闭</string>
     <string name="sos_alert_title">紧急 SOS</string>
     <string name="sos_alarm_view_map">在地图上查看</string>
     <string name="sos_alarm_dismiss">关闭</string>

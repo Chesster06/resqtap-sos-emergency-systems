@@ -213,6 +213,7 @@ public class MainActivity extends BaseActivity {
             public void onSosCancelled() {
                 sosCancelledWhilePending = true;
                 stopWatchingSosCaseReservations();
+                UserPrefs.clearActiveSosProgress(MainActivity.this);
                 final String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
                 // Cancel all rooms whose IDs have already arrived
                 for (java.util.Map.Entry<String, String> e : new java.util.HashMap<>(activeSosIds).entrySet()) {
@@ -515,6 +516,7 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        checkActiveSosCase();
         refreshProfileUi();
         refreshInboxBadge();
         try { BatteryOptimizationHelper.promptOnce(this); } catch (Exception ignored) {}
@@ -591,6 +593,9 @@ public class MainActivity extends BaseActivity {
                     // Bersihkan activeSosIds supaya tidak mengganggu sesi seterusnya
                     activeSosIds.clear();
 
+                    // Simpan sesi aktif ke UserPrefs supaya kekal jika keluar masuk app
+                    UserPrefs.setActiveSosProgress(MainActivity.this, roomCode, sosAlertId);
+
                     // Bawa pengguna ke SosProgressActivity!
                     com.example.resqtap.sos.SosProgressActivity.launch(MainActivity.this, roomCode, sosAlertId);
                 }
@@ -604,6 +609,71 @@ public class MainActivity extends BaseActivity {
             sosReservationListeners.put(ref, listener);
         }
         ref.addValueEventListener(listener);
+    }
+
+    /**
+     * Semak jika ada kes SOS aktif yang belum di-resolved oleh admin.
+     * Jika ada, bawa user terus ke SosProgressActivity.
+     */
+    private void checkActiveSosCase() {
+        if (UserPrefs.isSosProgressActive(this)) {
+            String room = UserPrefs.getActiveSosProgressRoom(this);
+            String alertId = UserPrefs.getActiveSosProgressAlert(this);
+            if (!alertId.isEmpty()) {
+                com.example.resqtap.sos.SosProgressActivity.launch(this, room, alertId);
+                return;
+            }
+        }
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+        final String uid = user.getUid();
+
+        // Semak di RTDB sekiranya ada kes SOS aktif yang sedang dikendalikan admin (served == true)
+        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                .getReference("userRooms")
+                .child(uid)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (snapshot == null || !snapshot.exists() || isFinishing() || isDestroyed()) return;
+                    for (DataSnapshot child : snapshot.getChildren()) {
+                        if (child == null || child.getKey() == null) continue;
+                        String roomCode = child.getKey().trim().toUpperCase(java.util.Locale.ROOT);
+                        if (roomCode.length() < 4) continue;
+
+                        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                                .getReference("rooms")
+                                .child(roomCode)
+                                .child("sosAlerts")
+                                .get()
+                                .addOnSuccessListener(alertSnap -> {
+                                    if (alertSnap == null || !alertSnap.exists() || isFinishing() || isDestroyed()) return;
+                                    for (DataSnapshot alertChild : alertSnap.getChildren()) {
+                                        if (alertChild == null || alertChild.getKey() == null) continue;
+                                        String senderUid = String.valueOf(alertChild.child("senderUid").getValue() == null
+                                                ? alertChild.child("fromUid").getValue() : alertChild.child("senderUid").getValue()).trim();
+                                        if (!uid.equals(senderUid)) continue;
+
+                                        String status = String.valueOf(alertChild.child("status").getValue() == null ? "active" : alertChild.child("status").getValue());
+                                        boolean isCancelled = "cancelled".equalsIgnoreCase(status) || alertChild.child("cancelledAt").exists();
+                                        Long stepVal = alertChild.child("progressStep").getValue(Long.class);
+                                        int step = stepVal != null ? stepVal.intValue() : 1;
+                                        boolean isResolved = "resolved".equalsIgnoreCase(status) || alertChild.child("resolvedAt").exists() || step >= 4;
+
+                                        Boolean served = alertChild.child("served").getValue(Boolean.class);
+                                        String servedBy = alertChild.child("servedBy").getValue(String.class);
+                                        boolean isServed = (served != null && served) || (servedBy != null && !servedBy.trim().isEmpty());
+
+                                        if (!isCancelled && !isResolved && isServed) {
+                                            String alertId = alertChild.getKey();
+                                            UserPrefs.setActiveSosProgress(MainActivity.this, roomCode, alertId);
+                                            com.example.resqtap.sos.SosProgressActivity.launch(MainActivity.this, roomCode, alertId);
+                                            return;
+                                        }
+                                    }
+                                });
+                    }
+                });
     }
 
     private void stopWatchingSosCaseReservations() {

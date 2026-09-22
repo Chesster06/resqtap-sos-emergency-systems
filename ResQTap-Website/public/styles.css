@@ -1068,6 +1068,21 @@ body.is-livemap-active .topbar,
   height: 100% !important;
   width: 100% !important;
   position: relative !important;
+  background-color: #aad3df !important;
+}
+
+.livemap-container .leaflet-container {
+  background-color: #aad3df !important;
+  outline: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+body.dark-mode .livemap-container,
+body.dark-mode .livemap-container .leaflet-container,
+.dark-mode .livemap-container,
+.dark-mode .livemap-container .leaflet-container {
+  background-color: #1e293b !important;
 }
 
 /* ── Live Map Sidepanel & High Contrast Dark Mode ── */

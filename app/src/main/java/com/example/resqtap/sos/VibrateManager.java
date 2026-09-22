@@ -18,6 +18,8 @@ public final class VibrateManager {
     private static volatile String activeAlertId = "";
     private static final android.os.Handler MAIN = new android.os.Handler(android.os.Looper.getMainLooper());
     private static volatile Runnable stopRunnable;
+    private static volatile Vibrator activeVibrator;
+    private static volatile VibratorManager activeVibratorManager;
 
     /** Ambil atau muat data ActiveAlertId. */
     public static String getActiveAlertId() {
@@ -34,9 +36,9 @@ public final class VibrateManager {
             activeAlertId = id;
         }
 
-        try { SosAudioManager.stopAll(); } catch (Exception ignored) {}
-
         try {
+            cancelInternal(context);
+
             Vibrator v = getVibrator(context);
             if (v == null) return;
             try {
@@ -47,7 +49,7 @@ public final class VibrateManager {
             } catch (Exception ignored) {
             }
 
-            try { v.cancel(); } catch (Exception ignored) {}
+            activeVibrator = v;
 
             long[] pattern = new long[]{0, 1000, 250};
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -57,19 +59,9 @@ public final class VibrateManager {
             }
 
             try {
-                Runnable prev = stopRunnable;
-                if (prev != null) MAIN.removeCallbacks(prev);
+                android.util.Log.d("SOS_DEBUG", "VibrateManager: continuous emergency vibration active for alertId=" + id);
             } catch (Exception ignored) {
             }
-            stopRunnable = () -> {
-                try {
-                    android.util.Log.d("SOS_DEBUG", "VibrateManager auto-stop after 10s for alertId=" + id);
-                } catch (Exception ignored) {
-                }
-
-                stopAll(context.getApplicationContext());
-            };
-            MAIN.postDelayed(stopRunnable, 10_000L);
         } catch (Exception ignored) {
         }
     }
@@ -91,16 +83,11 @@ public final class VibrateManager {
         }
         stopRunnable = null;
         try { SosAudioManager.stopAll(); } catch (Exception ignored) {}
-        try {
-            Vibrator v = getVibrator(context);
-            if (v != null) v.cancel();
-        } catch (Exception ignored) {
-        }
+        cancelInternal(context);
     }
 
     /** Fungsi untuk stopAll. */
     public static void stopAll(Context context) {
-        if (context == null) return;
         synchronized (LOCK) {
             activeAlertId = "";
         }
@@ -111,15 +98,59 @@ public final class VibrateManager {
         }
         stopRunnable = null;
         try { SosAudioManager.stopAll(); } catch (Exception ignored) {}
-        try {
-            Vibrator v = getVibrator(context);
-            if (v != null) v.cancel();
-        } catch (Exception ignored) {
-        }
+        cancelInternal(context);
         try {
             android.util.Log.d("SOS_DEBUG", "VibrateManager.stopAll() called");
         } catch (Exception ignored) {
         }
+    }
+
+    private static void cancelInternal(Context context) {
+        // 1. Cancel active tracked instances
+        try {
+            if (activeVibrator != null) {
+                activeVibrator.cancel();
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (Build.VERSION.SDK_INT >= 31 && activeVibratorManager != null) {
+                activeVibratorManager.cancel();
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Cancel through passed context and applicationContext
+        if (context != null) {
+            cancelFromContext(context);
+            Context appCtx = context.getApplicationContext();
+            if (appCtx != null && appCtx != context) {
+                cancelFromContext(appCtx);
+            }
+        }
+        activeVibrator = null;
+        activeVibratorManager = null;
+    }
+
+    private static void cancelFromContext(Context ctx) {
+        if (ctx == null) return;
+        try {
+            if (Build.VERSION.SDK_INT >= 31) {
+                VibratorManager vm = (VibratorManager) ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+                if (vm != null) {
+                    try { vm.cancel(); } catch (Exception ignored) {}
+                    try {
+                        Vibrator defaultV = vm.getDefaultVibrator();
+                        if (defaultV != null) defaultV.cancel();
+                    } catch (Exception ignored) {}
+                }
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            Vibrator v = (Vibrator) ctx.getSystemService(Context.VIBRATOR_SERVICE);
+            if (v != null) {
+                v.cancel();
+            }
+        } catch (Exception ignored) {}
     }
 
     /** Ambil atau muat data Vibrator. */
@@ -127,6 +158,7 @@ public final class VibrateManager {
         try {
             if (Build.VERSION.SDK_INT >= 31) {
                 VibratorManager vm = (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+                activeVibratorManager = vm;
                 return vm == null ? null : vm.getDefaultVibrator();
             }
             return (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);

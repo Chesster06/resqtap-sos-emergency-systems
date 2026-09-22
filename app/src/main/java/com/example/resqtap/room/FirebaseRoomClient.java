@@ -166,6 +166,8 @@ public final class FirebaseRoomClient {
                 String status
         );
         void onSosCancelled(String senderUid, String roomId, String alertId, long cancelledAtMs);
+        default void onSosServed(String senderUid, String roomId, String alertId, String servedByName) {}
+        default void onSosResolved(String senderUid, String roomId, String alertId) {}
     }
 
     public interface RoomSosSendResult {
@@ -1205,9 +1207,27 @@ public final class FirebaseRoomClient {
                     String id = snapshot.child("alertId").getValue() == null ? "" : String.valueOf(snapshot.child("alertId").getValue());
                     if (id.trim().isEmpty()) id = snapshot.getKey() == null ? "" : snapshot.getKey();
                     String status = String.valueOf(snapshot.child("status").getValue() == null ? "" : snapshot.child("status").getValue());
+                    Boolean servedVal = snapshot.child("served").getValue(Boolean.class);
+                    String servedByVal = snapshot.child("servedBy").getValue(String.class);
+                    boolean isServed = (servedVal != null && servedVal) || (servedByVal != null && !servedByVal.trim().isEmpty());
+
+                    Long progressStepVal = snapshot.child("progressStep").getValue(Long.class);
+                    long progressStep = progressStepVal == null ? 0L : progressStepVal;
+
+                    boolean isResolved = "resolved".equalsIgnoreCase(status)
+                            || snapshot.child("resolvedAt").exists()
+                            || progressStep >= 4;
+
+                    if (isResolved) {
+                        String from = String.valueOf(snapshot.child("senderUid").getValue() == null ? "" : snapshot.child("senderUid").getValue());
+                        if (from.trim().isEmpty()) from = String.valueOf(snapshot.child("fromUid").getValue() == null ? "" : snapshot.child("fromUid").getValue());
+                        handler.onSosResolved(from, code, id);
+                        return;
+                    }
+
                     boolean cancelled = "cancelled".equalsIgnoreCase(status)
-                            || snapshot.child("cancelledAt").exists()
-                            || snapshot.child("cancelledClientAt").exists();
+                            || snapshot.child("cancelledByAdmin").exists()
+                            || (!isServed && (snapshot.child("cancelledAt").exists() || snapshot.child("cancelledClientAt").exists()));
                     if (cancelled) {
                         String from = String.valueOf(snapshot.child("senderUid").getValue() == null ? "" : snapshot.child("senderUid").getValue());
                         if (from.trim().isEmpty()) from = String.valueOf(snapshot.child("fromUid").getValue() == null ? "" : snapshot.child("fromUid").getValue());

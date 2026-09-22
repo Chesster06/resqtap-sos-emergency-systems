@@ -28,10 +28,16 @@ import com.example.resqtap.sos.SosAudioManager;
 import com.example.resqtap.sos.VibrateManager;
 import com.example.resqtap.notification.NotificationHelper;
 import com.example.resqtap.room.RoomMapActivity;
+import com.example.resqtap.room.FirebaseRoomClient;
 import com.example.resqtap.friend.FirebaseFriendClient;
 import com.example.resqtap.utils.AvatarUtils;
 import com.example.resqtap.utils.LocaleUtils;
 import com.google.android.material.button.MaterialButton;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 /**
  * SosAlarmActivity
@@ -52,6 +58,9 @@ public class SosAlarmActivity extends AppCompatActivity {
     private String senderUid = "";
     private String alertId = "";
 
+    private DatabaseReference activeSosRef = null;
+    private ValueEventListener activeSosListener = null;
+
     private View pulseRing;
     private CircularProgressView circularProgressDial;
     private TextView tvSender;
@@ -68,13 +77,6 @@ public class SosAlarmActivity extends AppCompatActivity {
     private ObjectAnimator progressAnimator;
     private boolean isSnoozed = false;
 
-    private final Handler autoSnoozeHandler = new Handler(Looper.getMainLooper());
-    private final Runnable autoSnoozeRunnable = () -> {
-        if (!isFinishing() && !isDestroyed() && !isSnoozed) {
-            autoSnoozeTimerFinished();
-        }
-    };
-
     private final BroadcastReceiver sosStatusReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -84,14 +86,20 @@ public class SosAlarmActivity extends AppCompatActivity {
             if ("com.example.resqtap.SOS_CANCELLED".equals(action)) {
                 String cancelledAlertId = intent.getStringExtra("alertId");
                 if (alertId.isEmpty() || alertId.equals(cancelledAlertId)) {
-                    Log.d("SOS_DEBUG", "SosAlarmActivity auto-dismissing: SOS was cancelled by sender.");
-                    finishAndRemoveTask();
+                    Log.d("SOS_DEBUG", "SosAlarmActivity auto-snooze: SOS was cancelled by admin/sender.");
+                    snoozeAlarmWithReason(getString(R.string.sos_alarm_cancelled_auto_snoozed));
+                }
+            } else if ("com.example.resqtap.SOS_RESOLVED".equals(action)) {
+                String resolvedAlertId = intent.getStringExtra("alertId");
+                if (alertId.isEmpty() || alertId.equals(resolvedAlertId)) {
+                    Log.d("SOS_DEBUG", "SosAlarmActivity auto-snooze: SOS was resolved by admin.");
+                    snoozeAlarmWithReason(getString(R.string.sos_alarm_resolved_auto_snoozed));
                 }
             } else if (SosSnoozeReceiver.ACTION_SOS_SNOOZED.equals(action)) {
                 String snoozedAlertId = intent.getStringExtra(SosSnoozeReceiver.EXTRA_ALERT_ID);
                 if (alertId.isEmpty() || alertId.equals(snoozedAlertId)) {
                     Log.d("SOS_DEBUG", "SosAlarmActivity: Alarm snoozed externally.");
-                    onAlarmSnoozedUi();
+                    snoozeAlarm();
                 }
             }
         }
@@ -141,15 +149,18 @@ public class SosAlarmActivity extends AppCompatActivity {
         setupData();
         setupSlider();
 
-        // Daftarkan listener pembatalan / snooze dari luar
+        // Daftarkan listener pembatalan / resolve / snooze dari luar
         IntentFilter filter = new IntentFilter();
         filter.addAction("com.example.resqtap.SOS_CANCELLED");
+        filter.addAction("com.example.resqtap.SOS_RESOLVED");
         filter.addAction(SosSnoozeReceiver.ACTION_SOS_SNOOZED);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(sosStatusReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(sosStatusReceiver, filter);
         }
+
+        attachSosAlertListener();
     }
 
     @Override
@@ -170,6 +181,7 @@ public class SosAlarmActivity extends AppCompatActivity {
         if (seekSnooze != null) seekSnooze.setProgress(0);
         setupData();
         startDialProgressAnimation();
+        attachSosAlertListener();
     }
 
     private ImageView ivSenderAvatar;
@@ -257,11 +269,14 @@ public class SosAlarmActivity extends AppCompatActivity {
     }
 
     private void snoozeAlarm() {
-        isSnoozed = true;
-        autoSnoozeHandler.removeCallbacks(autoSnoozeRunnable);
-        Log.d("SOS_DEBUG", "SosAlarmActivity: Slide to snooze completed for alertId=" + alertId);
+        snoozeAlarmWithReason(null);
+    }
 
-        // 1. Matikan audio dan getaran serta-merta
+    private void snoozeAlarmWithReason(String reasonMessage) {
+        isSnoozed = true;
+        Log.d("SOS_DEBUG", "SosAlarmActivity: snoozeAlarm invoked, reason=" + reasonMessage);
+
+        // 1. Matikan audio dan getaran serta-merta pada semua layer
         try {
             SosAudioManager.stopAll();
         } catch (Exception ignored) {}
@@ -278,14 +293,21 @@ public class SosAlarmActivity extends AppCompatActivity {
         }
 
         // 3. Kemas kini UI kepada mod Snoozed
-        onAlarmSnoozedUi();
+        onAlarmSnoozedUi(reasonMessage);
     }
 
     private void onAlarmSnoozedUi() {
+        onAlarmSnoozedUi(null);
+    }
+
+    private void onAlarmSnoozedUi(String customMessage) {
         isSnoozed = true;
-        autoSnoozeHandler.removeCallbacks(autoSnoozeRunnable);
         if (tvStatus != null) {
-            tvStatus.setText(R.string.sos_alarm_snoozed_success);
+            if (customMessage != null && !customMessage.trim().isEmpty()) {
+                tvStatus.setText(customMessage);
+            } else {
+                tvStatus.setText(R.string.sos_alarm_snoozed_success);
+            }
             tvStatus.setTextColor(0xFF10B981); // Emerald Green
             tvStatus.setVisibility(View.VISIBLE);
         }
@@ -317,64 +339,75 @@ public class SosAlarmActivity extends AppCompatActivity {
         if (circularProgressDial == null) return;
         if (progressAnimator != null) {
             progressAnimator.cancel();
+            progressAnimator = null;
         }
-        autoSnoozeHandler.removeCallbacks(autoSnoozeRunnable);
 
-        // Berputar dan memanjang dari 0 ke penuh (100% / 1.0f) mengikut durasi 10 saat (10,000ms)
-        progressAnimator = ObjectAnimator.ofFloat(circularProgressDial, "progress", 0f, 1f);
-        progressAnimator.setDuration(10000L);
-        progressAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
-        progressAnimator.addListener(new AnimatorListenerAdapter() {
-            private boolean cancelled = false;
-
-            @Override
-            public void onAnimationCancel(Animator animation) {
-                cancelled = true;
-            }
-
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                if (!cancelled && !isFinishing() && !isDestroyed() && !isSnoozed) {
-                    autoSnoozeTimerFinished();
-                }
-            }
-        });
-        progressAnimator.start();
-
-        // Fallback jikalau animation listener di-skip oleh sistem
-        autoSnoozeHandler.postDelayed(autoSnoozeRunnable, 10200L);
+        // Lengkok dial merah sentiasa PENUH (100% / 1.0f) dan TIDAK berputar
+        circularProgressDial.setProgress(1.0f);
     }
 
-    /**
-     * autoSnoozeTimerFinished
-     * Apabila penggera tamat berbunyi (10 saat):
-     * Mematikan siren & getaran, batalkan notifikasi, dan terus masuk ke mod Snoozed (skrin tindakan Dismiss / View on Map)
-     * tanpa kembali ke laman utama (MainActivity).
-     */
-    private void autoSnoozeTimerFinished() {
-        if (isSnoozed) return;
-        isSnoozed = true;
-        autoSnoozeHandler.removeCallbacks(autoSnoozeRunnable);
-        Log.d("SOS_DEBUG", "SosAlarmActivity: 10s alarm duration elapsed. Auto-snoozing & showing action buttons.");
-
-        // 1. Matikan audio dan getaran serta-merta
+    private void attachSosAlertListener() {
+        detachSosAlertListener();
+        if (roomCode.isEmpty() || alertId.isEmpty()) return;
         try {
-            SosAudioManager.stopAll();
-        } catch (Exception ignored) {}
+            activeSosRef = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                    .getReference("rooms")
+                    .child(roomCode.toUpperCase(java.util.Locale.ROOT))
+                    .child("sosAlerts")
+                    .child(alertId);
 
-        try {
-            VibrateManager.stopAll(this);
-        } catch (Exception ignored) {}
+            activeSosListener = new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot snapshot) {
+                    if (snapshot == null || !snapshot.exists() || isFinishing() || isDestroyed()) return;
 
-        // 2. Padamkan notifikasi SOS jika ada
-        if (!alertId.isEmpty()) {
+                    Boolean served = snapshot.child("served").getValue(Boolean.class);
+                    String servedBy = snapshot.child("servedBy").getValue(String.class);
+                    boolean isServed = (served != null && served) || (servedBy != null && !servedBy.trim().isEmpty());
+
+                    String status = String.valueOf(snapshot.child("status").getValue() == null ? "" : snapshot.child("status").getValue());
+                    Long progressStepVal = snapshot.child("progressStep").getValue(Long.class);
+                    long progressStep = progressStepVal == null ? 0L : progressStepVal;
+
+                    // 1. Kes Resolved oleh Admin
+                    boolean isResolved = "resolved".equalsIgnoreCase(status)
+                            || snapshot.child("resolvedAt").exists()
+                            || progressStep >= 4;
+
+                    if (isResolved) {
+                        Log.d("SOS_DEBUG", "SosAlarmActivity: SOS resolved detected via RTDB -> auto-snooze");
+                        snoozeAlarmWithReason(getString(R.string.sos_alarm_resolved_auto_snoozed));
+                        return;
+                    }
+
+                    // 2. Kes Dibatal oleh Admin atau Sender
+                    boolean cancelled = "cancelled".equalsIgnoreCase(status)
+                            || snapshot.child("cancelledByAdmin").exists()
+                            || (!isServed && (snapshot.child("cancelledAt").exists() || snapshot.child("cancelledClientAt").exists()));
+                    if (cancelled) {
+                        Log.d("SOS_DEBUG", "SosAlarmActivity: SOS cancelled detected via RTDB -> auto-snooze");
+                        snoozeAlarmWithReason(getString(R.string.sos_alarm_cancelled_auto_snoozed));
+                    }
+                }
+
+                @Override
+                public void onCancelled(DatabaseError error) {}
+            };
+
+            activeSosRef.addValueEventListener(activeSosListener);
+        } catch (Exception e) {
+            Log.e("SOS_DEBUG", "Failed to attach SosAlertListener: " + e.getMessage());
+        }
+    }
+
+    private void detachSosAlertListener() {
+        if (activeSosRef != null && activeSosListener != null) {
             try {
-                NotificationHelper.cancelSos(this, alertId);
+                activeSosRef.removeEventListener(activeSosListener);
             } catch (Exception ignored) {}
         }
-
-        // 3. Masuk terus ke page snoozed (page kanan) dengan butang Dismiss dan View on Map - JANGAN masuk main page
-        onAlarmSnoozedUi();
+        activeSosRef = null;
+        activeSosListener = null;
     }
 
     private void startPulseAnimation() {
@@ -384,9 +417,17 @@ public class SosAlarmActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        autoSnoozeHandler.removeCallbacks(autoSnoozeRunnable);
+        detachSosAlertListener();
         try {
             unregisterReceiver(sosStatusReceiver);
+        } catch (Exception ignored) {}
+
+        try {
+            SosAudioManager.stopAll();
+        } catch (Exception ignored) {}
+
+        try {
+            VibrateManager.stopAll(this);
         } catch (Exception ignored) {}
 
         if (pulseAnimator != null) {

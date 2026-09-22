@@ -46,10 +46,8 @@
         <item name="cornerRadius">999dp</item>
         <item name="android:minWidth">44dp</item>
         <item name="android:minHeight">44dp</item>
-        <item name="android:paddingLeft">11dp</item>
-        <item name="android:paddingRight">11dp</item>
-        <item name="android:paddingTop">11dp</item>
-        <item name="android:paddingBottom">11dp</item>
+        <item name="android:padding">0dp</item>
+        <item name="iconGravity">textStart</item>
         <item name="backgroundTint">@color/panel</item>
         <item name="strokeWidth">1dp</item>
         <item name="strokeColor">@color/divider</item>

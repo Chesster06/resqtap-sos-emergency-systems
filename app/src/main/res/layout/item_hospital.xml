@@ -80,11 +80,15 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_direction"
-            style="@style/Widget.ResQTap.FilledButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minHeight="40dp"
-            android:text="@string/direction"
+            style="@style/Widget.ResQTap.MapControlButton.Primary"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:minWidth="42dp"
+            android:minHeight="42dp"
+            android:contentDescription="@string/direction"
+            app:icon="@drawable/ic_directions_24"
+            app:iconPadding="0dp"
+            app:iconSize="20dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />

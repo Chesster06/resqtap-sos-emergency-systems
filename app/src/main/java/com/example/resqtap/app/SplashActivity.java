@@ -108,6 +108,20 @@ public class SplashActivity extends BaseActivity {
     }
 
     private void launchMain() {
+        if (UserPrefs.isSosProgressActive(this)) {
+            String room = UserPrefs.getActiveSosProgressRoom(this);
+            String alertId = UserPrefs.getActiveSosProgressAlert(this);
+            if (!alertId.isEmpty()) {
+                com.example.resqtap.sos.SosProgressActivity.launch(SplashActivity.this, room, alertId);
+                try {
+                    overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+                } catch (Exception ignored) {
+                }
+                finish();
+                return;
+            }
+        }
+
         Intent i = new Intent(SplashActivity.this, MainActivity.class);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(i);

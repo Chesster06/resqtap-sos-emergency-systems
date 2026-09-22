@@ -233,36 +233,12 @@ public class ChatActivity extends BaseActivity {
         if (btnNewChat != null) {
             btnNewChat.setOnClickListener(v -> {
                 if (isLiveChatMode) {
-                    // Sahkan sama ada sesi livechat benar-benar wujud dan aktif di database
-                    ensureLiveChatRef();
-                    if (liveChatRef != null) {
-                        liveChatRef.child("meta").addListenerForSingleValueEvent(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(DataSnapshot snapshot) {
-                                String status = snapshot != null ? safe(snapshot.child("status").getValue(String.class)) : "";
-                                boolean trulyActive = snapshot != null && snapshot.exists()
-                                        && ("open".equalsIgnoreCase(status) || "active".equalsIgnoreCase(status) || "answered".equalsIgnoreCase(status));
-                                if (trulyActive) {
-                                    Toast.makeText(ChatActivity.this, R.string.livechat_active_cannot_reset, Toast.LENGTH_SHORT).show();
-                                } else {
-                                    isLiveChatMode = false;
-                                    isLiveAgentJoined = false;
-                                    liveChatSessionStartTime = 0L;
-                                    chatPrefs().edit().putBoolean(PREF_ACTIVE_LIVECHAT, false).apply();
-                                    updateUiForLiveChat(false);
-                                    startNewChatSession();
-                                }
-                            }
-
-                            @Override
-                            public void onCancelled(DatabaseError error) {
-                                startNewChatSession();
-                            }
-                        });
-                        return;
-                    }
-                    Toast.makeText(this, R.string.livechat_active_cannot_reset, Toast.LENGTH_SHORT).show();
-                    return;
+                    isLiveChatMode = false;
+                    isLiveAgentJoined = false;
+                    liveChatSessionStartTime = 0L;
+                    chatPrefs().edit().putBoolean(PREF_ACTIVE_LIVECHAT, false).apply();
+                    detachLiveChatSystem();
+                    updateUiForLiveChat(false);
                 }
                 startNewChatSession();
             });
@@ -288,8 +264,12 @@ public class ChatActivity extends BaseActivity {
             });
         }
 
-        // Semak sekiranya terdapat sesi livechat yang disimpan
-        boolean activeLivechatSaved = chatPrefs().getBoolean(PREF_ACTIVE_LIVECHAT, false);
+        // Semak sekiranya terdapat arahan untuk membuka sesi baharu atau sesi livechat disimpan
+        boolean forceNewChat = getIntent().getBooleanExtra("EXTRA_START_NEW_CHAT", false);
+        if (forceNewChat) {
+            chatPrefs().edit().putBoolean(PREF_ACTIVE_LIVECHAT, false).apply();
+        }
+        boolean activeLivechatSaved = !forceNewChat && chatPrefs().getBoolean(PREF_ACTIVE_LIVECHAT, false);
 
         // Sentiasa pastikan rujukan livechat bersedia
         ensureLiveChatRef();
@@ -454,8 +434,12 @@ public class ChatActivity extends BaseActivity {
     /** Mulakan sesi perbualan baharu (Wipe Firebase and local storage). */
     public void startNewChatSession() {
         if (isLiveChatMode) {
-            Toast.makeText(this, R.string.livechat_active_cannot_reset, Toast.LENGTH_SHORT).show();
-            return;
+            isLiveChatMode = false;
+            isLiveAgentJoined = false;
+            liveChatSessionStartTime = 0L;
+            chatPrefs().edit().putBoolean(PREF_ACTIVE_LIVECHAT, false).apply();
+            detachLiveChatSystem();
+            updateUiForLiveChat(false);
         }
         activityStartedAt = System.currentTimeMillis();
         if (headerTitle != null) headerTitle.setText("AI Assistant");
@@ -493,7 +477,16 @@ public class ChatActivity extends BaseActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (!isLiveChatMode) {
+        boolean startNew = intent != null && intent.getBooleanExtra("EXTRA_START_NEW_CHAT", false);
+        if (startNew || !isLiveChatMode) {
+            if (isLiveChatMode) {
+                isLiveChatMode = false;
+                isLiveAgentJoined = false;
+                liveChatSessionStartTime = 0L;
+                chatPrefs().edit().putBoolean(PREF_ACTIVE_LIVECHAT, false).apply();
+                detachLiveChatSystem();
+                updateUiForLiveChat(false);
+            }
             startNewChatSession();
         }
     }
@@ -613,8 +606,7 @@ public class ChatActivity extends BaseActivity {
                         chatPrefs().edit().putBoolean(PREF_ACTIVE_LIVECHAT, false).apply();
                     }
                 } else if (isOpenStatus) {
-                    if (!isLiveChatMode) {
-                        isLiveChatMode = true;
+                    if (isLiveChatMode) {
                         chatPrefs().edit().putBoolean(PREF_ACTIVE_LIVECHAT, true).apply();
                         updateUiForLiveChat(true);
                     }

@@ -3159,16 +3159,29 @@ function getSosLivechatSessions() {
     const allAlerts = userSessions.map((s) => ({ roomId: s.roomId, alertId: s.alertId }));
     const allSessionIds = userSessions.map((s) => s.sessionId);
 
-    // Merge any messages from secondary rooms
-    const messageMap = new Map();
+    // Merge any messages from secondary rooms with robust deduplication
+    const combinedMessages = [];
+    const seenIds = new Set();
     userSessions.forEach((s) => {
       (s.messages || []).forEach((m) => {
-        if (!messageMap.has(m.id)) {
-          messageMap.set(m.id, m);
+        if (!m || !m.text) return;
+        if (m.id && seenIds.has(m.id)) return;
+
+        const isDuplicate = combinedMessages.some((existing) => {
+          if (m.id && existing.id && m.id === existing.id) return true;
+          const sameSender = existing.sender === m.sender;
+          const sameText = String(existing.text).trim().toLowerCase() === String(m.text).trim().toLowerCase();
+          const closeTime = Math.abs((existing.createdAt || 0) - (m.createdAt || 0)) < 15000;
+          return sameSender && sameText && closeTime;
+        });
+
+        if (!isDuplicate) {
+          if (m.id) seenIds.add(m.id);
+          combinedMessages.push(m);
         }
       });
     });
-    const combinedMessages = Array.from(messageMap.values()).sort((a, b) => a.createdAt - b.createdAt);
+    combinedMessages.sort((a, b) => a.createdAt - b.createdAt);
 
     primary.allRooms = allRooms;
     primary.roomDisplay = allRooms.length > 1 ? `${primary.roomId} (+${allRooms.length - 1} rooms)` : primary.roomId;
@@ -3281,8 +3294,7 @@ function renderSosLivechat() {
     els.soslivechatSelectedTitle.textContent = `SOS: ${selectedSession.senderName || "Mangsa"}`;
   }
   if (els.soslivechatSelectedSubtitle) {
-    const isAct = selectedSession.active;
-    els.soslivechatSelectedSubtitle.textContent = `${isAct ? "🚨 KES SOS AKTIF" : "KES SELESAI"} • ${selectedSession.messageCount} messages • Created ${formatDate(selectedSession.createdAt)}`;
+    els.soslivechatSelectedSubtitle.textContent = `Created ${formatDate(selectedSession.createdAt)}`;
   }
 
   if (els.soslivechatCallVideoBtn) {
@@ -3403,13 +3415,13 @@ async function handleSosLivechatSubmit(event) {
       ? session.allAlerts
       : [{ roomId: session.roomId, alertId: session.alertId }];
 
+    // Use a single shared message ID across all alerts/rooms to avoid multi-room duplicates
+    const sharedMsgId = push(ref(db, `rooms/${alertsToWrite[0].roomId}/sosAlerts/${alertsToWrite[0].alertId}/chat/messages`)).key;
+
     const updates = {};
     alertsToWrite.forEach((item) => {
-      const newMsgRef = push(ref(db, `rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/messages`));
-      const msgId = newMsgRef.key;
-
       const chatMsg = {
-        id: msgId,
+        id: sharedMsgId,
         text: message,
         sender: "admin",
         senderType: "admin",
@@ -3418,7 +3430,7 @@ async function handleSosLivechatSubmit(event) {
         createdAt: serverTimestamp()
       };
 
-      updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/messages/${msgId}`] = chatMsg;
+      updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/messages/${sharedMsgId}`] = chatMsg;
       updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/meta/lastMessage`] = message;
       updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/meta/lastSender`] = "admin";
       updates[`rooms/${item.roomId}/sosAlerts/${item.alertId}/chat/meta/lastAdminUid`] = adminUid;
@@ -4045,9 +4057,8 @@ function renderSosDetail(roomId, alertId) {
     </section>
     <section class="detail-section">
       ${isCaseActive ? `<button class="primary-button icon-button" data-action="manage-sos-case" data-room="${escapeHtml(alert.roomId)}" data-alert="${escapeHtml(alert.key)}" data-uid="${escapeHtml(alert.senderUid)}" data-name="${escapeHtml(alert.senderName || "Sender")}" type="button">${icon("shield-alert")}<span>${isCurrentlyServed ? "Update Case" : "Reserve Case"}</span></button>` : ""}
-      ${alert.senderUid ? `<button class="secondary-button icon-button" data-action="call-sos" data-uid="${escapeHtml(alert.senderUid)}" data-name="${escapeHtml(alert.senderName || "Sender")}" type="button">${icon("phone-call")}<span>Call sender</span></button>` : ""}
       <button class="secondary-button icon-button" data-action="view-room" data-room="${escapeHtml(alert.roomId)}" type="button">${icon("external-link")}<span>Open room</span></button>
-      ${alert.senderUid ? `<button class="secondary-button icon-button" data-action="view-user" data-uid="${escapeHtml(alert.senderUid)}" data-force-profile="true" type="button">${icon("user-round")}<span>Open sender</span></button>` : ""}
+      ${alert.senderUid ? `<button class="secondary-button icon-button" data-action="view-user" data-uid="${escapeHtml(alert.senderUid)}" data-force-profile="true" type="button">${icon("user-round")}<span>Profile View</span></button>` : ""}
       ${canCancel ? `<button class="secondary-button danger icon-button" data-action="cancel-sos" data-room="${escapeHtml(alert.roomId)}" data-alert="${escapeHtml(alert.key)}" type="button">${icon("circle-x")}<span>Cancel SOS</span></button>` : ""}
     </section>
   `;
@@ -4678,7 +4689,8 @@ async function reserveSosCase(roomId, alertId, senderUid, senderName) {
   const crossRoomUpdates = {};
   if (senderUid) {
     getSosAlerts().forEach((a) => {
-      if (a.source === "room" && a.senderUid === senderUid && a.key !== alertId && validPathSegment(a.roomId) && validPathSegment(a.key)) {
+      const isCancelled = a.cancelledAt || (a.data && a.data.cancelledAt) || a.status === "cancelled" || (a.data && a.data.status === "cancelled");
+      if (a.source === "room" && a.senderUid === senderUid && a.roomId !== roomId && a.key !== alertId && !isCancelled && validPathSegment(a.roomId) && validPathSegment(a.key)) {
         if (state.rooms && state.rooms[a.roomId] && state.rooms[a.roomId].sosAlerts && state.rooms[a.roomId].sosAlerts[a.key]) {
           crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/status`] = "active";
           crossRoomUpdates[`rooms/${a.roomId}/sosAlerts/${a.key}/active`] = true;
@@ -4810,7 +4822,7 @@ function closeCaseModal() {
 
 let isSavingCaseProgress = false;
 
-async function saveCaseProgress() {
+async function saveCaseProgress(shouldClose = false) {
   if (isSavingCaseProgress) return;
   if (!activeCaseModalData) {
     showToast("No active case to update.");
@@ -4888,7 +4900,7 @@ async function saveCaseProgress() {
         console.warn("Non-blocking cross-room update notice:", crossErr);
       }
     }
-    showToast(`Case update sent to ${targetSenderName}.`);
+    showToast(`Status updated: ${status}`);
 
     if (Number(step) === 4) {
       sosAlarmSound.mute(alertId);
@@ -4908,9 +4920,11 @@ async function saveCaseProgress() {
       if (typeof window.__resqRefreshMarkers === "function") {
         window.__resqRefreshMarkers();
       }
+      closeCaseModal();
+    } else if (shouldClose) {
+      closeCaseModal();
     }
 
-    closeCaseModal();
     render();
   } catch (err) {
     console.error("Failed to save case progress:", err);
@@ -6314,7 +6328,7 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
   if (!document.getElementById("livemap-styles")) {
     const s = document.createElement("style");
     s.id = "livemap-styles";
-    s.textContent = `.livemap-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 16px;background:var(--surface,#fff);border-bottom:1px solid var(--border,#e2e8f0);position:relative;z-index:10}.livemap-filters{display:flex;gap:6px;flex-wrap:wrap}.livemap-filter-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1.5px solid var(--border,#e2e8f0);background:transparent;font-size:.78rem;font-weight:500;cursor:pointer;color:var(--text-muted,#64748b);transition:all .18s}.livemap-filter-btn:hover{border-color:var(--primary,#6366f1);color:var(--primary,#6366f1)}.livemap-filter-btn.is-active{background:var(--primary,#6366f1);color:#fff;border-color:var(--primary,#6366f1);box-shadow:0 2px 8px rgba(99,102,241,.28)}.livemap-filter-btn i{width:13px;height:13px}.livemap-stats{display:flex;gap:14px;align-items:center;flex:1;flex-wrap:wrap}.livemap-stat{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:var(--text-muted,#64748b)}.livemap-stat i{width:13px;height:13px}.livemap-stat-sos{color:#ef4444;font-weight:600}.livemap-stat-sos strong{color:#ef4444}.livemap-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:6px 16px;font-size:.72rem;color:var(--text-muted,#64748b);background:var(--surface,#fff);border-bottom:1px solid var(--border,#e2e8f0)}.livemap-legend-item{display:flex;align-items:center;gap:5px}.livemap-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}.livemap-dot-online{background:#22c55e;box-shadow:0 0 0 2px #bbf7d0}.livemap-dot-recent{background:#f59e0b;box-shadow:0 0 0 2px #fde68a}.livemap-dot-offline{background:#94a3b8}.livemap-dot-sos{background:#ef4444;box-shadow:0 0 0 2px #fecaca;animation:mapSosPulse 1.2s infinite}.livemap-dot-report{background:#8b5cf6}@keyframes mapSosPulse{0%,100%{box-shadow:0 0 0 2px #fecaca}50%{box-shadow:0 0 0 8px rgba(239,68,68,.18)}}#livemapView{display:flex;flex-direction:column;height:100%;overflow:hidden}#livemapView.hidden{display:none!important}.livemap-container{flex:1;min-height:480px;position:relative}.livemap-sidepanel{position:absolute;top:0;right:0;width:300px;height:100%;background:var(--surface,#fff);border-left:1px solid var(--border,#e2e8f0);z-index:410;display:flex;flex-direction:column;box-shadow:-4px 0 16px rgba(0,0,0,.08)}.livemap-sidepanel.hidden{display:none}.livemap-sidepanel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border,#e2e8f0)}.livemap-sidepanel-header h3{margin:0;font-size:.92rem;font-weight:700}.livemap-close-btn{background:none;border:none;cursor:pointer;color:var(--text-muted,#64748b);padding:4px;border-radius:6px;display:flex;align-items:center}.livemap-close-btn:hover{background:var(--bg-hover,#f1f5f9)}.livemap-sidepanel-body{flex:1;overflow-y:auto;padding:14px 16px;font-size:.82rem}.livemap-detail-row{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}.livemap-detail-row label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted,#64748b)}.livemap-detail-row span{color:var(--text,#1e293b)}.livemap-detail-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:10px;font-size:.72rem;font-weight:600}.livemap-detail-badge.online{background:#dcfce7;color:#15803d}.livemap-detail-badge.recent{background:#fef9c3;color:#92400e}.livemap-detail-badge.offline{background:#f1f5f9;color:#475569}.livemap-detail-badge.sos{background:#fee2e2;color:#b91c1c}.livemap-detail-badge.report{background:#ede9fe;color:#6d28d9}.lm-marker-wrap{position:relative;width:40px;height:40px;border-radius:50%;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.32);transition:transform .18s cubic-bezier(.34,1.56,.64,1);box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:visible!important}.lm-marker-wrap:hover{transform:scale(1.18);z-index:1000!important}.lm-marker-online{border:3px solid #22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.35),0 3px 10px rgba(0,0,0,.32)}.lm-marker-recent{border:3px solid #f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.35),0 3px 10px rgba(0,0,0,.32)}.lm-marker-offline{border:3px solid #94a3b8;box-shadow:0 3px 8px rgba(0,0,0,.25)}.lm-marker-sos{border:3.5px solid #ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.45),0 4px 14px rgba(239,68,68,.6);animation:mapSosPulse 1.1s infinite}.lm-marker-report{border:3px solid #8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.3),0 3px 10px rgba(0,0,0,.3)}.lm-avatar-frame{position:relative;z-index:1;width:100%;height:100%;border-radius:50%;overflow:hidden;background:#FFE4EE;display:flex;align-items:center;justify-content:center}.lm-avatar-frame img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}.lm-avatar-frame svg{width:100%;height:100%;display:block}.lm-icon-report-inner{background:#8b5cf6;color:#fff;font-weight:800;font-size:16px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif}.lm-marker-dot{position:absolute;bottom:-2px;right:-2px;width:11px;height:11px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);z-index:10}.lm-dot-online{background:#22c55e}.lm-dot-recent{background:#f59e0b}.lm-dot-offline{background:#94a3b8}.lm-dot-report{background:#8b5cf6}.lm-sos-badge{position:absolute!important;bottom:-18px!important;left:50%!important;transform:translateX(-50%)!important;background:#ef4444!important;color:#fff!important;font-size:11px!important;font-weight:900!important;padding:2.5px 8px!important;border-radius:9999px!important;border:2px solid #fff!important;box-shadow:0 3px 8px rgba(0,0,0,.6)!important;letter-spacing:.8px!important;line-height:1!important;white-space:nowrap!important;z-index:99999!important;pointer-events:none!important;display:block!important}.leaflet-popup-content-wrapper{border-radius:10px!important;font-family:'Inter',sans-serif!important}.leaflet-popup-content{font-size:.8rem!important;line-height:1.5!important}.dark-mode .livemap-toolbar,.dark-mode .livemap-legend,.dark-mode .livemap-sidepanel{background:var(--surface-dark,#1e293b);border-color:var(--border-dark,#334155)}.dark-mode .livemap-sidepanel-header{border-color:var(--border-dark,#334155)}.dark-mode .livemap-detail-row span{color:#e2e8f0}@media(max-width:700px){.livemap-sidepanel{width:100%}.livemap-stats{display:none}}`;
+    s.textContent = `.livemap-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 16px;background:var(--surface,#fff);border-bottom:1px solid var(--border,#e2e8f0);position:relative;z-index:10}.livemap-filters{display:flex;gap:6px;flex-wrap:wrap}.livemap-filter-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1.5px solid var(--border,#e2e8f0);background:transparent;font-size:.78rem;font-weight:500;cursor:pointer;color:var(--text-muted,#64748b);transition:all .18s}.livemap-filter-btn:hover{border-color:var(--primary,#6366f1);color:var(--primary,#6366f1)}.livemap-filter-btn.is-active{background:var(--primary,#6366f1);color:#fff;border-color:var(--primary,#6366f1);box-shadow:0 2px 8px rgba(99,102,241,.28)}.livemap-filter-btn i{width:13px;height:13px}.livemap-stats{display:flex;gap:14px;align-items:center;flex:1;flex-wrap:wrap}.livemap-stat{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;color:var(--text-muted,#64748b)}.livemap-stat i{width:13px;height:13px}.livemap-stat-sos{color:#ef4444;font-weight:600}.livemap-stat-sos strong{color:#ef4444}.livemap-legend{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:6px 16px;font-size:.72rem;color:var(--text-muted,#64748b);background:var(--surface,#fff);border-bottom:1px solid var(--border,#e2e8f0)}.livemap-legend-item{display:flex;align-items:center;gap:5px}.livemap-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}.livemap-dot-online{background:#22c55e;box-shadow:0 0 0 2px #bbf7d0}.livemap-dot-recent{background:#f59e0b;box-shadow:0 0 0 2px #fde68a}.livemap-dot-offline{background:#94a3b8}.livemap-dot-sos{background:#ef4444;box-shadow:0 0 0 2px #fecaca;animation:mapSosPulse 1.2s infinite}.livemap-dot-report{background:#8b5cf6}@keyframes mapSosPulse{0%,100%{box-shadow:0 0 0 2px #fecaca}50%{box-shadow:0 0 0 8px rgba(239,68,68,.18)}}#livemapView{display:flex;flex-direction:column;height:100%;overflow:hidden}#livemapView.hidden{display:none!important}.livemap-container{flex:1;min-height:480px;position:relative;background-color:#aad3df!important}.livemap-container .leaflet-container{background-color:#aad3df!important;outline:0!important}.dark-mode .livemap-container,.dark-mode .livemap-container .leaflet-container{background-color:#1e293b!important}.livemap-sidepanel{position:absolute;top:0;right:0;width:300px;height:100%;background:var(--surface,#fff);border-left:1px solid var(--border,#e2e8f0);z-index:410;display:flex;flex-direction:column;box-shadow:-4px 0 16px rgba(0,0,0,.08)}.livemap-sidepanel.hidden{display:none}.livemap-sidepanel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border,#e2e8f0)}.livemap-sidepanel-header h3{margin:0;font-size:.92rem;font-weight:700}.livemap-close-btn{background:none;border:none;cursor:pointer;color:var(--text-muted,#64748b);padding:4px;border-radius:6px;display:flex;align-items:center}.livemap-close-btn:hover{background:var(--bg-hover,#f1f5f9)}.livemap-sidepanel-body{flex:1;overflow-y:auto;padding:14px 16px;font-size:.82rem}.livemap-detail-row{display:flex;flex-direction:column;gap:2px;margin-bottom:12px}.livemap-detail-row label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted,#64748b)}.livemap-detail-row span{color:var(--text,#1e293b)}.livemap-detail-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:10px;font-size:.72rem;font-weight:600}.livemap-detail-badge.online{background:#dcfce7;color:#15803d}.livemap-detail-badge.recent{background:#fef9c3;color:#92400e}.livemap-detail-badge.offline{background:#f1f5f9;color:#475569}.livemap-detail-badge.sos{background:#fee2e2;color:#b91c1c}.livemap-detail-badge.report{background:#ede9fe;color:#6d28d9}.lm-marker-wrap{position:relative;width:40px;height:40px;border-radius:50%;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.32);transition:transform .18s cubic-bezier(.34,1.56,.64,1);box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow:visible!important}.lm-marker-wrap:hover{transform:scale(1.18);z-index:1000!important}.lm-marker-online{border:3px solid #22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.35),0 3px 10px rgba(0,0,0,.32)}.lm-marker-recent{border:3px solid #f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.35),0 3px 10px rgba(0,0,0,.32)}.lm-marker-offline{border:3px solid #94a3b8;box-shadow:0 3px 8px rgba(0,0,0,.25)}.lm-marker-sos{border:3.5px solid #ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.45),0 4px 14px rgba(239,68,68,.6);animation:mapSosPulse 1.1s infinite}.lm-marker-report{border:3px solid #8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.3),0 3px 10px rgba(0,0,0,.3)}.lm-avatar-frame{position:relative;z-index:1;width:100%;height:100%;border-radius:50%;overflow:hidden;background:#FFE4EE;display:flex;align-items:center;justify-content:center}.lm-avatar-frame img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}.lm-avatar-frame svg{width:100%;height:100%;display:block}.lm-icon-report-inner{background:#8b5cf6;color:#fff;font-weight:800;font-size:16px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif}.lm-marker-dot{position:absolute;bottom:-2px;right:-2px;width:11px;height:11px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35);z-index:10}.lm-dot-online{background:#22c55e}.lm-dot-recent{background:#f59e0b}.lm-dot-offline{background:#94a3b8}.lm-dot-report{background:#8b5cf6}.lm-sos-badge{position:absolute!important;bottom:-18px!important;left:50%!important;transform:translateX(-50%)!important;background:#ef4444!important;color:#fff!important;font-size:11px!important;font-weight:900!important;padding:2.5px 8px!important;border-radius:9999px!important;border:2px solid #fff!important;box-shadow:0 3px 8px rgba(0,0,0,.6)!important;letter-spacing:.8px!important;line-height:1!important;white-space:nowrap!important;z-index:99999!important;pointer-events:none!important;display:block!important}.leaflet-popup-content-wrapper{border-radius:10px!important;font-family:'Inter',sans-serif!important}.leaflet-popup-content{font-size:.8rem!important;line-height:1.5!important}.dark-mode .livemap-toolbar,.dark-mode .livemap-legend,.dark-mode .livemap-sidepanel{background:var(--surface-dark,#1e293b);border-color:var(--border-dark,#334155)}.dark-mode .livemap-sidepanel-header{border-color:var(--border-dark,#334155)}.dark-mode .livemap-detail-row span{color:#e2e8f0}@media(max-width:700px){.livemap-sidepanel{width:100%}.livemap-stats{display:none}}`;
     document.head.appendChild(s);
   }
 
@@ -6404,8 +6418,15 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
   function fitAll() {
     if (!ms.leaflet) return;
     const pts = []; ms.markers.forEach((m) => { if (m._map) pts.push(m.getLatLng()); });
-    if (!pts.length) return;
-    try { ms.leaflet.fitBounds(window._LeafletMap.latLngBounds(pts), { padding:[40,40], maxZoom:14 }); } catch(e) { /**/ }
+    if (!pts.length) {
+      ms.leaflet.setView([4.0, 109.5], 6);
+      return;
+    }
+    if (pts.length === 1) {
+      ms.leaflet.setView(pts[0], 12);
+      return;
+    }
+    try { ms.leaflet.fitBounds(window._LeafletMap.latLngBounds(pts), { padding:[50,50], maxZoom:14 }); } catch(e) { /**/ }
   }
 
   function prune(keep) {
@@ -6591,16 +6612,56 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
     const container = document.getElementById("livemapContainer");
     if (!container) { console.error("[LiveMap] #livemapContainer not found!"); return; }
     console.log("[LiveMap] Container size:", container.offsetWidth, "x", container.offsetHeight);
-    ms.leaflet = window._LeafletMap.map(container, { center:[4.0,109.5], zoom:6 });
-    window._LeafletMap.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+
+    const worldBounds = window._LeafletMap.latLngBounds(
+      window._LeafletMap.latLng(-85.05112878, -180),
+      window._LeafletMap.latLng(85.05112878, 180)
+    );
+
+    ms.leaflet = window._LeafletMap.map(container, {
+      center: [4.0, 109.5],
+      zoom: 6,
+      minZoom: 3,
       maxZoom: 19,
+      maxBounds: worldBounds,
+      maxBoundsViscosity: 1.0,
+      worldCopyJump: false
+    });
+
+    window._LeafletMap.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      minZoom: 3,
+      maxZoom: 19,
+      bounds: worldBounds,
       attribution: "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
     }).addTo(ms.leaflet);
+
+    const syncMapLimits = () => {
+      if (!ms.leaflet || !window._LeafletMap) return;
+      try {
+        const fitMin = ms.leaflet.getBoundsZoom(worldBounds, true);
+        const safeMin = Math.max(3, Number.isFinite(fitMin) ? fitMin : 3);
+        ms.leaflet.setMinZoom(safeMin);
+        if (ms.leaflet.getZoom() < safeMin) {
+          ms.leaflet.setZoom(safeMin);
+        }
+      } catch (e) {
+        ms.leaflet.setMinZoom(3);
+      }
+    };
+
+    syncMapLimits();
+    window.addEventListener("resize", syncMapLimits);
+
     ms.initialized = true;
     window.__resqLiveMap = ms;
     window.__resqRefreshMarkers = refreshMarkers;
     // Force size recalculation at multiple intervals to handle any layout delay
-    [50, 150, 400].forEach((t) => setTimeout(() => ms.leaflet.invalidateSize(), t));
+    [50, 150, 400].forEach((t) => setTimeout(() => {
+      if (ms.leaflet) {
+        ms.leaflet.invalidateSize();
+        syncMapLimits();
+      }
+    }, t));
     console.log("[LiveMap] Map initialized OK");
 
     // Auto resize map when detail panel opens or closes
@@ -6680,9 +6741,9 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
 // SOS Case Modal Listeners & Stepper Setup
 (function initSosCaseModalListeners() {
   function setup() {
-    // Stepper buttons
+    // Stepper buttons - click automatically updates stage
     document.querySelectorAll(".sos-case-step-btn").forEach((btn) => {
-      btn.onclick = () => {
+      btn.onclick = async () => {
         document.querySelectorAll(".sos-case-step-btn").forEach((b) => b.classList.remove("is-active"));
         btn.classList.add("is-active");
         if (activeCaseModalData) {
@@ -6691,21 +6752,34 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
           activeCaseModalData.desc = btn.dataset.desc || "";
         }
         const notesInput = document.getElementById("caseNotesInput");
-        if (notesInput && !notesInput.value.trim()) {
-          notesInput.value = btn.dataset.desc || "";
+        if (notesInput && btn.dataset.desc) {
+          notesInput.value = btn.dataset.desc;
+        }
+        await saveCaseProgress(false);
+      };
+    });
+
+    // Quick tag chips - click automatically updates notes and saves
+    document.querySelectorAll(".sos-tag-chip").forEach((chip) => {
+      chip.onclick = async () => {
+        const notesInput = document.getElementById("caseNotesInput");
+        if (notesInput && chip.dataset.note) {
+          notesInput.value = chip.dataset.note;
+          await saveCaseProgress(false);
         }
       };
     });
 
-    // Quick tag chips
-    document.querySelectorAll(".sos-tag-chip").forEach((chip) => {
-      chip.onclick = () => {
-        const notesInput = document.getElementById("caseNotesInput");
-        if (notesInput && chip.dataset.note) {
-          notesInput.value = chip.dataset.note;
+    // Press Enter in caseNotesInput to instantly update notes
+    const notesInput = document.getElementById("caseNotesInput");
+    if (notesInput) {
+      notesInput.addEventListener("keydown", async (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          await saveCaseProgress(false);
         }
-      };
-    });
+      });
+    }
   }
 
   if (document.readyState === "loading") {

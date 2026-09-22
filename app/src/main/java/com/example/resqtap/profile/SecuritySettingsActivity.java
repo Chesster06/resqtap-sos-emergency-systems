@@ -66,7 +66,6 @@ public class SecuritySettingsActivity extends BaseActivity {
 
     private SwitchMaterial toggleAppLock;
     private SwitchMaterial toggleBiometric;
-    private SwitchMaterial toggleDuressSafeguard;
     private View rowChangePin;
     private View rowChangeBiometricPin;
     private View rowBiometric;
@@ -128,7 +127,6 @@ public class SecuritySettingsActivity extends BaseActivity {
     private void initViews() {
         toggleAppLock = findViewById(R.id.toggle_app_lock);
         toggleBiometric = findViewById(R.id.toggle_biometric);
-        toggleDuressSafeguard = findViewById(R.id.toggle_duress_safeguard);
         rowChangePin = findViewById(R.id.row_change_pin);
         rowChangeBiometricPin = findViewById(R.id.row_change_biometric_pin);
         rowBiometric = findViewById(R.id.row_biometric);
@@ -178,9 +176,6 @@ public class SecuritySettingsActivity extends BaseActivity {
                 }
             }
 
-            if (toggleDuressSafeguard != null) {
-                toggleDuressSafeguard.setChecked(duressOn);
-            }
             if (rowChangePin != null) {
                 rowChangePin.setVisibility(appLockOn ? View.VISIBLE : View.GONE);
             }
@@ -200,11 +195,6 @@ public class SecuritySettingsActivity extends BaseActivity {
 
         if (rowBiometric != null && toggleBiometric != null) {
             rowBiometric.setOnClickListener(v -> toggleBiometric.toggle());
-        }
-
-        View rowDuress = findViewById(R.id.row_duress_safeguard);
-        if (rowDuress != null && toggleDuressSafeguard != null) {
-            rowDuress.setOnClickListener(v -> toggleDuressSafeguard.toggle());
         }
 
         if (toggleAppLock != null) {
@@ -268,13 +258,6 @@ public class SecuritySettingsActivity extends BaseActivity {
                     }
                     Toast.makeText(this, R.string.security_biometric_disabled, Toast.LENGTH_SHORT).show();
                 }
-            });
-        }
-
-        if (toggleDuressSafeguard != null) {
-            toggleDuressSafeguard.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                if (isSyncingUI) return;
-                UserPrefs.setDuressSafeguardEnabled(this, isChecked);
             });
         }
 

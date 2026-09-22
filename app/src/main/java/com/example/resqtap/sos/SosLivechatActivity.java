@@ -72,15 +72,12 @@ public class SosLivechatActivity extends BaseActivity {
     private String myEmail = "";
 
     private TextView tvLivechatTitle;
-    private TextView tvResponderSub;
-    private TextView tvBannerText;
     private NestedScrollView messagesScroll;
     private LinearLayout messagesContainer;
     private LinearLayout typingIndicatorContainer;
     private EditText etInput;
     private MaterialButton btnSend;
     private MaterialButton btnCall;
-    private MaterialButton btnClearChat;
     private View btnBack;
 
     private DatabaseReference chatRef;
@@ -149,20 +146,12 @@ public class SosLivechatActivity extends BaseActivity {
     private void bindViews() {
         btnBack = findViewById(R.id.btn_back_sos_livechat);
         btnCall = findViewById(R.id.btn_call_from_livechat);
-        btnClearChat = findViewById(R.id.btn_clear_sos_chat);
         tvLivechatTitle = findViewById(R.id.tv_livechat_title);
-        tvResponderSub = findViewById(R.id.tv_livechat_responder_sub);
-        tvBannerText = findViewById(R.id.tv_sos_banner_text);
         messagesScroll = findViewById(R.id.sos_livechat_scroll);
         messagesContainer = findViewById(R.id.sos_messages_container);
         typingIndicatorContainer = findViewById(R.id.typing_indicator_container);
         etInput = findViewById(R.id.et_sos_chat_input);
         btnSend = findViewById(R.id.btn_sos_chat_send);
-
-        tvResponderSub.setText(responderName + " • Aktif");
-        if (!roomCode.isEmpty()) {
-            tvBannerText.setText("Kes SOS: Bilik " + roomCode + " • Sesi Perbualan Terus Bersama Responder");
-        }
     }
 
     private void setupListeners() {
@@ -172,10 +161,6 @@ public class SosLivechatActivity extends BaseActivity {
 
         if (btnCall != null) {
             btnCall.setOnClickListener(v -> showCallOptionsBottomSheet());
-        }
-
-        if (btnClearChat != null) {
-            btnClearChat.setOnClickListener(v -> confirmClearMessages());
         }
 
         if (btnSend != null) {
@@ -283,18 +268,24 @@ public class SosLivechatActivity extends BaseActivity {
         messagesQuery.addValueEventListener(messagesListener);
     }
 
+    private boolean isSending = false;
+
     private void renderMessages(DataSnapshot snapshot) {
         if (messagesContainer == null) return;
-        // Kekalkan child pertama (Welcome Card)
-        View welcomeCard = messagesContainer.getChildAt(0);
         messagesContainer.removeAllViews();
-        if (welcomeCard != null) {
-            messagesContainer.addView(welcomeCard);
-        }
 
         SimpleDateFormat sdf = new SimpleDateFormat("h:mm a", Locale.getDefault());
+        java.util.Set<String> seenIds = new java.util.HashSet<>();
+        String lastText = null;
+        String lastSender = null;
+        long lastTime = 0L;
 
         for (DataSnapshot child : snapshot.getChildren()) {
+            String key = child.getKey();
+            if (key != null && !seenIds.add(key)) {
+                continue;
+            }
+
             String text = child.child("text").getValue(String.class);
             if (text == null || text.trim().isEmpty()) {
                 // Check attachment
@@ -308,6 +299,16 @@ public class SosLivechatActivity extends BaseActivity {
             String sender = child.child("sender").getValue(String.class);
             String senderName = child.child("senderName").getValue(String.class);
             Long createdAt = child.child("createdAt").getValue(Long.class);
+            long timeVal = createdAt != null ? createdAt : 0L;
+
+            // Elak paparan duplikasi mesej berulang dalam masa singkat
+            if (text.equals(lastText) && (sender != null && sender.equals(lastSender)) && Math.abs(timeVal - lastTime) < 10000L) {
+                continue;
+            }
+            lastText = text;
+            lastSender = sender;
+            lastTime = timeVal;
+
             String timeStr = createdAt != null && createdAt > 0 ? sdf.format(new Date(createdAt)) : "";
 
             boolean isMe = "user".equalsIgnoreCase(sender);
@@ -389,11 +390,19 @@ public class SosLivechatActivity extends BaseActivity {
     }
 
     private void sendMessage() {
+        if (isSending) return;
         String text = etInput.getText().toString().trim();
         if (text.isEmpty()) return;
+
+        isSending = true;
+        if (btnSend != null) btnSend.setEnabled(false);
         etInput.setText("");
 
-        if (chatRef == null) return;
+        if (chatRef == null) {
+            isSending = false;
+            if (btnSend != null) btnSend.setEnabled(true);
+            return;
+        }
 
         DatabaseReference newMsgRef = chatRef.child("messages").push();
         String msgId = newMsgRef.getKey();
@@ -406,7 +415,10 @@ public class SosLivechatActivity extends BaseActivity {
         msg.put("senderName", myName);
         msg.put("createdAt", ServerValue.TIMESTAMP);
 
-        newMsgRef.setValue(msg);
+        newMsgRef.setValue(msg).addOnCompleteListener(task -> {
+            isSending = false;
+            if (btnSend != null) btnSend.setEnabled(true);
+        });
 
         // Update meta
         Map<String, Object> metaUpdates = new HashMap<>();
@@ -446,24 +458,6 @@ public class SosLivechatActivity extends BaseActivity {
             }
             if (userTypingStopRunnable != null) handler.removeCallbacks(userTypingStopRunnable);
         }
-    }
-
-    private void confirmClearMessages() {
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                .setTitle("Padam Mesej SOS")
-                .setMessage("Adakah anda pasti ingin memadam semua mesej perbualan kecemasan ini?")
-                .setPositiveButton("Padam", (dialog, which) -> {
-                    if (chatRef != null) {
-                        chatRef.child("messages").removeValue();
-                        Map<String, Object> meta = new HashMap<>();
-                        meta.put("lastMessage", "");
-                        meta.put("updatedAt", ServerValue.TIMESTAMP);
-                        chatRef.child("meta").updateChildren(meta);
-                        Toast.makeText(this, "Mesej telah dipadam.", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .setNegativeButton("Batal", null)
-                .show();
     }
 
     /**

@@ -1207,7 +1207,7 @@
             <button type="button" class="sos-tag-chip" data-note="Responders have arrived at your building/area.">At Location</button>
             <button type="button" class="sos-tag-chip" data-note="Situation contained. Safe to resume normal activities.">Safe / Contained</button>
           </div>
-          <textarea id="caseNotesInput" class="sos-case-textarea" rows="3" placeholder="Enter instructions or status update for the user..."></textarea>
+          <textarea id="caseNotesInput" class="sos-case-textarea" rows="3" placeholder="Enter instructions or status update for the user... (Press Enter to update)"></textarea>
         </div>
 
         <!-- Emergency Quick Actions -->
@@ -1220,19 +1220,11 @@
             <i data-lucide="message-square" aria-hidden="true"></i>
             <span>Message Sender</span>
           </button>
-          <button id="caseRoomBtn" class="secondary-button icon-button" type="button">
-            <i data-lucide="external-link" aria-hidden="true"></i>
-            <span>Open Room</span>
-          </button>
         </div>
       </div>
 
       <footer class="sos-case-footer">
-        <button class="secondary-button" data-action="close-case-modal" type="button">Dismiss</button>
-        <button id="caseSaveBtn" class="primary-button" data-action="save-case-progress" type="button">
-          <i data-lucide="send" aria-hidden="true"></i>
-          <span>Send Update to User</span>
-        </button>
+        <button class="secondary-button" data-action="close-case-modal" type="button">Back</button>
       </footer>
     </div>
   </div>

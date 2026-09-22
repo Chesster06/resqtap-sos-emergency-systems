@@ -475,6 +475,7 @@
     <string name="sos_alarm_slide_to_snooze">அலாரத்தை நிறுத்த ஸ்லைடு செய்க</string>
     <string name="sos_alarm_snoozed">அலாரம் நிறுத்தப்பட்டது</string>
     <string name="sos_alarm_snoozed_success">அலாரம் நிறுத்தப்பட்டது • சைரன் அணைக்கப்பட்டது</string>
+    <string name="sos_alarm_served_by_admin">%1$s ஆல் வழக்கு கையாளப்பட்டது • சைரன் அணைக்கப்பட்டது</string>
     <string name="sos_alert_title">அவசர SOS</string>
     <string name="sos_alarm_view_map">வரைபடத்தில் பார்க்கவும்</string>
     <string name="sos_alarm_dismiss">நிராகரி</string>

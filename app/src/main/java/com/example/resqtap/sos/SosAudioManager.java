@@ -80,15 +80,9 @@ public final class SosAudioManager {
                 }
             }
             try {
-                android.util.Log.d("SOS_DEBUG", "SosAudioManager: playing custom SOS sound (loop 10s) alertId=" + id);
+                android.util.Log.d("SOS_DEBUG", "SosAudioManager: playing custom SOS sound continuously until snoozed alertId=" + id);
             } catch (Exception ignored) {
             }
-
-            Runnable hs = () -> stop(appCtx, id);
-            synchronized (LOCK) {
-                hardStopRunnable = hs;
-            }
-            MAIN.postDelayed(hs, 10_000L);
         } catch (Exception ignored) {
         }
     }

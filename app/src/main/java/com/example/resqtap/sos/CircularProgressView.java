@@ -17,7 +17,7 @@ public class CircularProgressView extends View {
 
     private Paint progressPaint;
     private RectF arcBounds;
-    private float progress = 0f; // 0f (kosong) hingga 1f (penuh)
+    private float progress = 1.0f; // Sentiasa penuh (100% / 1.0f) mengikut reka bentuk static
 
     public CircularProgressView(Context context) {
         super(context);

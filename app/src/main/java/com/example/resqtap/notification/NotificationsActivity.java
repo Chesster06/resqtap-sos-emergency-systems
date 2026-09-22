@@ -76,9 +76,9 @@ public class NotificationsActivity extends BaseActivity {
             return insets;
         });
 
-        MaterialButton back = findViewById(R.id.btn_back);
+        View back = findViewById(R.id.btn_back);
         if (back != null) back.setOnClickListener(v -> finish());
-        MaterialButton detailBack = findViewById(R.id.btn_detail_back);
+        View detailBack = findViewById(R.id.btn_detail_back);
         if (detailBack != null) detailBack.setOnClickListener(v -> showNotificationsList());
 
         View btnClearAll = findViewById(R.id.btn_clear_all);

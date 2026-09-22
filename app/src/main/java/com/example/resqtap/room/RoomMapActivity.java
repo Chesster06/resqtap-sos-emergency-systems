@@ -460,11 +460,12 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
         }
         updateInboxUnreadBadge();
 
-        MaterialButton btnBack = findViewById(R.id.btn_back);
-        btnBack.setOnClickListener(v -> {
-
-            finish();
-        });
+        View btnBack = findViewById(R.id.btn_back);
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> {
+                finish();
+            });
+        }
 
         fabSos = findViewById(R.id.fab_sos);
         if (fabSos != null) {
@@ -1060,6 +1061,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                     runOnUiThread(() -> {
 
                         VibrateManager.stopAll(RoomMapActivity.this);
+                        SosAudioManager.stopAll();
 
                         if (from != null && from.equals(activeSosUid)) {
                             activeSosUid = "";
@@ -1067,6 +1069,12 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                             if (membersAdapter != null) membersAdapter.setActiveSos("", 0L);
                         }
                     });
+                }
+
+                /** Fungsi untuk onSosServed. */
+    @Override
+                public void onSosServed(String senderUid, String roomId, String alertId, String servedByName) {
+                    // Do not stop alarm when admin serves - alarm remains until user snoozes
                 }
             });
             });

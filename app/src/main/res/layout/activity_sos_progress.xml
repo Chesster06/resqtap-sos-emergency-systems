@@ -25,9 +25,15 @@
             android:layout_width="52dp"
             android:layout_height="52dp"
             android:contentDescription="@string/back"
+            android:padding="0dp"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
             android:visibility="gone"
             tools:visibility="visible"
             app:icon="@drawable/ic_arrow_back_24"
+            app:iconGravity="textStart"
             app:iconPadding="0dp"
             app:iconSize="24dp"
             app:iconTint="@color/text_primary"
@@ -138,7 +144,7 @@
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/btn_sos_call_placeholder"
-                                style="@style/Widget.ResQTap.MapControlButton"
+                                style="@style/Widget.MaterialComponents.Button.TextButton"
                                 android:layout_width="38dp"
                                 android:layout_height="38dp"
                                 android:minWidth="38dp"
@@ -146,19 +152,18 @@
                                 android:clickable="true"
                                 android:focusable="true"
                                 android:contentDescription="@string/sos_call_responder"
-                                app:backgroundTint="#FFE4EE"
+                                app:backgroundTint="@android:color/transparent"
                                 app:cornerRadius="999dp"
                                 app:icon="@drawable/ic_phone"
                                 app:iconGravity="textStart"
                                 app:iconPadding="0dp"
-                                app:iconSize="18dp"
-                                app:iconTint="#E60067"
-                                app:strokeColor="#2AE60067"
-                                app:strokeWidth="1dp" />
+                                app:iconSize="20dp"
+                                app:iconTint="@color/text_primary"
+                                app:strokeWidth="0dp" />
 
                             <com.google.android.material.button.MaterialButton
                                 android:id="@+id/btn_sos_message_placeholder"
-                                style="@style/Widget.ResQTap.MapControlButton"
+                                style="@style/Widget.MaterialComponents.Button.TextButton"
                                 android:layout_width="38dp"
                                 android:layout_height="38dp"
                                 android:layout_marginStart="8dp"
@@ -167,15 +172,14 @@
                                 android:clickable="true"
                                 android:focusable="true"
                                 android:contentDescription="@string/sos_message_responder"
-                                app:backgroundTint="#FFE4EE"
+                                app:backgroundTint="@android:color/transparent"
                                 app:cornerRadius="999dp"
-                                app:icon="@drawable/ic_message_outline_24"
+                                app:icon="@drawable/ic_chat_bubble_modern"
                                 app:iconGravity="textStart"
                                 app:iconPadding="0dp"
-                                app:iconSize="18dp"
-                                app:iconTint="#E60067"
-                                app:strokeColor="#2AE60067"
-                                app:strokeWidth="1dp" />
+                                app:iconSize="20dp"
+                                app:iconTint="@color/text_primary"
+                                app:strokeWidth="0dp" />
                         </LinearLayout>
                     </LinearLayout>
 
