@@ -485,10 +485,6 @@
           <i data-lucide="messages-square" aria-hidden="true"></i>
           <span>Livechat</span>
         </button>
-        <button class="nav-button" data-view="aichat" data-label="AI Chat" type="button">
-          <i data-lucide="bot" aria-hidden="true"></i>
-          <span>AI Chat</span>
-        </button>
         <button class="nav-button" data-view="rooms" data-label="Rooms" type="button">
           <i data-lucide="message-square" aria-hidden="true"></i>
           <span>Rooms</span>
@@ -993,39 +989,6 @@
         </div>
       </section>
 
-      <section id="aichatView" class="view-section hidden">
-        <div class="panel livechat-panel ai-chat-panel">
-          <div class="panel-header">
-            <h3>AI Chat</h3>
-            <span id="aiChatCount" class="muted"></span>
-          </div>
-          <div class="livechat-layout">
-            <aside class="livechat-thread-pane" aria-label="AI chat conversations">
-              <div id="aiChatThreadList" class="livechat-thread-list"></div>
-            </aside>
-            <section class="livechat-conversation" aria-label="Selected AI chat conversation">
-              <div class="livechat-conversation-header">
-                <div>
-                  <h3 id="aiChatSelectedTitle">Select a conversation</h3>
-                  <span id="aiChatSelectedSubtitle" class="muted">App users will appear here after they ask the assistant.</span>
-                </div>
-                <div class="livechat-header-actions">
-                  <button id="deleteAiChatButton" class="secondary-button slim danger icon-button" type="button" disabled>
-                    <i data-lucide="trash-2" aria-hidden="true"></i>
-                    <span>Reset Chat</span>
-                  </button>
-                </div>
-              </div>
-              <div id="aiChatMessages" class="livechat-messages">
-                <div class="livechat-empty">
-                  <strong>No conversation selected</strong>
-                  <span>Choose an AI chat thread to monitor.</span>
-                </div>
-              </div>
-            </section>
-          </div>
-        </div>
-      </section>
 
       <section id="adminsView" class="view-section hidden">
         <div class="panel">

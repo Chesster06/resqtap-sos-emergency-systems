@@ -1493,10 +1493,6 @@ function getNavAttentionState() {
     livechat: {
       count: unreadSupport.length,
       signature: signatureFromItems(unreadSupport.map((thread) => `${thread.uid}:${thread.updatedAt}:${thread.messageCount}:${thread.lastSender}`))
-    },
-    aichat: {
-      count: unreadAi.length,
-      signature: signatureFromItems(unreadAi.map((thread) => `${thread.uid}:${thread.updatedAt}:${thread.messageCount}:${thread.lastSender}`))
     }
   };
 }
@@ -2714,7 +2710,7 @@ function render() {
   renderNotices();
   renderSosLivechat();
   renderLivechat();
-  renderAiChat();
+  if (els.aiChatCount) renderAiChat();
   renderAdmins();
   renderHighlights();
   renderDetail();
@@ -2738,6 +2734,9 @@ function render() {
 }
 
 function renderNav() {
+  if (state.activeView === "aichat") {
+    state.activeView = "dashboard";
+  }
   const titles = {
     dashboard: "Dashboard",
     users: "Users",
@@ -2747,7 +2746,6 @@ function renderNav() {
     reports: "Reports",
     notices: "Notifications",
     livechat: "Livechat",
-    aichat: "AI Chat",
     highlights: "Highlights (Mobile Carousel)",
     logs: "Logs",
     admins: "Admins"
@@ -3606,6 +3604,7 @@ function aiChatStatusTone(status) {
 }
 
 function renderAiChat() {
+  if (!els.aiChatCount || !els.aiChatThreadList) return;
   const allThreads = getAiThreads();
   const searchedThreads = allThreads.filter((thread) => matchesSearch([
     thread.uid,
@@ -5628,12 +5627,14 @@ function bindEvents() {
       showToast(error.message || "Unable to delete livechat.");
     });
   });
-  els.deleteAiChatButton.addEventListener("click", () => {
-    deleteSelectedAiChat().catch((error) => {
-      console.error(error);
-      showToast(error.message || "Unable to reset AI chat.");
+  if (els.deleteAiChatButton) {
+    els.deleteAiChatButton.addEventListener("click", () => {
+      deleteSelectedAiChat().catch((error) => {
+        console.error(error);
+        showToast(error.message || "Unable to reset AI chat.");
+      });
     });
-  });
+  }
 
   if (els.soslivechatReplyInput) {
     els.soslivechatReplyInput.addEventListener("input", () => {
