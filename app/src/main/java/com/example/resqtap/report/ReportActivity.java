@@ -182,6 +182,8 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
 
     private ValueEventListener activeReportListener;
     private DatabaseReference activeReportRef;
+    private ValueEventListener userReportIdListener;
+    private DatabaseReference userReportIdRef;
     private String currentReportId;
     private String currentReportStatus;
     private boolean isShowingProgress = false;
@@ -224,6 +226,14 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
         checkExistingReport();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (currentReportId != null) {
+            verifyReportExistsInDatabase(currentReportId);
+        }
+    }
+
     // =========================================================================
     // SEKSYEN: ONDESTROY
     // =========================================================================
@@ -233,6 +243,7 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
         if (locationTokenSource != null) locationTokenSource.cancel();
         geocoderExecutor.shutdownNow();
         detachActiveReportListener();
+        detachUserReportIdListener();
         super.onDestroy();
     }
 
@@ -853,6 +864,11 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
 
     /** Semak laporan sedia ada pengguna untuk paparan kemajuan secara automatik. */
     private void checkExistingReport() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user != null) {
+            attachUserReportIdListener(user.getUid());
+        }
+
         String lastReportId = UserPrefs.getLastIncidentReportId(this);
         if (lastReportId != null && !lastReportId.trim().isEmpty()) {
             currentReportId = lastReportId.trim();
@@ -864,10 +880,10 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
                 showProgressMode();
             }
             attachActiveReportListener(lastReportId.trim());
+            verifyReportExistsInDatabase(lastReportId.trim());
             return;
         }
 
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
             FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
                     .getReference("users")
@@ -881,10 +897,63 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
                                 UserPrefs.setLastIncidentReportId(this, cloudReportId.trim());
                                 currentReportId = cloudReportId.trim();
                                 attachActiveReportListener(cloudReportId.trim());
+                                verifyReportExistsInDatabase(cloudReportId.trim());
                             }
                         }
                     });
         }
+    }
+
+    /** Pasang listener untuk mengesan jika lastIncidentReportId pengguna dipadam oleh admin. */
+    private void attachUserReportIdListener(String uid) {
+        detachUserReportIdListener();
+        userReportIdRef = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                .getReference("users")
+                .child(uid)
+                .child("lastIncidentReportId");
+        userReportIdListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                String cloudReportId = snapshot.getValue(String.class);
+                if ((cloudReportId == null || cloudReportId.trim().isEmpty()) && currentReportId != null) {
+                    handleReportDeleted();
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+            }
+        };
+        userReportIdRef.addValueEventListener(userReportIdListener);
+    }
+
+    /** Tanggalkan listener lastIncidentReportId pengguna. */
+    private void detachUserReportIdListener() {
+        if (userReportIdRef != null && userReportIdListener != null) {
+            userReportIdRef.removeEventListener(userReportIdListener);
+            userReportIdListener = null;
+            userReportIdRef = null;
+        }
+    }
+
+    /** Sahkan bahawa laporan masih wujud di dalam incidentReports. */
+    private void verifyReportExistsInDatabase(String reportId) {
+        if (reportId == null || reportId.trim().isEmpty()) return;
+        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                .getReference("incidentReports")
+                .child(reportId.trim())
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (!snapshot.exists()) {
+                        handleReportDeleted();
+                    } else {
+                        Map<String, Object> data = (Map<String, Object>) snapshot.getValue();
+                        renderProgressData(reportId.trim(), data);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    handleReportDeleted();
+                });
     }
 
     /** Pasang listener masa nyata untuk status kemajuan laporan aktif. */
@@ -933,6 +1002,10 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
 
             @Override
             public void onCancelled(DatabaseError error) {
+                if (error != null && (error.getCode() == DatabaseError.PERMISSION_DENIED
+                        || error.getCode() == DatabaseError.DATA_STALE)) {
+                    handleReportDeleted();
+                }
             }
         };
         activeReportRef.addValueEventListener(activeReportListener);
@@ -966,6 +1039,21 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
         currentReportStatus = null;
         reportSubmitted = false;
         submitting = false;
+
+        if (tvProgressReportId != null) tvProgressReportId.setText("");
+        if (tvProgressTime != null) tvProgressTime.setText("");
+        if (tvProgressCategory != null) tvProgressCategory.setText("");
+        if (tvProgressAddress != null) tvProgressAddress.setText("");
+        if (tvProgressDetails != null) {
+            tvProgressDetails.setText("");
+            tvProgressDetails.setVisibility(View.GONE);
+        }
+        if (progressAttachmentsContainer != null) {
+            progressAttachmentsContainer.removeAllViews();
+        }
+        if (progressAttachmentsScroll != null) {
+            progressAttachmentsScroll.setVisibility(View.GONE);
+        }
 
         if (cardActiveReportBanner != null) {
             cardActiveReportBanner.setVisibility(View.GONE);
@@ -1290,6 +1378,9 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
                     } else {
                         handleReportDeleted();
                     }
+                })
+                .addOnFailureListener(e -> {
+                    handleReportDeleted();
                 });
     }
 

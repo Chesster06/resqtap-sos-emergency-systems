@@ -545,6 +545,14 @@ public final class FirebaseRoomClient {
                 });
             }).addOnFailureListener(e -> {
             });
+
+            // Sentiasa kemas kini koordinat terkini di users/{u} agar admin Leaflet map sentiasa dapat kesan lokasi
+            Map<String, Object> userLoc = new HashMap<>();
+            userLoc.put("lat", lat);
+            userLoc.put("lng", lng);
+            if (batteryPct >= 0 && batteryPct <= 100) userLoc.put("batteryPct", batteryPct);
+            userLoc.put("updatedAt", ServerValue.TIMESTAMP);
+            db().child("users").child(u).updateChildren(userLoc);
         } catch (Exception ignored) {
         }
     }
@@ -800,6 +808,25 @@ public final class FirebaseRoomClient {
             payload.put("at", ServerValue.TIMESTAMP);
             payload.put("clientAt", System.currentTimeMillis());
             payload.put("ttlMs", 10_000L);
+
+            // Sertakan juga koordinat GPS terakhir mangsa daripada profil users/{from} sekiranya ada
+            try {
+                db().child("users").child(from).get().addOnSuccessListener(userSnap -> {
+                    if (userSnap != null && userSnap.exists()) {
+                        Double lat = userSnap.child("lat").getValue(Double.class);
+                        Double lng = userSnap.child("lng").getValue(Double.class);
+                        if (lat != null && lng != null && (lat != 0 || lng != 0)) {
+                            Map<String, Object> locMap = new HashMap<>();
+                            locMap.put("lat", lat);
+                            locMap.put("lng", lng);
+                            locMap.put("latitude", lat);
+                            locMap.put("longitude", lng);
+                            ref.updateChildren(locMap);
+                        }
+                    }
+                });
+            } catch (Exception ignored) {}
+
             ref.setValue(payload).addOnFailureListener(e -> {
                 try {
                     android.util.Log.w("ResQTap", "sendRoomSosQueued failed: " + (e == null ? "" : e.getMessage()));
@@ -871,6 +898,25 @@ public final class FirebaseRoomClient {
         final String dev = String.valueOf(fromDeviceId == null ? "" : fromDeviceId).trim();
 
         try {
+            // Batalkan juga di DIRECT fallback room sekiranya pengguna tiada bilik
+            db().child("rooms").child("DIRECT").child("sosAlerts")
+                    .get()
+                    .addOnSuccessListener(alertSnap -> {
+                        if (alertSnap == null || !alertSnap.exists()) return;
+                        for (DataSnapshot alertChild : alertSnap.getChildren()) {
+                            if (alertChild == null || alertChild.getKey() == null) continue;
+                            String senderUid = String.valueOf(alertChild.child("senderUid").getValue() == null
+                                    ? alertChild.child("fromUid").getValue() : alertChild.child("senderUid").getValue()).trim();
+                            if (!u.equals(senderUid)) continue;
+
+                            String status = String.valueOf(alertChild.child("status").getValue() == null ? "active" : alertChild.child("status").getValue());
+                            boolean alreadyCancelled = "cancelled".equalsIgnoreCase(status) || "resolved".equalsIgnoreCase(status) || alertChild.child("cancelledAt").exists() || alertChild.child("resolvedAt").exists();
+                            if (!alreadyCancelled) {
+                                cancelRoomSosQueued("DIRECT", alertChild.getKey(), dev);
+                            }
+                        }
+                    });
+
             db().child("userRooms").child(u).get().addOnSuccessListener(snap -> {
                 if (snap == null || !snap.exists()) return;
                 for (DataSnapshot roomChild : snap.getChildren()) {

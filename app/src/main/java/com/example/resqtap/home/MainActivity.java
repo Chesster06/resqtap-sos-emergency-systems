@@ -179,19 +179,32 @@ public class MainActivity extends BaseActivity {
                 final String rawName = UserPrefs.getName(MainActivity.this);
                 final String name = (rawName == null || rawName.trim().isEmpty()) ? "User" : rawName.trim();
 
-                // One read: grab all rooms this user is in, then fire SOS to each
+                // Grab all rooms this user is in; if no rooms, broadcast to DIRECT fallback room
                 FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
                         .getReference("userRooms")
                         .child(uid)
                         .get()
                         .addOnSuccessListener(snapshot -> {
-                            if (snapshot == null || !snapshot.exists()) return;
                             if (sosCancelledWhilePending) return;
-                            for (DataSnapshot child : snapshot.getChildren()) {
-                                if (child == null || child.getKey() == null) continue;
+
+                            java.util.List<String> roomCodes = new java.util.ArrayList<>();
+                            if (snapshot != null && snapshot.exists()) {
+                                for (DataSnapshot child : snapshot.getChildren()) {
+                                    if (child == null || child.getKey() == null) continue;
+                                    final String code = child.getKey().trim().toUpperCase(java.util.Locale.ROOT);
+                                    if (!code.isEmpty()) {
+                                        roomCodes.add(code);
+                                    }
+                                }
+                            }
+
+                            // Jika pengguna tiada sebarang room, hantar SOS ke fallback emergency channel DIRECT
+                            if (roomCodes.isEmpty()) {
+                                roomCodes.add("DIRECT");
+                            }
+
+                            for (String code : roomCodes) {
                                 if (sosCancelledWhilePending) return;
-                                final String code = child.getKey().trim().toUpperCase(java.util.Locale.ROOT);
-                                if (code.isEmpty()) continue;
                                 FirebaseRoomClient.sendRoomSosQueued(code, uid, dev, name, id -> {
                                     String sosId = String.valueOf(id == null ? "" : id).trim();
                                     if (sosId.isEmpty()) return;
@@ -205,6 +218,20 @@ public class MainActivity extends BaseActivity {
                                     }
                                 });
                             }
+                        })
+                        .addOnFailureListener(e -> {
+                            if (sosCancelledWhilePending) return;
+                            // Fallback jika query userRooms gagal
+                            FirebaseRoomClient.sendRoomSosQueued("DIRECT", uid, dev, name, id -> {
+                                String sosId = String.valueOf(id == null ? "" : id).trim();
+                                if (sosId.isEmpty()) return;
+                                if (sosCancelledWhilePending) {
+                                    FirebaseRoomClient.cancelRoomSosQueued("DIRECT", sosId, dev);
+                                } else {
+                                    activeSosIds.put("DIRECT", sosId);
+                                    watchSosCaseReservation("DIRECT", sosId);
+                                }
+                            });
                         });
             }
 
@@ -553,6 +580,10 @@ public class MainActivity extends BaseActivity {
             }
         }
         activeSosIds.clear();
+        FirebaseUser cu = FirebaseAuth.getInstance().getCurrentUser();
+        if (cu != null) {
+            FirebaseRoomClient.cancelAllActiveSosForUser(cu.getUid(), dev);
+        }
         if (sosSheet != null) {
             try {
                 sosSheet.cancel();
@@ -635,12 +666,20 @@ public class MainActivity extends BaseActivity {
                 .child(uid)
                 .get()
                 .addOnSuccessListener(snapshot -> {
-                    if (snapshot == null || !snapshot.exists() || isFinishing() || isDestroyed()) return;
-                    for (DataSnapshot child : snapshot.getChildren()) {
-                        if (child == null || child.getKey() == null) continue;
-                        String roomCode = child.getKey().trim().toUpperCase(java.util.Locale.ROOT);
-                        if (roomCode.length() < 4) continue;
+                    if (isFinishing() || isDestroyed()) return;
 
+                    java.util.List<String> roomsToCheck = new java.util.ArrayList<>();
+                    if (snapshot != null && snapshot.exists()) {
+                        for (DataSnapshot child : snapshot.getChildren()) {
+                            if (child == null || child.getKey() == null) continue;
+                            String roomCode = child.getKey().trim().toUpperCase(java.util.Locale.ROOT);
+                            if (roomCode.length() >= 4) roomsToCheck.add(roomCode);
+                        }
+                    }
+                    // Sentiasa semak DIRECT emergency room sekiranya pengguna tiada bilik
+                    roomsToCheck.add("DIRECT");
+
+                    for (String roomCode : roomsToCheck) {
                         FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
                                 .getReference("rooms")
                                 .child(roomCode)
@@ -687,11 +726,14 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    /** Tekan SOS — sheet muncul, onSosStarted akan broadcast ke semua room. */
+    /** Tekan SOS — sheet muncul, onSosStarted akan broadcast ke semua room atau DIRECT fallback. */
     private void triggerSosFlow() {
         if (sosSheet == null) return;
         FirebaseUser cu = FirebaseAuth.getInstance().getCurrentUser();
-        if (cu == null) { showJoinOrCreateRoomDialog(); return; }
+        if (cu == null) {
+            startActivity(new Intent(this, com.example.resqtap.auth.LoginActivity.class));
+            return;
+        }
         sosSheet.show();
     }
 

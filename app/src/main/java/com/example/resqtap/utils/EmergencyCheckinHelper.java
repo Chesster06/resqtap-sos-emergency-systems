@@ -101,11 +101,12 @@ public final class EmergencyCheckinHelper {
     private static void handleDefaultDanger(Activity activity) {
         String code = UserPrefs.getActiveRoomCode(activity);
         FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
-        if (code != null && !code.trim().isEmpty() && u != null) {
+        if (u != null) {
             String dev = UserPrefs.getOrCreateDeviceId(activity);
             String name = UserPrefs.getName(activity);
             if (name == null || name.trim().isEmpty()) name = "User";
-            FirebaseRoomClient.sendRoomSosQueued(code.trim(), u.getUid(), dev, name, null);
+            String targetRoom = (code != null && !code.trim().isEmpty()) ? code.trim() : "DIRECT";
+            FirebaseRoomClient.sendRoomSosQueued(targetRoom, u.getUid(), dev, name, null);
         }
     }
 }

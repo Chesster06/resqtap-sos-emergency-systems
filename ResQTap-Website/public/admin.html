@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=admin-darkmode-v9">
+  <link rel="stylesheet" href="/styles.css?v=admin-clear-db-modal-106">
   <!-- Leaflet.js — open-source map library for Live Map view -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css"/>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
@@ -546,6 +546,10 @@
           <button id="clearHistoryButton" class="secondary-button danger icon-button" type="button">
             <i data-lucide="trash-2" aria-hidden="true"></i>
             <span>Clear Logs</span>
+          </button>
+          <button id="clearDatabaseButton" class="secondary-button danger icon-button" type="button" title="Padam semua rekod pengguna selain akaun rasmi @resqtap">
+            <i data-lucide="database" aria-hidden="true"></i>
+            <span>Clear DB</span>
           </button>
           <button id="themeToggleBtn" class="secondary-button icon-button theme-toggle-btn" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">
             <i data-lucide="moon" id="themeToggleIcon" aria-hidden="true"></i>
@@ -1258,6 +1262,67 @@
     </div>
   </div>
 
+  <!-- Custom Clear Database Confirmation Modal -->
+  <div id="clearDbModal" class="sos-case-modal hidden" aria-modal="true" role="dialog" aria-labelledby="clearDbModalTitle">
+    <div class="sos-case-backdrop" id="clearDbBackdrop"></div>
+    <div class="sos-case-card clear-db-modal-card">
+      <header class="sos-case-header">
+        <div class="sos-case-header-main">
+          <div class="sos-case-badge-pulse clear-db-badge">
+            <i data-lucide="database" aria-hidden="true"></i>
+          </div>
+          <div>
+            <h2 id="clearDbModalTitle" class="sos-case-title">Pembersihan Pangkalan Data</h2>
+            <p class="sos-case-subtitle">Reset rekod ujian selain akaun rasmi @resqtap</p>
+          </div>
+        </div>
+        <button class="sos-case-close-btn" id="clearDbCloseBtn" type="button" aria-label="Tutup dialog">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </header>
+
+      <div class="sos-case-body">
+        <div class="clear-db-alert-banner">
+          <i data-lucide="alert-triangle" aria-hidden="true"></i>
+          <div>
+            <strong>Amaran Penting: Tindakan ini tidak boleh dikembalikan!</strong>
+            <p>Operasi ini akan memadam data ujian secara menyeluruh dari Realtime Database & Firebase Authentication.</p>
+          </div>
+        </div>
+
+        <div class="clear-db-breakdown">
+          <div class="clear-db-item">
+            <div class="clear-db-item-icon trash">
+              <i data-lucide="trash-2" aria-hidden="true"></i>
+            </div>
+            <div class="clear-db-item-text">
+              <strong>Dipadam Sepenuhnya (Selain @resqtap):</strong>
+              <p>Profil pengguna, bilik & panggilan, sejarah SOS, sembang sokongan/AI, koordinat GPS, dan akaun Firebase Auth.</p>
+            </div>
+          </div>
+
+          <div class="clear-db-item">
+            <div class="clear-db-item-icon shield">
+              <i data-lucide="shield-check" aria-hidden="true"></i>
+            </div>
+            <div class="clear-db-item-text">
+              <strong>Dikekalkan Selamat (Dilindungi):</strong>
+              <p>Semua akaun admin/staf berdomain <code>@resqtap</code> (seperti <em>chesster@resqtap.com</em>) akan kekal selamat.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="sos-case-footer">
+        <button class="secondary-button" id="clearDbCancelBtn" type="button">Batal</button>
+        <button class="clear-db-btn-danger" id="clearDbConfirmBtn" type="button">
+          <i data-lucide="trash-2" aria-hidden="true"></i>
+          <span id="clearDbConfirmText">Sahkan & Bersihkan</span>
+        </button>
+      </footer>
+    </div>
+  </div>
+
   <!-- Floating Incoming SOS Call Alert for Admin -->
   <div id="adminIncomingCallAlert" class="admin-call-alert hidden" role="alert" aria-live="assertive">
     <div class="admin-call-alert-content">
@@ -1282,7 +1347,7 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js?v=admin-sos-livechat-104"></script>
+  <script type="module" src="/app.js?v=admin-clear-db-modal-106"></script>
 </body>
 </html>
 

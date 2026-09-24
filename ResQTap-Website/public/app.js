@@ -112,6 +112,7 @@ const els = {
   dashboardRangeSelect: document.getElementById("dashboardRangeSelect"),
   exportButton: document.getElementById("exportButton"),
   clearHistoryButton: document.getElementById("clearHistoryButton"),
+  clearDatabaseButton: document.getElementById("clearDatabaseButton"),
   metricGrid: document.getElementById("metricGrid"),
   usageChart: document.getElementById("usageChart"),
   featureChart: document.getElementById("featureChart"),
@@ -1265,6 +1266,7 @@ function getRoomMembers(room) {
 function getRooms() {
   return entries(state.rooms)
     .filter(([code, roomValue]) => {
+      if (code === "DIRECT" || code === "GLOBAL") return false;
       if (state.roomTombstones && state.roomTombstones[code]) return false;
       const room = asRecord(roomValue);
       if (!room || !Object.keys(room).length) return false;
@@ -2631,7 +2633,8 @@ function updateSosAlarmSystem() {
   const btnView = document.getElementById("sosAlarmBtnView");
 
   if (subtitleEl) {
-    subtitleEl.textContent = `${latestAlert.senderName || "User"} in Room ${latestAlert.roomId || "-"}`;
+    const roomTxt = latestAlert.roomId === "DIRECT" ? "Direct SOS (No Room)" : `Room ${latestAlert.roomId || "-"}`;
+    subtitleEl.textContent = `${latestAlert.senderName || "User"} • ${roomTxt}`;
   }
   if (timerEl) {
     timerEl.textContent = `${remainingSec}s`;
@@ -2925,10 +2928,13 @@ function renderSos() {
     const label = alert.active ? (alert.stale ? "Stale" : "Active") : (isResolved ? "Resolved" : "Cancelled");
     const tone = alert.active ? (alert.stale ? "warn" : "alert") : (isResolved ? "good" : "neutral");
     const canCancel = alert.source === "room" && alert.active && !isResolved;
+    const roomBadge = alert.roomId === "DIRECT"
+      ? '<span class="pill-badge pill-neutral">Direct (No Room)</span>'
+      : escapeHtml(alert.roomId || "-");
     return `
       <tr>
         <td>${pill(label, tone)}</td>
-        <td>${escapeHtml(alert.roomId || "-")}</td>
+        <td>${roomBadge}</td>
         <td>
           <div class="cell-main">
             <strong>${escapeHtml(alert.senderName || "Unknown")}</strong>
@@ -3139,7 +3145,7 @@ function getSosLivechatSessions() {
       s.allRooms = [s.roomId];
       s.allAlerts = [{ roomId: s.roomId, alertId: s.alertId }];
       s.allSessionIds = [s.sessionId];
-      s.roomDisplay = s.roomId;
+      s.roomDisplay = s.roomId === "DIRECT" ? "Direct SOS" : s.roomId;
       finalSessions.push(s);
       return;
     }
@@ -3292,7 +3298,10 @@ function renderSosLivechat() {
     els.soslivechatSelectedTitle.textContent = `SOS: ${selectedSession.senderName || "Mangsa"}`;
   }
   if (els.soslivechatSelectedSubtitle) {
-    els.soslivechatSelectedSubtitle.textContent = `Created ${formatDate(selectedSession.createdAt)}`;
+    const roomSub = (selectedSession.roomId === "DIRECT" || selectedSession.roomDisplay === "Direct SOS")
+      ? "Direct Emergency (No Room)"
+      : (selectedSession.roomDisplay ? `Room ${selectedSession.roomDisplay}` : "");
+    els.soslivechatSelectedSubtitle.textContent = `${roomSub ? `${roomSub} • ` : ""}Created ${formatDate(selectedSession.createdAt)}`;
   }
 
   if (els.soslivechatCallVideoBtn) {
@@ -4045,7 +4054,7 @@ function renderSosDetail(roomId, alertId) {
   const body = `
     <section class="detail-section">
       ${kv("Alert ID", alert.id)}
-      ${kv("Room", alert.roomId)}
+      ${kv("Room", alert.roomId === "DIRECT" ? "Direct SOS (No Room)" : alert.roomId)}
       ${kv("Source", alert.source)}
       ${kv("Status", label)}
       ${kv("Created", formatDate(alert.createdAt))}
@@ -4056,13 +4065,14 @@ function renderSosDetail(roomId, alertId) {
     </section>
     <section class="detail-section">
       ${isCaseActive ? `<button class="primary-button icon-button" data-action="manage-sos-case" data-room="${escapeHtml(alert.roomId)}" data-alert="${escapeHtml(alert.key)}" data-uid="${escapeHtml(alert.senderUid)}" data-name="${escapeHtml(alert.senderName || "Sender")}" type="button">${icon("shield-alert")}<span>${isCurrentlyServed ? "Update Case" : "Reserve Case"}</span></button>` : ""}
-      <button class="secondary-button icon-button" data-action="view-room" data-room="${escapeHtml(alert.roomId)}" type="button">${icon("external-link")}<span>Open room</span></button>
+      ${alert.roomId !== "DIRECT" ? `<button class="secondary-button icon-button" data-action="view-room" data-room="${escapeHtml(alert.roomId)}" type="button">${icon("external-link")}<span>Open room</span></button>` : ""}
       ${alert.senderUid ? `<button class="secondary-button icon-button" data-action="view-user" data-uid="${escapeHtml(alert.senderUid)}" data-force-profile="true" type="button">${icon("user-round")}<span>Profile View</span></button>` : ""}
       ${canCancel ? `<button class="secondary-button danger icon-button" data-action="cancel-sos" data-room="${escapeHtml(alert.roomId)}" data-alert="${escapeHtml(alert.key)}" type="button">${icon("circle-x")}<span>Cancel SOS</span></button>` : ""}
     </section>
   `;
   const senderAvatar = alert.senderUid ? avatarHtml(senderUser, alert.senderUid) : "";
-  detailShell(alert.senderName || alert.senderUid || "SOS Alert", `${alert.roomId || "-"} - ${label}`, body, senderAvatar);
+  const roomTitle = alert.roomId === "DIRECT" ? "Direct SOS (No Room)" : (alert.roomId || "-");
+  detailShell(alert.senderName || alert.senderUid || "SOS Alert", `${roomTitle} - ${label}`, body, senderAvatar);
 }
 
 function renderReportDetail(reportKey) {
@@ -4733,7 +4743,7 @@ function openCaseModal(roomId, alertId, senderUid, senderName) {
   const roomBtn = document.getElementById("caseRoomBtn");
 
   if (title) title.textContent = `SOS: ${senderName || "User"}`;
-  if (sub) sub.textContent = `Room ${roomId || "-"} • Active Emergency Case`;
+  if (sub) sub.textContent = `${roomId === "DIRECT" ? "Direct SOS (No Room)" : `Room ${roomId || "-"}`} • Active Emergency Case`;
   if (notesInput) notesInput.value = "Emergency assistance is assigned and responders have been notified.";
 
   // Reset steps
@@ -4754,11 +4764,16 @@ function openCaseModal(roomId, alertId, senderUid, senderName) {
     };
   }
   if (roomBtn) {
-    roomBtn.onclick = () => {
-      state.selected = { type: "room", id: roomId };
-      closeCaseModal();
-      render();
-    };
+    if (roomId === "DIRECT") {
+      roomBtn.style.display = "none";
+    } else {
+      roomBtn.style.display = "";
+      roomBtn.onclick = () => {
+        state.selected = { type: "room", id: roomId };
+        closeCaseModal();
+        render();
+      };
+    }
   }
 
   modal.classList.remove("hidden");
@@ -5199,7 +5214,31 @@ async function deleteReport(reportId) {
     return;
   }
   if (!window.confirm(`Delete report ${reportId}?`)) return;
+  let rep = state.incidentReports && state.incidentReports[reportId];
+  if (!rep) {
+    try {
+      const snap = await get(ref(db, `incidentReports/${reportId}`));
+      if (snap && snap.exists()) rep = snap.val();
+    } catch (_) {}
+  }
+  const senderUid = rep ? (rep.senderUid || rep.userId || rep.uid) : null;
   await remove(ref(db, `incidentReports/${reportId}`));
+  if (senderUid && validPathSegment(senderUid)) {
+    try {
+      await remove(ref(db, `users/${senderUid}/lastIncidentReportId`));
+    } catch (e) {
+      console.warn("Could not remove user lastIncidentReportId:", e);
+    }
+  }
+  if (state.users) {
+    for (const [uid, userVal] of Object.entries(state.users)) {
+      if (userVal && userVal.lastIncidentReportId === reportId) {
+        try {
+          await remove(ref(db, `users/${uid}/lastIncidentReportId`));
+        } catch (_) {}
+      }
+    }
+  }
   if (state.selected && state.selected.type === "report" && state.selected.id === reportId) {
     state.selected = null;
   }
@@ -5265,6 +5304,165 @@ async function clearHistory() {
   state.selected = null;
   state.notificationPage = 1;
   showToast("History cleared.");
+}
+
+function openClearDbModal() {
+  if (!state.currentUser) {
+    showToast("Log masuk sebagai Admin diperlukan.");
+    return;
+  }
+  const modal = document.getElementById("clearDbModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+}
+
+function closeClearDbModal() {
+  const modal = document.getElementById("clearDbModal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+}
+
+async function executeClearDatabase() {
+  const confirmBtn = document.getElementById("clearDbConfirmBtn");
+  const cancelBtn = document.getElementById("clearDbCancelBtn");
+  const closeBtn = document.getElementById("clearDbCloseBtn");
+  const originalConfirmHtml = confirmBtn ? confirmBtn.innerHTML : "";
+
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = `<i data-lucide="loader-2" class="spin" aria-hidden="true"></i><span>Membersihkan...</span>`;
+    if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+  }
+  if (cancelBtn) cancelBtn.disabled = true;
+  if (closeBtn) closeBtn.disabled = true;
+
+  try {
+    let apiSuccess = false;
+    let apiData = null;
+
+    // 1. Cuba panggil endpoint backend server.js terlebih dahulu (untuk padam RTDB & Auth sekali gus)
+    try {
+      const res = await fetch("/api/admin/clear-database", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      if (res.ok) {
+        apiData = await res.json();
+        apiSuccess = true;
+      }
+    } catch (fetchErr) {
+      console.warn("Backend server API not reachable, falling back to client-side RTDB cleanup:", fetchErr);
+    }
+
+    if (apiSuccess && apiData) {
+      closeClearDbModal();
+      showToast(apiData.message || `Database dibersihkan (${apiData.deleteCount || 0} akaun dipadam).`);
+      return;
+    }
+
+    // 2. Client-side Fallback (jika diakses terus via Firebase Hosting / static host)
+    const users = state.users || {};
+    const deleteUids = new Set();
+    const resqtapUids = new Set();
+
+    entries(users).forEach(([uid, u]) => {
+      const email = text(u && u.email).trim().toLowerCase();
+      if (email.includes("@resqtap")) {
+        resqtapUids.add(uid);
+      } else {
+        deleteUids.add(uid);
+      }
+    });
+
+    if (deleteUids.size === 0) {
+      closeClearDbModal();
+      showToast("Tiada akaun selain @resqtap untuk dipadam. Pangkalan data sudah bersih.");
+      return;
+    }
+
+    const updates = {};
+    const userNodes = [
+      "users", "admins", "supportChats", "aiChats",
+      "userNotifications", "notifications",
+      "sos_history", "sos_alerts", "sos_status",
+      "live_locations", "userFriends", "friendRequests",
+      "sentRequests", "userRooms", "userCalls"
+    ];
+
+    deleteUids.forEach((uid) => {
+      userNodes.forEach((node) => {
+        updates[`${node}/${uid}`] = null;
+      });
+      updates[`admin_user_deletions/${uid}`] = {
+        deletedBy: state.currentUser.uid,
+        deletedAt: serverTimestamp()
+      };
+    });
+
+    // registeredEmails
+    entries(state.registeredEmails || {}).forEach(([key]) => {
+      const decoded = key.replace(/_at_/g, "@").replace(/_/g, ".");
+      if (!decoded.toLowerCase().includes("@resqtap")) {
+        updates[`registeredEmails/${key}`] = null;
+      }
+    });
+
+    // publicIds
+    entries(state.publicIds || {}).forEach(([pid, val]) => {
+      const targetUid = typeof val === "string" ? val : (val && val.uid ? val.uid : "");
+      if (deleteUids.has(targetUid) || !resqtapUids.has(targetUid)) {
+        updates[`publicIds/${pid}`] = null;
+      }
+    });
+
+    // Rooms
+    entries(state.rooms || {}).forEach(([roomId, room]) => {
+      const r = asRecord(room);
+      const creatorUid = text(r.creatorUid).trim();
+      if (deleteUids.has(creatorUid)) {
+        updates[`rooms/${roomId}`] = null;
+      } else {
+        deleteUids.forEach((uid) => {
+          if (asRecord(r.members)[uid]) {
+            updates[`rooms/${roomId}/members/${uid}`] = null;
+          }
+          if (asRecord(r.bells)[uid]) {
+            updates[`rooms/${roomId}/bells/${uid}`] = null;
+          }
+        });
+      }
+    });
+
+    // Calls
+    entries(state.calls || {}).forEach(([callId, c]) => {
+      if (c && (deleteUids.has(c.callerUid) || deleteUids.has(c.calleeUid))) {
+        updates[`calls/${callId}`] = null;
+      }
+    });
+
+    // Reports
+    entries(state.reports || {}).forEach(([reportId, rep]) => {
+      if (rep && deleteUids.has(rep.senderUid)) {
+        updates[`incidentReports/${reportId}`] = null;
+      }
+    });
+
+    await update(ref(db), updates);
+    closeClearDbModal();
+    showToast(`Database dibersihkan! ${deleteUids.size} akaun selain @resqtap telah dipadam.`);
+  } catch (err) {
+    console.error("Gagal membersihkan database:", err);
+    showToast("Gagal membersihkan database: " + (err.message || err));
+  } finally {
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = originalConfirmHtml;
+      if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
+    }
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (closeBtn) closeBtn.disabled = false;
+  }
 }
 
 function handleAction(button) {
@@ -5661,6 +5859,32 @@ function bindEvents() {
       });
     });
   }
+  if (els.clearDatabaseButton) {
+    els.clearDatabaseButton.addEventListener("click", openClearDbModal);
+  }
+
+  const clearDbBackdrop = document.getElementById("clearDbBackdrop");
+  const clearDbCloseBtn = document.getElementById("clearDbCloseBtn");
+  const clearDbCancelBtn = document.getElementById("clearDbCancelBtn");
+  const clearDbConfirmBtn = document.getElementById("clearDbConfirmBtn");
+
+  if (clearDbBackdrop) clearDbBackdrop.addEventListener("click", closeClearDbModal);
+  if (clearDbCloseBtn) clearDbCloseBtn.addEventListener("click", closeClearDbModal);
+  if (clearDbCancelBtn) clearDbCancelBtn.addEventListener("click", closeClearDbModal);
+  if (clearDbConfirmBtn) {
+    clearDbConfirmBtn.addEventListener("click", () => {
+      executeClearDatabase().catch((error) => {
+        console.error(error);
+        showToast(error.message || "Gagal membersihkan database.");
+      });
+    });
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeClearDbModal();
+    }
+  });
 
   if (els.grantAdminForm) {
     els.grantAdminForm.addEventListener("submit", (event) => {

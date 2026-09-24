@@ -27,6 +27,49 @@ const server = http.createServer((req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   let pathname = decodeURIComponent(urlObj.pathname);
 
+  // Handle CORS Preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    });
+    res.end();
+    return;
+  }
+
+  // Admin API: Reset / Clear Database for non-@resqtap accounts
+  if (pathname === '/api/admin/clear-database' || pathname === '/api/admin/reset-database') {
+    if (req.method !== 'POST') {
+      res.writeHead(405, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ error: 'Method Not Allowed' }));
+      return;
+    }
+
+    (async () => {
+      try {
+        console.log('[SERVER API] Received request to clear database for non-@resqtap accounts...');
+        const cleanupScriptPath = path.join(__dirname, '..', 'cleanup_rtdb.js');
+        delete require.cache[require.resolve(cleanupScriptPath)];
+        const { resetDatabaseAccounts } = require(cleanupScriptPath);
+        const result = await resetDatabaseAccounts();
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        console.error('[SERVER API] Clear database error:', err);
+        res.writeHead(500, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({ success: false, error: err.message || 'Internal server error' }));
+      }
+    })();
+    return;
+  }
+
   // Rewrites matching serve.json & firebase.json
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
     pathname = '/admin.html';

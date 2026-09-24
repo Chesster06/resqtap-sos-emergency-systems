@@ -1,14 +1,21 @@
-const admin = require("firebase-admin");
+let admin;
+try {
+  admin = require("firebase-admin");
+} catch (e) {
+  admin = require("./firebase-functions/node_modules/firebase-admin");
+}
 const serviceAccount = require("C:\\Users\\Administrator\\Downloads\\resqtap-b9ff5-firebase-adminsdk-fbsvc-012665cfc9.json");
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://resqtap-b9ff5-default-rtdb.firebaseio.com"
-});
+if (!admin.apps || admin.apps.length === 0) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://resqtap-b9ff5-default-rtdb.firebaseio.com"
+  });
+}
 
 const db = admin.database();
 
-async function main() {
+async function resetDatabaseAccounts() {
   console.log("==================================================");
   console.log("   RESET DATABASE ACCOUNT SELAIN @RESQTAP");
   console.log("==================================================");
@@ -54,7 +61,14 @@ async function main() {
 
   if (deleteUids.size === 0 && deleteEmails.size === 0) {
     console.log("Tiada akaun selain @resqtap untuk dipadam.");
-    process.exit(0);
+    return {
+      success: true,
+      keepCount: resqtapUids.size,
+      deleteCount: 0,
+      deletedUids: [],
+      deletedEmails: [],
+      message: "Tiada akaun selain @resqtap untuk dipadam. Pangkalan data sudah bersih."
+    };
   }
 
   const updates = {};
@@ -199,6 +213,15 @@ async function main() {
             }
           }
         }
+        // Clean sosAlerts within the room sent by deleted users
+        if (room.sosAlerts && typeof room.sosAlerts === "object") {
+          for (const [alertId, alert] of Object.entries(room.sosAlerts)) {
+            if (alert && (deleteUids.has(alert.fromUid) || deleteUids.has(alert.senderUid))) {
+              console.log(`- Remove sosAlert ${alertId} by ${alert.fromUid || alert.senderUid} from room ${roomId}`);
+              updates[`rooms/${roomId}/sosAlerts/${alertId}`] = null;
+            }
+          }
+        }
       }
     }
   }
@@ -210,6 +233,17 @@ async function main() {
       if (report && deleteUids.has(report.senderUid)) {
         console.log(`- Remove incidentReport ${reportId} by ${report.senderUid}`);
         updates[`incidentReports/${reportId}`] = null;
+      }
+    }
+  }
+
+  // 8. Clean calls associated with deleted UIDs
+  const callsSnap = await db.ref("calls").once("value");
+  if (callsSnap.exists()) {
+    for (const [callId, callData] of Object.entries(callsSnap.val() || {})) {
+      if (callData && (deleteUids.has(callData.callerUid) || deleteUids.has(callData.calleeUid))) {
+        console.log(`- Remove call ${callId}`);
+        updates[`calls/${callId}`] = null;
       }
     }
   }
@@ -240,9 +274,27 @@ async function main() {
   console.log("   RESET SELESAI! SEMUA AKAUN SELAIN @RESQTAP");
   console.log("   TELAH DIPADAM SEPENUHNYA DARI DATABASE & AUTH.");
   console.log("==================================================");
+
+  return {
+    success: true,
+    keepCount: resqtapUids.size,
+    deleteCount: deleteUids.size,
+    deletedUids: Array.from(deleteUids),
+    deletedEmails: Array.from(deleteEmails),
+    message: `Reset selesai! ${deleteUids.size} akaun selain @resqtap telah dipadam sepenuhnya dari Database & Auth.`
+  };
 }
 
-main().catch(err => {
-  console.error("FATAL ERROR:", err);
-  process.exit(1);
-});
+if (require.main === module) {
+  resetDatabaseAccounts()
+    .then((res) => {
+      console.log(res.message);
+      process.exit(0);
+    })
+    .catch(err => {
+      console.error("FATAL ERROR:", err);
+      process.exit(1);
+    });
+}
+
+module.exports = { resetDatabaseAccounts };
