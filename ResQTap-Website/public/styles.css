@@ -648,6 +648,8 @@ code {
 
 .nav-button[data-view="sos"]:hover,
 .nav-button[data-view="sos"].is-active,
+.nav-button[data-view="soslivechat"]:hover,
+.nav-button[data-view="soslivechat"].is-active,
 .nav-button[data-view="livemap"]:hover,
 .nav-button[data-view="livemap"].is-active {
   background: #FFF1F2;
@@ -656,6 +658,8 @@ code {
 }
 .nav-button[data-view="sos"].is-active svg,
 .nav-button[data-view="sos"]:hover svg,
+.nav-button[data-view="soslivechat"].is-active svg,
+.nav-button[data-view="soslivechat"]:hover svg,
 .nav-button[data-view="livemap"].is-active svg,
 .nav-button[data-view="livemap"]:hover svg { color: #E11D48; }
 
@@ -7424,6 +7428,8 @@ body.dark-mode .nav-button[data-view="rooms"]:hover svg { color: #38BDF8 !import
 
 body.dark-mode .nav-button[data-view="sos"].is-active,
 body.dark-mode .nav-button[data-view="sos"]:hover,
+body.dark-mode .nav-button[data-view="soslivechat"].is-active,
+body.dark-mode .nav-button[data-view="soslivechat"]:hover,
 body.dark-mode .nav-button[data-view="livemap"].is-active,
 body.dark-mode .nav-button[data-view="livemap"]:hover {
   background: rgba(225, 29, 72, 0.18) !important;
@@ -7432,6 +7438,8 @@ body.dark-mode .nav-button[data-view="livemap"]:hover {
 }
 body.dark-mode .nav-button[data-view="sos"].is-active svg,
 body.dark-mode .nav-button[data-view="sos"]:hover svg,
+body.dark-mode .nav-button[data-view="soslivechat"].is-active svg,
+body.dark-mode .nav-button[data-view="soslivechat"]:hover svg,
 body.dark-mode .nav-button[data-view="livemap"].is-active svg,
 body.dark-mode .nav-button[data-view="livemap"]:hover svg { color: #FB7185 !important; }
 
@@ -8879,6 +8887,83 @@ body.dark-mode .sos-thread-search-wrap input {
   background: #111827 !important;
   border-color: #374151 !important;
   color: #F9FAFB !important;
+}
+
+/* SOS Livechat Thread items */
+.sos-livechat-panel .livechat-thread {
+  border: 1px solid var(--border, #e2e8f0);
+  background: #ffffff;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.sos-livechat-panel .livechat-thread:hover,
+body.admin-site-active:not(.dark-mode) .sos-livechat-panel .livechat-thread:hover {
+  background: #FFF5F6 !important;
+  border-color: #FECDD3 !important;
+  box-shadow: 0 4px 12px rgba(225, 29, 72, 0.08) !important;
+}
+
+.sos-livechat-panel .livechat-thread.is-active,
+body.admin-site-active:not(.dark-mode) .sos-livechat-panel .livechat-thread.is-active {
+  background: #FFF1F2 !important;
+  border-color: #FB7185 !important;
+  box-shadow: 0 4px 16px rgba(225, 29, 72, 0.16) !important;
+}
+
+.sos-livechat-panel .livechat-thread.is-active::before,
+body.admin-site-active:not(.dark-mode) .sos-livechat-panel .livechat-thread.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #E11D48 !important;
+}
+
+.sos-livechat-panel .livechat-thread.is-active .livechat-thread-head strong,
+body.admin-site-active:not(.dark-mode) .sos-livechat-panel .livechat-thread.is-active .livechat-thread-head strong {
+  color: #9F1239 !important;
+}
+
+/* Dark mode SOS livechat thread */
+body.dark-mode .sos-livechat-panel .livechat-thread,
+body.dark-mode.admin-site-active .sos-livechat-panel .livechat-thread {
+  background: #111827 !important;
+  border-color: #1F2937 !important;
+  color: #F9FAFB !important;
+}
+
+body.dark-mode .sos-livechat-panel .livechat-thread:hover,
+body.dark-mode.admin-site-active .sos-livechat-panel .livechat-thread:hover {
+  background: rgba(225, 29, 72, 0.1) !important;
+  border-color: rgba(225, 29, 72, 0.35) !important;
+}
+
+body.dark-mode .sos-livechat-panel .livechat-thread.is-active,
+body.dark-mode.admin-site-active .sos-livechat-panel .livechat-thread.is-active {
+  background: rgba(225, 29, 72, 0.22) !important;
+  border-color: #E11D48 !important;
+  box-shadow: 0 4px 18px rgba(225, 29, 72, 0.3) !important;
+}
+
+body.dark-mode .sos-livechat-panel .livechat-thread.is-active::before,
+body.dark-mode.admin-site-active .sos-livechat-panel .livechat-thread.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #FB7185 !important;
+}
+
+body.dark-mode .sos-livechat-panel .livechat-thread.is-active .livechat-thread-head strong,
+body.dark-mode.admin-site-active .sos-livechat-panel .livechat-thread.is-active .livechat-thread-head strong {
+  color: #FFE4E6 !important;
 }
 
 /* ==========================================================================
