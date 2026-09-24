@@ -49,6 +49,7 @@ public class ResQTapApp extends Application {
 
         ThemeUtils.applySavedNightMode(this);
         com.example.resqtap.security.AppLockManager.init(this);
+        com.example.resqtap.security.AccountSessionWatcher.init(this);
         try {
 
 

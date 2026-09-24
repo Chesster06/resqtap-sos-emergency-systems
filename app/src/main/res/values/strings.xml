@@ -1120,4 +1120,5 @@ Terms Version: 1.0</string>
     <string name="friend_nickname_real_name_format">%1$s#%2$s • Friend</string>
     <string name="friend_nickname_updated">Nickname updated</string>
     <string name="friend_edit_nickname_desc">Edit private nickname</string>
+    <string name="account_deleted_notice">Your session has expired or your account was removed by administrator.</string>
 </resources>

@@ -59,21 +59,9 @@ async function resetDatabaseAccounts() {
 
   console.log(`\nSummary: Keep ${resqtapUids.size} account(s), Delete ${deleteUids.size} account(s)\n`);
 
-  if (deleteUids.size === 0 && deleteEmails.size === 0) {
-    console.log("Tiada akaun selain @resqtap untuk dipadam.");
-    return {
-      success: true,
-      keepCount: resqtapUids.size,
-      deleteCount: 0,
-      deletedUids: [],
-      deletedEmails: [],
-      message: "Tiada akaun selain @resqtap untuk dipadam. Pangkalan data sudah bersih."
-    };
-  }
-
   const updates = {};
 
-  // 2. Clear registeredEmails
+  // 2. Clear registeredEmails (Always check and remove non-@resqtap orphan emails)
   const emailsSnap = await db.ref("registeredEmails").once("value");
   if (emailsSnap.exists()) {
     for (const [key, val] of Object.entries(emailsSnap.val() || {})) {

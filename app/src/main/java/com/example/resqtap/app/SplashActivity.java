@@ -70,30 +70,57 @@ public class SplashActivity extends BaseActivity {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             com.google.firebase.auth.FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
             if (current != null) {
-                // If local profile is already complete, enter MainActivity immediately
-                if (UserPrefs.isPersonalInfoComplete(this)) {
-                    launchMain();
-                    return;
-                }
+                // Sahkan status akaun secara langsung dengan Firebase Auth (contoh: jika admin bersihkan DB dari website)
+                current.reload().addOnCompleteListener(task -> {
+                    if (isFinishing() || isDestroyed()) return;
 
-                // If local prefs are incomplete or fresh install, attempt to load from RTDB
-                com.google.firebase.database.FirebaseDatabase.getInstance(com.example.resqtap.room.FirebaseRoomClient.DATABASE_URL)
-                        .getReference("users")
-                        .child(current.getUid())
-                        .get()
-                        .addOnSuccessListener(snapshot -> {
-                            if (isFinishing() || isDestroyed()) return;
-                            if (snapshot != null && snapshot.exists()) {
-                                UserPrefs.applyUserSnapshot(SplashActivity.this, snapshot);
-                            }
-                            // Always allow authenticated user into MainActivity!
-                            launchMain();
-                        })
-                        .addOnFailureListener(e -> {
-                            if (isFinishing() || isDestroyed()) return;
-                            // Offline or network lag: still let authenticated user access MainActivity
-                            launchMain();
-                        });
+                    if (!task.isSuccessful() && task.getException() instanceof com.google.firebase.auth.FirebaseAuthInvalidUserException) {
+                        // Akaun telah dipadam pada pelayan; bersihkan cache tempatan dan bawa ke LoginActivity
+                        FirebaseAuth.getInstance().signOut();
+                        UserPrefs.clearAccountData(SplashActivity.this);
+                        Intent i = new Intent(SplashActivity.this, LoginActivity.class);
+                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(i);
+                        try {
+                            overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+                        } catch (Exception ignored) {}
+                        finish();
+                        return;
+                    }
+
+                    // Semak juga jika node users/{uid} telah dibersihkan di RTDB
+                    com.google.firebase.database.FirebaseDatabase.getInstance(com.example.resqtap.room.FirebaseRoomClient.DATABASE_URL)
+                            .getReference("users")
+                            .child(current.getUid())
+                            .get()
+                            .addOnCompleteListener(dbTask -> {
+                                if (isFinishing() || isDestroyed()) return;
+
+                                if (dbTask.isSuccessful() && dbTask.getResult() != null && !dbTask.getResult().exists()) {
+                                    // Akaun telah dipadam di cloud RTDB (contoh: Clear DB)
+                                    FirebaseAuth.getInstance().signOut();
+                                    UserPrefs.clearAccountData(SplashActivity.this);
+                                    Intent i = new Intent(SplashActivity.this, LoginActivity.class);
+                                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                    startActivity(i);
+                                    try {
+                                        overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+                                    } catch (Exception ignored) {}
+                                    finish();
+                                    return;
+                                }
+
+                                if (dbTask.isSuccessful() && dbTask.getResult() != null && dbTask.getResult().exists()) {
+                                    UserPrefs.applyUserSnapshot(SplashActivity.this, dbTask.getResult());
+                                }
+
+                                if (UserPrefs.isPersonalInfoComplete(SplashActivity.this)) {
+                                    launchMain();
+                                } else {
+                                    launchMain();
+                                }
+                            });
+                });
             } else {
                 Intent i = new Intent(SplashActivity.this, GetStartedActivity.class);
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

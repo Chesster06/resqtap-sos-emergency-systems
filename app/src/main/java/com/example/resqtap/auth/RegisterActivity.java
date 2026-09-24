@@ -1137,11 +1137,33 @@ public class RegisterActivity extends BaseActivity {
 
             boolean dbExists = snapshot != null && snapshot.exists() && Boolean.TRUE.equals(snapshot.getValue(Boolean.class));
             if (dbExists) {
-                emailAvailable = false;
-                emailLayout.setError(getString(R.string.toast_email_already_exists));
-                emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
-                emailLayout.setEndIconTintList(null);
-                btnCreate.setEnabled(false);
+                // Sahkan dengan Firebase Auth secara langsung untuk elak sekatan akibat cache basi
+                FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(task -> {
+                    TextInputEditText innerEditText = findViewById(R.id.input_email);
+                    String innerInput = innerEditText != null && innerEditText.getText() != null ? innerEditText.getText().toString().trim().toLowerCase(java.util.Locale.ROOT) : "";
+                    if (!query.equals(innerInput)) return;
+
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        java.util.List<String> methods = task.getResult().getSignInMethods();
+                        if (methods != null && methods.isEmpty()) {
+                            // Akaun sudah tiada dalam Auth; rekod RTDB ini hanyalah cache basi / yatim
+                            try { ref.removeValue(); } catch (Exception ignored) {}
+                            emailAvailable = true;
+                            emailLayout.setError(null); emailLayout.setErrorEnabled(false);
+                            emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
+                            emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.success_green)));
+                            btnCreate.setEnabled(true);
+                            return;
+                        }
+                    }
+
+                    // Sahkan ada akaun di Auth atau ralat semakan auth
+                    emailAvailable = false;
+                    emailLayout.setError(getString(R.string.toast_email_already_exists));
+                    emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
+                    emailLayout.setEndIconTintList(null);
+                    btnCreate.setEnabled(false);
+                });
             } else {
                 FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(task -> {
                     TextInputEditText innerEditText = findViewById(R.id.input_email);

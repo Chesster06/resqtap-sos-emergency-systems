@@ -913,5 +913,6 @@
     <string name="friend_nickname_real_name_format">%1$s#%2$s • Rakan</string>
     <string name="friend_nickname_updated">Nama panggilan dikemaskini</string>
     <string name="friend_edit_nickname_desc">Ubah nama panggilan peribadi</string>
+    <string name="account_deleted_notice">Sesi anda telah tamat atau akaun telah dipadam oleh pentadbir.</string>
 </resources>
 

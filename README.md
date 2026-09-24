@@ -1,6 +1,6 @@
 # ResQTap (OneTapSOS)
 
-> **ResQTap** is a personal emergency SOS and rapid response ecosystem featuring an Android mobile application, Wear OS companion app, and Firebase real-time cloud infrastructure. Designed to provide swift, reliable assistance during critical situations.
+> **ResQTap** is a personal emergency SOS and rapid response ecosystem featuring an Android mobile application and Firebase real-time cloud infrastructure. Designed to provide swift, reliable assistance during critical situations.
 
 ---
 
@@ -8,7 +8,6 @@
 
 ### Emergency SOS and Alerts
 - **One-Tap Instant SOS**: Trigger high-priority emergency alerts immediately with a single tap.
-- **Wear OS Smartwatch Companion**: Activate SOS directly from your wrist via the companion Wear OS watch app.
 - **Automated Contact Dispatch**: Instantly notify designated emergency contacts with predefined messages and alert statuses.
 
 ### Real-Time Geolocation and Navigation
@@ -40,7 +39,6 @@
 | Component | Technology | Description |
 |---|---|---|
 | **Mobile Client** | Android (Java / Kotlin) | Native Android application (Min SDK 24, Target SDK 36) |
-| **Wearable** | Wear OS | Smartwatch companion app for quick wrist-trigger SOS |
 | **Backend and Cloud** | Firebase Platform | Authentication, Realtime Database, Cloud Storage and FCM |
 | **Maps and Location** | Google Play Services | Maps SDK and Fused Location Provider |
 | **Build System** | Gradle (Kotlin DSL) | Android Gradle Plugin 9.x |

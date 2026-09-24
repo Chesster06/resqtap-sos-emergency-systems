@@ -88,12 +88,10 @@ import java.util.concurrent.Executors;
 
 /**
  * ChatActivity
- * AI Assistant Chat: sambung ke Cloud Function (OpenRouter / GPT-4o-mini) untuk jawab soalan keselamatan & kecemasan.
+ * Pembantu keselamatan & kecemasan ResQTap (FAQ & Meja Bantuan).
  */
 public class ChatActivity extends BaseActivity {
     private static final String TAG = "ResQTapAiChat";
-    private static final String CHAT_FUNCTION_URL = "https://asia-southeast1-resqtap-b9ff5.cloudfunctions.net/openRouterChat";
-    private static final int MAX_CONTEXT_MESSAGES = 12;
     private static final long AI_TYPING_DELAY_MS = 1000L;
     private static final long TYPING_DOT_INTERVAL_MS = 420L;
     private static final long TYPEWRITER_INTERVAL_MS = 22L;
@@ -1530,7 +1528,7 @@ public class ChatActivity extends BaseActivity {
         chatMessage.put("text", safe(text));
         chatMessage.put("createdAt", ServerValue.TIMESTAMP);
         chatMessage.put("clientAt", System.currentTimeMillis());
-        chatMessage.put("source", safe(source).isEmpty() ? "openrouter" : safe(source));
+        chatMessage.put("source", safe(source).isEmpty() ? "assistant" : safe(source));
 
         Map<String, Object> updates = baseChatMetaUpdates(user);
         updates.put("messages/" + messageId, chatMessage);
@@ -1886,103 +1884,6 @@ public class ChatActivity extends BaseActivity {
             if (value.contains(needle)) return true;
         }
         return false;
-    }
-
-    /** Fungsi untuk buildChatRequestBody. */
-    private String buildChatRequestBody(String clientMessageId) {
-        try {
-            JSONObject body = new JSONObject();
-            JSONArray items = new JSONArray();
-            int start = Math.max(0, messages.size() - MAX_CONTEXT_MESSAGES);
-            for (int i = start; i < messages.size(); i++) {
-                ChatMessage item = messages.get(i);
-                JSONObject message = new JSONObject();
-                message.put("role", item.role);
-                message.put("content", item.content);
-                items.put(message);
-            }
-            body.put("messages", items);
-            body.put("clientMessageId", safe(clientMessageId));
-            body.put("userName", safe(UserPrefs.getName(this)));
-            body.put("userEmail", safe(UserPrefs.getEmail(this)));
-            body.put("publicId", safe(UserPrefs.getPublicId(this)));
-            body.put("photoUrl", safe(UserPrefs.getPhotoUrl(this)));
-            body.put("photoB64", safe(UserPrefs.getPhotoB64(this)));
-            return body.toString();
-        } catch (Exception error) {
-            return "{\"messages\":[]}";
-        }
-    }
-
-    /** Fungsi untuk requestAiReply. */
-    private String requestAiReply(String idToken, String requestBody) throws Exception {
-        HttpURLConnection connection = null;
-        try {
-            URL url = new URL(CHAT_FUNCTION_URL);
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("POST");
-            connection.setConnectTimeout(20000);
-            connection.setReadTimeout(30000);
-            connection.setDoOutput(true);
-            connection.setRequestProperty("Authorization", "Bearer " + idToken);
-            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-
-            byte[] body = requestBody.getBytes(StandardCharsets.UTF_8);
-            try (OutputStream out = connection.getOutputStream()) {
-                out.write(body);
-            }
-
-            int status = connection.getResponseCode();
-            String response = readResponse(status >= 200 && status < 300
-                    ? connection.getInputStream()
-                    : connection.getErrorStream());
-            JSONObject json = parseJsonResponse(response);
-            if (status < 200 || status >= 300) {
-                String error = safe(json.optString("error"));
-                throw new RuntimeException(error.isEmpty() ? friendlyHttpError(status, response) : error);
-            }
-
-            String reply = safe(json.optString("reply"));
-            if (reply.isEmpty()) throw new RuntimeException(getString(R.string.ai_chat_failed));
-            return reply;
-        } finally {
-            if (connection != null) connection.disconnect();
-        }
-    }
-
-    /** Fungsi untuk parseJsonResponse. */
-    private JSONObject parseJsonResponse(String response) throws Exception {
-        String clean = safe(response);
-        if (clean.startsWith("{")) return new JSONObject(clean);
-        if (clean.startsWith("[")) {
-            throw new RuntimeException(getString(R.string.ai_chat_failed));
-        }
-        throw new RuntimeException(getString(R.string.ai_chat_service_unavailable));
-    }
-
-    /** Fungsi untuk friendlyHttpError. */
-    private String friendlyHttpError(int status, String response) {
-        String clean = safe(response).toLowerCase(Locale.ROOT);
-        if (status == 404 || clean.startsWith("<html") || clean.contains("<!doctype html")) {
-            return getString(R.string.ai_chat_service_unavailable);
-        }
-        if (status == 401 || status == 403) {
-            return getString(R.string.ai_chat_login_required);
-        }
-        return getString(R.string.ai_chat_failed);
-    }
-
-    /** Fungsi untuk readResponse. */
-    private String readResponse(InputStream stream) throws Exception {
-        if (stream == null) return "";
-        StringBuilder out = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                out.append(line);
-            }
-        }
-        return out.toString();
     }
 
     /** Fungsi untuk renderMessages. */

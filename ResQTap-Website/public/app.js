@@ -693,7 +693,7 @@ function initKatupChatbot() {
         return "You can download the **ResQTap APK** directly for free. Click the **Download APK** button on the home section, or download the APK file from this website.";
       }
       if (q.includes("who built") || q.includes("creator") || q.includes("developer") || q.includes("chesster") || q.includes("author") || q.includes("project")) {
-        return "**ResQTap** was created and engineered by **Chesster** as a Final Year Project (OneTapSOS). Built with Android (Java), Firebase Realtime Backend, and OpenRouter AI to safeguard lives during critical moments.";
+        return "**ResQTap** was created and engineered by **Chesster** as a Final Year Project (OneTapSOS). Built with Android (Java) and Firebase Realtime Backend to safeguard lives during critical moments.";
       }
       if (q.includes("hospital") || q.includes("clinic") || q.includes("medical") || q.includes("doctor")) {
         return "ResQTap includes a built-in **Nearby Hospital** feature that automatically discovers nearby healthcare centers and emergency clinics with quick navigation.";
@@ -721,7 +721,7 @@ function initKatupChatbot() {
       return "Anda boleh muat turun **ResQTap APK** secara percuma. Sila klik butang **Download APK** di halaman utama, atau muat turun fail APK terus dari laman ini.";
     }
     if (q.includes("chesster") || q.includes("who built") || q.includes("siapa cipta") || q.includes("pembangun") || q.includes("developer") || q.includes("story") || q.includes("pasukan") || q.includes("projek")) {
-      return "**ResQTap** dibangunkan oleh **Chesster** sebagai projek tahun akhir (Final Year Project - OneTapSOS). Dibina dengan Android (Java), Firebase Realtime Backend, dan OpenRouter AI untuk menyelamatkan nyawa semasa waktu kecemasan.";
+      return "**ResQTap** dibangunkan oleh **Chesster** sebagai projek tahun akhir (Final Year Project - OneTapSOS). Dibina dengan Android (Java) dan Firebase Realtime Backend untuk menyelamatkan nyawa semasa waktu kecemasan.";
     }
     if (q.includes("hospital") || q.includes("klinik") || q.includes("medical") || q.includes("rawatan") || q.includes("doktor")) {
       return "ResQTap dilengkapi fungsi **Nearby Hospital** untuk mencari pusat rawatan dan hospital berdekatan secara automatik berserta navigasi terus dari aplikasi.";
@@ -5375,7 +5375,15 @@ async function executeClearDatabase() {
       }
     });
 
-    if (deleteUids.size === 0) {
+    let hasNonResqtapEmails = false;
+    entries(state.registeredEmails || {}).forEach(([key]) => {
+      const decoded = key.replace(/_at_/g, "@").replace(/_/g, ".");
+      if (!decoded.toLowerCase().includes("@resqtap")) {
+        hasNonResqtapEmails = true;
+      }
+    });
+
+    if (deleteUids.size === 0 && !hasNonResqtapEmails) {
       closeClearDbModal();
       showToast("Tiada akaun selain @resqtap untuk dipadam. Pangkalan data sudah bersih.");
       return;
