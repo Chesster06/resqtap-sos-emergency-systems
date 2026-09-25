@@ -22,9 +22,15 @@ import com.example.resqtap.news.MedicalNewsFetcher;
 import com.example.resqtap.news.MedicalNewsItem;
 import com.example.resqtap.utils.AvatarUtils;
 import com.example.resqtap.utils.BatteryOptimizationHelper;
+import com.example.resqtap.utils.BatteryUtils;
 import com.example.resqtap.utils.BottomNavUtils;
+import com.example.resqtap.utils.PermissionUtils;
 import com.example.resqtap.utils.ThemeUtils;
 import com.example.resqtap.utils.UserPrefs;
+
+import android.Manifest;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -42,6 +48,7 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.PropertyValuesHolder;
 import android.animation.ValueAnimator;
+import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 
@@ -103,6 +110,10 @@ public class MainActivity extends BaseActivity {
     private android.view.View newsProgress;
     private RecyclerView rvHighlights;
     private HighlightAdapter highlightAdapter;
+    private FusedLocationProviderClient fusedLocationClient;
+    private ActivityResultLauncher<String[]> locationPermLauncher;
+    private double lastKnownLat = 0;
+    private double lastKnownLng = 0;
 
     // =========================================================================
     // SEKSYEN: ONCREATE
@@ -154,6 +165,30 @@ public class MainActivity extends BaseActivity {
                 }
         );
 
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        locationPermLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestMultiplePermissions(),
+                result -> {
+                    boolean fine = Boolean.TRUE.equals(result.get(Manifest.permission.ACCESS_FINE_LOCATION));
+                    boolean coarse = Boolean.TRUE.equals(result.get(Manifest.permission.ACCESS_COARSE_LOCATION));
+                    if (fine || coarse) {
+                        syncCurrentLocationToFirebase();
+                        ensureActiveRoomTracking();
+                    }
+                }
+        );
+
+        if (PermissionUtils.hasAnyLocation(this)) {
+            syncCurrentLocationToFirebase();
+        } else {
+            try {
+                locationPermLauncher.launch(new String[]{
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                });
+            } catch (Exception ignored) {}
+        }
+
         headerPhoto = findViewById(R.id.header_profile_photo);
         title = findViewById(R.id.title);
         subtitle = findViewById(R.id.subtitle);
@@ -161,6 +196,18 @@ public class MainActivity extends BaseActivity {
         medicalBlood = findViewById(R.id.tv_medical_blood);
         medicalAllergies = findViewById(R.id.tv_medical_allergies);
         medicalConditions = findViewById(R.id.tv_medical_conditions);
+
+        View cardBlood = findViewById(R.id.card_medical_blood);
+        View cardAllergies = findViewById(R.id.card_medical_allergies);
+        View cardConditions = findViewById(R.id.card_medical_conditions);
+        View.OnClickListener openSummaryListener = v -> showMedicalSummaryBottomSheet();
+        if (cardBlood != null) cardBlood.setOnClickListener(openSummaryListener);
+        if (cardAllergies != null) cardAllergies.setOnClickListener(openSummaryListener);
+        if (cardConditions != null) cardConditions.setOnClickListener(openSummaryListener);
+        if (medicalBlood != null) medicalBlood.setOnClickListener(openSummaryListener);
+        if (medicalAllergies != null) medicalAllergies.setOnClickListener(openSummaryListener);
+        if (medicalConditions != null) medicalConditions.setOnClickListener(openSummaryListener);
+
         phone = getIntent().getStringExtra("phone");
 
         MaterialButton btnSos = findViewById(R.id.btn_sos);
@@ -179,60 +226,22 @@ public class MainActivity extends BaseActivity {
                 final String rawName = UserPrefs.getName(MainActivity.this);
                 final String name = (rawName == null || rawName.trim().isEmpty()) ? "User" : rawName.trim();
 
-                // Grab all rooms this user is in; if no rooms, broadcast to DIRECT fallback room
-                FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                        .getReference("userRooms")
-                        .child(uid)
-                        .get()
-                        .addOnSuccessListener(snapshot -> {
-                            if (sosCancelledWhilePending) return;
-
-                            java.util.List<String> roomCodes = new java.util.ArrayList<>();
-                            if (snapshot != null && snapshot.exists()) {
-                                for (DataSnapshot child : snapshot.getChildren()) {
-                                    if (child == null || child.getKey() == null) continue;
-                                    final String code = child.getKey().trim().toUpperCase(java.util.Locale.ROOT);
-                                    if (!code.isEmpty()) {
-                                        roomCodes.add(code);
-                                    }
-                                }
+                // Dapatkan koordinat GPS terkini sebelum blast SOS
+                if (PermissionUtils.hasAnyLocation(MainActivity.this) && fusedLocationClient != null) {
+                    try {
+                        fusedLocationClient.getLastLocation().addOnSuccessListener(loc -> {
+                            if (loc != null) {
+                                lastKnownLat = loc.getLatitude();
+                                lastKnownLng = loc.getLongitude();
                             }
-
-                            // Jika pengguna tiada sebarang room, hantar SOS ke fallback emergency channel DIRECT
-                            if (roomCodes.isEmpty()) {
-                                roomCodes.add("DIRECT");
-                            }
-
-                            for (String code : roomCodes) {
-                                if (sosCancelledWhilePending) return;
-                                FirebaseRoomClient.sendRoomSosQueued(code, uid, dev, name, id -> {
-                                    String sosId = String.valueOf(id == null ? "" : id).trim();
-                                    if (sosId.isEmpty()) return;
-                                    if (sosCancelledWhilePending) {
-                                        // User cancelled before this ID arrived — kill it immediately
-                                        FirebaseRoomClient.cancelRoomSosQueued(code, sosId, dev);
-                                    } else {
-                                        activeSosIds.put(code, sosId);
-                                        // Listen for admin reservation (served: true)
-                                        watchSosCaseReservation(code, sosId);
-                                    }
-                                });
-                            }
-                        })
-                        .addOnFailureListener(e -> {
-                            if (sosCancelledWhilePending) return;
-                            // Fallback jika query userRooms gagal
-                            FirebaseRoomClient.sendRoomSosQueued("DIRECT", uid, dev, name, id -> {
-                                String sosId = String.valueOf(id == null ? "" : id).trim();
-                                if (sosId.isEmpty()) return;
-                                if (sosCancelledWhilePending) {
-                                    FirebaseRoomClient.cancelRoomSosQueued("DIRECT", sosId, dev);
-                                } else {
-                                    activeSosIds.put("DIRECT", sosId);
-                                    watchSosCaseReservation("DIRECT", sosId);
-                                }
-                            });
+                            dispatchSosBlasting(uid, dev, name, lastKnownLat, lastKnownLng);
+                        }).addOnFailureListener(e -> {
+                            dispatchSosBlasting(uid, dev, name, lastKnownLat, lastKnownLng);
                         });
+                        return;
+                    } catch (SecurityException ignored) {}
+                }
+                dispatchSosBlasting(uid, dev, name, lastKnownLat, lastKnownLng);
             }
 
             /** Cancel SOS on every room we fired to. */
@@ -543,6 +552,9 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (PermissionUtils.hasAnyLocation(this)) {
+            syncCurrentLocationToFirebase();
+        }
         checkActiveSosCase();
         refreshProfileUi();
         refreshInboxBadge();
@@ -550,6 +562,28 @@ public class MainActivity extends BaseActivity {
         ensureActiveRoomTracking();
         startSosRingPulse();
         checkCheckinTrigger(getIntent());
+    }
+
+    private void syncCurrentLocationToFirebase() {
+        if (!PermissionUtils.hasAnyLocation(this) || fusedLocationClient == null) return;
+        FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
+        if (u == null) return;
+        final String uid = u.getUid();
+        final String rawName = UserPrefs.getName(this);
+        final String name = (rawName == null || rawName.trim().isEmpty()) ? "User" : rawName.trim();
+        final String photoUrl = String.valueOf(UserPrefs.getPhotoUrl(this) == null ? "" : UserPrefs.getPhotoUrl(this)).trim();
+        final String photoB64 = String.valueOf(UserPrefs.getPhotoB64(this) == null ? "" : UserPrefs.getPhotoB64(this)).trim();
+        final int bat = BatteryUtils.getBatteryPct(this);
+
+        try {
+            fusedLocationClient.getLastLocation().addOnSuccessListener(loc -> {
+                if (loc != null) {
+                    lastKnownLat = loc.getLatitude();
+                    lastKnownLng = loc.getLongitude();
+                    FirebaseRoomClient.publishLocationQueued("", uid, name, photoUrl, photoB64, lastKnownLat, lastKnownLng, bat);
+                }
+            });
+        } catch (SecurityException ignored) {}
     }
 
     private void checkCheckinTrigger(Intent intent) {
@@ -724,6 +758,63 @@ public class MainActivity extends BaseActivity {
             }
             sosReservationListeners.clear();
         }
+    }
+
+    private void dispatchSosBlasting(String uid, String dev, String name, double lat, double lng) {
+        // Grab all rooms this user is in; if no rooms, broadcast to DIRECT fallback room
+        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                .getReference("userRooms")
+                .child(uid)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (sosCancelledWhilePending) return;
+
+                    java.util.List<String> roomCodes = new java.util.ArrayList<>();
+                    if (snapshot != null && snapshot.exists()) {
+                        for (DataSnapshot child : snapshot.getChildren()) {
+                            if (child == null || child.getKey() == null) continue;
+                            final String code = child.getKey().trim().toUpperCase(java.util.Locale.ROOT);
+                            if (!code.isEmpty()) {
+                                roomCodes.add(code);
+                            }
+                        }
+                    }
+
+                    // Jika pengguna tiada sebarang room, hantar SOS ke fallback emergency channel DIRECT
+                    if (roomCodes.isEmpty()) {
+                        roomCodes.add("DIRECT");
+                    }
+
+                    for (String code : roomCodes) {
+                        if (sosCancelledWhilePending) return;
+                        FirebaseRoomClient.sendRoomSosQueued(code, uid, dev, name, lat, lng, id -> {
+                            String sosId = String.valueOf(id == null ? "" : id).trim();
+                            if (sosId.isEmpty()) return;
+                            if (sosCancelledWhilePending) {
+                                // User cancelled before this ID arrived — kill it immediately
+                                FirebaseRoomClient.cancelRoomSosQueued(code, sosId, dev);
+                            } else {
+                                activeSosIds.put(code, sosId);
+                                // Listen for admin reservation (served: true)
+                                watchSosCaseReservation(code, sosId);
+                            }
+                        });
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if (sosCancelledWhilePending) return;
+                    // Fallback jika query userRooms gagal
+                    FirebaseRoomClient.sendRoomSosQueued("DIRECT", uid, dev, name, lat, lng, id -> {
+                        String sosId = String.valueOf(id == null ? "" : id).trim();
+                        if (sosId.isEmpty()) return;
+                        if (sosCancelledWhilePending) {
+                            FirebaseRoomClient.cancelRoomSosQueued("DIRECT", sosId, dev);
+                        } else {
+                            activeSosIds.put("DIRECT", sosId);
+                            watchSosCaseReservation("DIRECT", sosId);
+                        }
+                    });
+                });
     }
 
     /** Tekan SOS — sheet muncul, onSosStarted akan broadcast ke semua room atau DIRECT fallback. */
@@ -932,14 +1023,152 @@ public class MainActivity extends BaseActivity {
 
             String al = allergies == null ? "" : allergies.trim();
             if (medicalAllergies != null) {
-                medicalAllergies.setText(al.isEmpty() ? getString(R.string.medical_allergies_none) : al);
+                medicalAllergies.setText(formatMedicalCardSummary(al, R.string.medical_allergies_none));
             }
 
             String ex = existingConditions == null ? "" : existingConditions.trim();
             if (medicalConditions != null) {
-                medicalConditions.setText(ex.isEmpty() ? getString(R.string.medical_conditions_none) : ex);
+                medicalConditions.setText(formatMedicalCardSummary(ex, R.string.medical_conditions_none));
             }
         }
+    }
+
+    private String formatMedicalCardSummary(String raw, int noneResId) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return getString(noneResId);
+        }
+        java.util.List<String> items = parseMedicalItems(raw);
+        if (items.isEmpty()) {
+            return getString(noneResId);
+        }
+        if (items.size() == 1) {
+            return items.get(0);
+        }
+        return items.get(0) + " (+" + (items.size() - 1) + ")";
+    }
+
+    private java.util.List<String> parseMedicalItems(String raw) {
+        java.util.List<String> items = new java.util.ArrayList<>();
+        if (raw == null || raw.trim().isEmpty()) return items;
+        String[] parts = raw.split(",");
+        for (String p : parts) {
+            String trimmed = p.trim();
+            if (!trimmed.isEmpty() && !trimmed.equalsIgnoreCase("None") && !trimmed.equalsIgnoreCase("Tiada")) {
+                items.add(trimmed);
+            }
+        }
+        return items;
+    }
+
+    private void showMedicalSummaryBottomSheet() {
+        if (isFinishing() || isDestroyed()) return;
+        com.google.android.material.bottomsheet.BottomSheetDialog sheet =
+                new com.google.android.material.bottomsheet.BottomSheetDialog(this, R.style.Theme_ResQTap_BottomSheetDialog);
+        View view = getLayoutInflater().inflate(R.layout.bottom_sheet_medical_summary, null);
+        sheet.setContentView(view);
+
+        if (sheet.getWindow() != null) {
+            sheet.getWindow().setWindowAnimations(R.style.Animation_ResQTap_BottomSheetDialog);
+            sheet.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        // Blood Type
+        TextView tvBlood = view.findViewById(R.id.tv_summary_blood_type);
+        String bloodType = UserPrefs.getBloodType(this);
+        if (tvBlood != null) {
+            tvBlood.setText((bloodType == null || bloodType.trim().isEmpty()) ? "-" : bloodType.trim());
+        }
+
+        // Allergies
+        String rawAllergies = UserPrefs.getAllergies(this);
+        java.util.List<String> allergyList = parseMedicalItems(rawAllergies);
+        TextView tvBadgeAllergies = view.findViewById(R.id.tv_badge_allergies_count);
+        TextView tvAllergiesNone = view.findViewById(R.id.tv_allergies_none);
+        com.google.android.material.chip.ChipGroup chipGroupAllergies = view.findViewById(R.id.chip_group_allergies);
+
+        if (tvBadgeAllergies != null) {
+            tvBadgeAllergies.setText(allergyList.size() + (allergyList.size() == 1 ? " Item" : " Items"));
+        }
+        if (allergyList.isEmpty()) {
+            if (tvAllergiesNone != null) tvAllergiesNone.setVisibility(View.VISIBLE);
+            if (chipGroupAllergies != null) chipGroupAllergies.setVisibility(View.GONE);
+        } else {
+            if (tvAllergiesNone != null) tvAllergiesNone.setVisibility(View.GONE);
+            if (chipGroupAllergies != null) {
+                chipGroupAllergies.setVisibility(View.VISIBLE);
+                chipGroupAllergies.removeAllViews();
+                for (String item : allergyList) {
+                    TextView badge = new TextView(this);
+                    badge.setText(item);
+                    badge.setTextColor(android.graphics.Color.WHITE);
+                    badge.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f);
+                    badge.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+                    
+                    float density = getResources().getDisplayMetrics().density;
+                    int padH = (int) (10 * density);
+                    int padV = (int) (4.5f * density);
+                    badge.setPadding(padH, padV, padH, padV);
+
+                    android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
+                    gd.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                    gd.setColor(android.graphics.Color.parseColor("#EA580C")); // Solid vibrant orange like [Hot]
+                    gd.setCornerRadius(6.5f * density);
+                    badge.setBackground(gd);
+
+                    chipGroupAllergies.addView(badge);
+                }
+            }
+        }
+
+        // Conditions
+        String rawConditions = UserPrefs.getExistingConditions(this);
+        if (rawConditions == null || rawConditions.trim().isEmpty()) {
+            rawConditions = UserPrefs.getMedications(this);
+        }
+        java.util.List<String> conditionList = parseMedicalItems(rawConditions);
+        TextView tvBadgeConditions = view.findViewById(R.id.tv_badge_conditions_count);
+        TextView tvConditionsNone = view.findViewById(R.id.tv_conditions_none);
+        com.google.android.material.chip.ChipGroup chipGroupConditions = view.findViewById(R.id.chip_group_conditions);
+
+        if (tvBadgeConditions != null) {
+            tvBadgeConditions.setText(conditionList.size() + (conditionList.size() == 1 ? " Item" : " Items"));
+        }
+        if (conditionList.isEmpty()) {
+            if (tvConditionsNone != null) tvConditionsNone.setVisibility(View.VISIBLE);
+            if (chipGroupConditions != null) chipGroupConditions.setVisibility(View.GONE);
+        } else {
+            if (tvConditionsNone != null) tvConditionsNone.setVisibility(View.GONE);
+            if (chipGroupConditions != null) {
+                chipGroupConditions.setVisibility(View.VISIBLE);
+                chipGroupConditions.removeAllViews();
+                for (String item : conditionList) {
+                    TextView badge = new TextView(this);
+                    badge.setText(item);
+                    badge.setTextColor(android.graphics.Color.WHITE);
+                    badge.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f);
+                    badge.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+
+                    float density = getResources().getDisplayMetrics().density;
+                    int padH = (int) (10 * density);
+                    int padV = (int) (4.5f * density);
+                    badge.setPadding(padH, padV, padH, padV);
+
+                    android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
+                    gd.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+                    gd.setColor(android.graphics.Color.parseColor("#2563EB")); // Solid vibrant blue like [Beta]
+                    gd.setCornerRadius(6.5f * density);
+                    badge.setBackground(gd);
+
+                    chipGroupConditions.addView(badge);
+                }
+            }
+        }
+
+        // Close Header Button
+        View btnCloseHeader = view.findViewById(R.id.btn_close_header);
+        if (btnCloseHeader != null) btnCloseHeader.setOnClickListener(v -> sheet.dismiss());
+
+        sheet.show();
     }
 
     /** Aktiviti dijeda sementara. */

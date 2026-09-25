@@ -210,8 +210,10 @@ public class LiveRoomTrackingService extends Service {
         startIncomingCallListener();
 
         if (roomCode.isEmpty()) {
-            // No active room selected, but user is fully protected and listening to all rooms
-            stopTracking();
+            // No active room selected, but user location is still actively tracked for safety & SOS alerts!
+            stopForceLeaveListener();
+            stopRoomDeletedListener();
+            startTracking();
             return START_STICKY;
         }
 
@@ -219,9 +221,9 @@ public class LiveRoomTrackingService extends Service {
             if (!isInRoom) {
                 UserPrefs.setActiveRoomCode(LiveRoomTrackingService.this, "");
                 roomCode = "";
-                stopTracking();
                 stopForceLeaveListener();
                 stopRoomDeletedListener();
+                startTracking();
                 return;
             }
             startForceLeaveListener();
@@ -269,9 +271,9 @@ public class LiveRoomTrackingService extends Service {
                 } catch (Exception ignored) {
                 }
                 roomCode = "";
-                try { stopTracking(); } catch (Exception ignored) {}
                 try { stopForceLeaveListener(); } catch (Exception ignored) {}
                 try { stopRoomDeletedListener(); } catch (Exception ignored) {}
+                try { startTracking(); } catch (Exception ignored) {}
             }).start();
         });
     }
@@ -305,9 +307,9 @@ public class LiveRoomTrackingService extends Service {
                 } catch (Exception ignored) {
                 }
                 roomCode = "";
-                try { stopTracking(); } catch (Exception ignored) {}
                 try { stopForceLeaveListener(); } catch (Exception ignored) {}
                 try { stopRoomDeletedListener(); } catch (Exception ignored) {}
+                try { startTracking(); } catch (Exception ignored) {}
             }).start();
         });
     }
@@ -367,7 +369,9 @@ public class LiveRoomTrackingService extends Service {
         if (!PermissionUtils.hasAnyLocation(this)) return;
         if (!GpsUtils.isGpsEnabled(this)) return;
 
-        FirebaseRoomClient.upsertMemberPresenceQueued(roomCode, uid, name, photoUrl, photoB64, BatteryUtils.getBatteryPct(this));
+        if (roomCode != null && !roomCode.trim().isEmpty()) {
+            FirebaseRoomClient.upsertMemberPresenceQueued(roomCode, uid, name, photoUrl, photoB64, BatteryUtils.getBatteryPct(this));
+        }
 
         boolean saver = UserPrefs.isBatterySaverMode(this);
         long interval = saver ? 30000L : 5000L;

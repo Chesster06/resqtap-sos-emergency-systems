@@ -203,6 +203,10 @@
     "registeredEmails": {
       ".read": true,
       ".write": "auth != null"
+    },
+    "adminCalls": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }

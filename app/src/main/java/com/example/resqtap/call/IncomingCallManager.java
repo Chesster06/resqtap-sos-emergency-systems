@@ -89,6 +89,11 @@ public class IncomingCallManager {
     }
 
     private void handleIncomingCall(String callId, String callerName, String callerPhotoUrl, String callType) {
+        if (CallSignalingClient.isAwaitingSosResponse()) {
+            Log.d(TAG, "User is awaiting outgoing SOS call response. Skipping IncomingCallActivity popup for callId=" + callId);
+            return;
+        }
+
         // 1. Post high priority full-screen notification (vital for Android 10+ / 12 / 13 / 14 background & lockscreen)
         CallNotificationHelper.showIncomingCallNotification(context, callId, callerName, callerPhotoUrl, callType);
 

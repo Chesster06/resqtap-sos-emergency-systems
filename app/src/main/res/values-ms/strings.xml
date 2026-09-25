@@ -32,6 +32,19 @@
     <string name="register_title">Daftar Akaun</string>
     <string name="register_desc">Isi maklumat di bawah untuk daftar.</string>
     <string name="hint_name">Nama</string>
+    <string name="hint_first_name">Nama Pertama</string>
+    <string name="hint_last_name">Nama Akhir</string>
+    <string name="error_required_first_name">Nama pertama diperlukan</string>
+    <string name="error_required_last_name">Nama akhir diperlukan</string>
+    <string name="error_required_ic">Sila masukkan nombor kad pengenalan anda</string>
+    <string name="error_invalid_ic">Sila masukkan nombor kad pengenalan yang sah (sekurang-kurangnya 6 digit)</string>
+    <string name="error_required_gender">Sila pilih jantina anda</string>
+    <string name="error_required_phone">Sila masukkan nombor telefon anda</string>
+    <string name="error_invalid_phone">Sila masukkan nombor telefon yang sah (sekurang-kurangnya 7 digit)</string>
+    <string name="error_required_address">Sila masukkan alamat rumah anda</string>
+    <string name="error_required_religion">Sila pilih agama anda</string>
+    <string name="error_required_dob">Sila pilih tarikh lahir anda</string>
+    <string name="error_required_ethnicity">Sila pilih kaum/etnik anda</string>
     <string name="hint_address">Alamat</string>
     <string name="hint_blood_type">Jenis darah</string>
     <string name="hint_allergy">Alahan</string>
@@ -925,8 +938,16 @@
     <string name="friend_nickname_save">Simpan</string>
     <string name="friend_nickname_reset">Set Semula</string>
     <string name="friend_nickname_real_name_format">%1$s#%2$s • Rakan</string>
-    <string name="friend_nickname_updated">Nama panggilan dikemaskini</string>
     <string name="friend_edit_nickname_desc">Ubah nama panggilan peribadi</string>
     <string name="account_deleted_notice">Sesi anda telah tamat atau akaun telah dipadam oleh pentadbir.</string>
+    <!-- Medical Summary Dialog & Multi-Select -->
+    <string name="medical_summary_title">Maklumat Perubatan</string>
+    <string name="medical_summary_desc">Ringkasan kesihatan kecemasan anda</string>
+    <string name="medical_summary_btn_edit">Kemaskini Profil Perubatan</string>
+    <string name="medical_summary_close">Tutup</string>
+    <string name="medical_summary_none_allergies">Tiada rekod alahan diketahui</string>
+    <string name="medical_summary_none_conditions">Tiada rekod penyakit atau ubat</string>
+    <string name="select_allergies_title">Pilih Alahan</string>
+    <string name="select_conditions_title">Pilih Penyakit / Ubat-ubatan</string>
 </resources>
 

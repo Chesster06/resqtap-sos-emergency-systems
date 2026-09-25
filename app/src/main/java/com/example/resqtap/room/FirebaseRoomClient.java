@@ -518,10 +518,25 @@ public final class FirebaseRoomClient {
     /** Fungsi untuk publishLocationQueued. */
     public static void publishLocationQueued(String roomCode, String uid, String name, String photoUrl, String photoB64, double lat, double lng, int batteryPct) {
         try {
-            String code = normalizeCode(roomCode);
             String u = String.valueOf(uid == null ? "" : uid).trim();
-            if (code.length() < 4) return;
             if (u.isEmpty()) return;
+
+            // Sentiasa kemas kini koordinat terkini di users/{u} agar admin Leaflet map sentiasa dapat kesan lokasi tanpa memerlukan room
+            if (lat != 0 || lng != 0) {
+                Map<String, Object> userLoc = new HashMap<>();
+                userLoc.put("lat", lat);
+                userLoc.put("lng", lng);
+                userLoc.put("latitude", lat);
+                userLoc.put("longitude", lng);
+                if (name != null && !name.trim().isEmpty()) userLoc.put("name", name.trim());
+                if (photoUrl != null && !photoUrl.trim().isEmpty()) userLoc.put("photoUrl", photoUrl.trim());
+                if (batteryPct >= 0 && batteryPct <= 100) userLoc.put("batteryPct", batteryPct);
+                userLoc.put("updatedAt", ServerValue.TIMESTAMP);
+                db().child("users").child(u).updateChildren(userLoc);
+            }
+
+            String code = normalizeCode(roomCode);
+            if (code.length() < 4) return;
 
             db().child("userRooms").child(u).child(code).get().addOnSuccessListener(userRoomSnap -> {
                 if (userRoomSnap == null || !userRoomSnap.exists()) return;
@@ -537,6 +552,8 @@ public final class FirebaseRoomClient {
                     member.put("photoB64", photoB64 == null ? "" : photoB64.trim());
                     member.put("lat", lat);
                     member.put("lng", lng);
+                    member.put("latitude", lat);
+                    member.put("longitude", lng);
                     if (batteryPct >= 0 && batteryPct <= 100) member.put("batteryPct", batteryPct);
                     member.put("updatedAt", ServerValue.TIMESTAMP);
 
@@ -545,14 +562,6 @@ public final class FirebaseRoomClient {
                 });
             }).addOnFailureListener(e -> {
             });
-
-            // Sentiasa kemas kini koordinat terkini di users/{u} agar admin Leaflet map sentiasa dapat kesan lokasi
-            Map<String, Object> userLoc = new HashMap<>();
-            userLoc.put("lat", lat);
-            userLoc.put("lng", lng);
-            if (batteryPct >= 0 && batteryPct <= 100) userLoc.put("batteryPct", batteryPct);
-            userLoc.put("updatedAt", ServerValue.TIMESTAMP);
-            db().child("users").child(u).updateChildren(userLoc);
         } catch (Exception ignored) {
         }
     }
@@ -778,11 +787,14 @@ public final class FirebaseRoomClient {
 
     /** Simpan atau hantar data RoomSosQueued. */
     public static void sendRoomSosQueued(String roomCode, String fromUid, String fromDeviceId, String fromName) {
-        sendRoomSosQueued(roomCode, fromUid, fromDeviceId, fromName, null);
+        sendRoomSosQueued(roomCode, fromUid, fromDeviceId, fromName, 0, 0, null);
     }
 
-    /** Simpan atau hantar data RoomSosQueued. */
     public static void sendRoomSosQueued(String roomCode, String fromUid, String fromDeviceId, String fromName, RoomSosSendResult cb) {
+        sendRoomSosQueued(roomCode, fromUid, fromDeviceId, fromName, 0, 0, cb);
+    }
+
+    public static void sendRoomSosQueued(String roomCode, String fromUid, String fromDeviceId, String fromName, double lat, double lng, RoomSosSendResult cb) {
         try {
             String code = normalizeCode(roomCode);
             String from = String.valueOf(fromUid == null ? "" : fromUid).trim();
@@ -809,23 +821,39 @@ public final class FirebaseRoomClient {
             payload.put("clientAt", System.currentTimeMillis());
             payload.put("ttlMs", 10_000L);
 
-            // Sertakan juga koordinat GPS terakhir mangsa daripada profil users/{from} sekiranya ada
-            try {
-                db().child("users").child(from).get().addOnSuccessListener(userSnap -> {
-                    if (userSnap != null && userSnap.exists()) {
-                        Double lat = userSnap.child("lat").getValue(Double.class);
-                        Double lng = userSnap.child("lng").getValue(Double.class);
-                        if (lat != null && lng != null && (lat != 0 || lng != 0)) {
-                            Map<String, Object> locMap = new HashMap<>();
-                            locMap.put("lat", lat);
-                            locMap.put("lng", lng);
-                            locMap.put("latitude", lat);
-                            locMap.put("longitude", lng);
-                            ref.updateChildren(locMap);
+            if (lat != 0 || lng != 0) {
+                payload.put("lat", lat);
+                payload.put("lng", lng);
+                payload.put("latitude", lat);
+                payload.put("longitude", lng);
+
+                // Pastikan users/{from} juga menyimpan koordinat terkini
+                Map<String, Object> userLoc = new HashMap<>();
+                userLoc.put("lat", lat);
+                userLoc.put("lng", lng);
+                userLoc.put("latitude", lat);
+                userLoc.put("longitude", lng);
+                userLoc.put("updatedAt", ServerValue.TIMESTAMP);
+                db().child("users").child(from).updateChildren(userLoc);
+            } else {
+                // Sertakan juga koordinat GPS terakhir mangsa daripada profil users/{from} sekiranya ada
+                try {
+                    db().child("users").child(from).get().addOnSuccessListener(userSnap -> {
+                        if (userSnap != null && userSnap.exists()) {
+                            Double uLat = userSnap.child("lat").getValue(Double.class);
+                            Double uLng = userSnap.child("lng").getValue(Double.class);
+                            if (uLat != null && uLng != null && (uLat != 0 || uLng != 0)) {
+                                Map<String, Object> locMap = new HashMap<>();
+                                locMap.put("lat", uLat);
+                                locMap.put("lng", uLng);
+                                locMap.put("latitude", uLat);
+                                locMap.put("longitude", uLng);
+                                ref.updateChildren(locMap);
+                            }
                         }
-                    }
-                });
-            } catch (Exception ignored) {}
+                    });
+                } catch (Exception ignored) {}
+            }
 
             ref.setValue(payload).addOnFailureListener(e -> {
                 try {

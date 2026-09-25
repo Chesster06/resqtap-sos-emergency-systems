@@ -20,6 +20,8 @@ public final class UserPrefs {
     private static final String KEY_UID = "uid";
     private static final String KEY_DEVICE_ID = "device_id";
     private static final String KEY_NAME = "name";
+    private static final String KEY_FIRST_NAME = "first_name";
+    private static final String KEY_LAST_NAME = "last_name";
     private static final String KEY_EMAIL = "email";
     private static final String KEY_PUBLIC_ID = "public_id";
     private static final String KEY_PHOTO_URI = "photo_uri";
@@ -241,6 +243,26 @@ public final class UserPrefs {
         prefs(context).edit().putString(KEY_NAME, name == null ? "" : name.trim()).apply();
     }
 
+    /** Ambil data FirstName. */
+    public static String getFirstName(Context context) {
+        return prefs(context).getString(KEY_FIRST_NAME, "");
+    }
+
+    /** Fungsi untuk setFirstName. */
+    public static void setFirstName(Context context, String firstName) {
+        prefs(context).edit().putString(KEY_FIRST_NAME, firstName == null ? "" : firstName.trim()).apply();
+    }
+
+    /** Ambil data LastName. */
+    public static String getLastName(Context context) {
+        return prefs(context).getString(KEY_LAST_NAME, "");
+    }
+
+    /** Fungsi untuk setLastName. */
+    public static void setLastName(Context context, String lastName) {
+        prefs(context).edit().putString(KEY_LAST_NAME, lastName == null ? "" : lastName.trim()).apply();
+    }
+
     /** Ambil atau muat data LastAdminNotificationId. */
     public static String getLastAdminNotificationId(Context context) {
         return prefs(context).getString(KEY_LAST_ADMIN_NOTIFICATION_ID, "");
@@ -257,6 +279,8 @@ public final class UserPrefs {
         prefs(context).edit()
                 .remove(KEY_UID)
                 .remove(KEY_NAME)
+                .remove(KEY_FIRST_NAME)
+                .remove(KEY_LAST_NAME)
                 .remove(KEY_EMAIL)
                 .remove(KEY_PUBLIC_ID)
                 .remove(KEY_PHOTO_URI)

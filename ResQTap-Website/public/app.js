@@ -2397,7 +2397,7 @@ function handleAdminIncomingCall(data) {
   if (data && data.status === "ringing") {
     const now = Date.now();
     const callTime = Number(data.timestamp) || now;
-    if (now - callTime < 90000) {
+    if (Math.abs(now - callTime) < 180000 || !data.timestamp) {
       const callerName = data.callerName || "Mangsa SOS";
       const isVoice = data.callType === "voice";
       const callTypeDesc = isVoice ? "Panggilan Suara" : "Panggilan Video";
@@ -2495,66 +2495,126 @@ function getActiveSosForUser(uid) {
   return null;
 }
 
-function focusSosSenderOnMap(alert) {
+async function focusSosSenderOnMap(alert) {
   if (!alert) return;
   const alertId = alert.key || alert.id;
   const senderUid = alert.senderUid;
 
-  // 1. Close modal if open so sidebar is front and center
+  // 1. Close modal if open so sidebar and map are completely visible
   closeCaseModal();
+  closeCaseCallOptions();
 
   // 2. Set selected for detail sidebar before switching view
   state.selected = { type: "sos", roomId: alert.roomId, alertId: alertId };
 
-  // 3. Navigate to Live Map view & open sidebar
+  // 3. Navigate to Live Map view & open detail sidebar
   setActiveView("livemap");
   renderDetail();
 
-  // 4. Resolve coordinates from alert payload, room members, or user profile
-  let lat = 0, lng = 0;
-  if (alert.data) {
-    if (Number(alert.data.lat) && Number(alert.data.lng)) {
-      lat = Number(alert.data.lat);
-      lng = Number(alert.data.lng);
-    } else if (Number(alert.data.latitude) && Number(alert.data.longitude)) {
-      lat = Number(alert.data.latitude);
-      lng = Number(alert.data.longitude);
-    }
-  }
-  if (!lat && !lng && senderUid) {
-    getRooms().forEach((rm) => {
-      const m = (rm.members || []).find((item) => item.uid === senderUid);
-      if (m && Number(m.lat) && Number(m.lng)) {
-        lat = Number(m.lat);
-        lng = Number(m.lng);
-      }
-    });
-  }
-  if (!lat && !lng && senderUid && state.users && state.users[senderUid]) {
-    const u = state.users[senderUid];
-    if (Number(u.lat) && Number(u.lng)) {
-      lat = Number(u.lat);
-      lng = Number(u.lng);
+  // 4. Force map init if not yet initialized
+  if (!window.__resqLiveMap || !window.__resqLiveMap.leaflet || !window.__resqLiveMap.initialized) {
+    if (typeof window.__resqInitLiveMap === "function") {
+      window.__resqInitLiveMap();
     }
   }
 
-  // 5. Smooth zoom to user location on Leaflet map
+  // 5. Resolve coordinates from alert payload, rooms, or user profile
+  let lat = 0, lng = 0;
+  if (alert.data) {
+    const dLat = Number(alert.data.lat !== undefined ? alert.data.lat : alert.data.latitude);
+    const dLng = Number(alert.data.lng !== undefined ? alert.data.lng : alert.data.longitude);
+    if (Number.isFinite(dLat) && Number.isFinite(dLng) && !(dLat === 0 && dLng === 0)) {
+      lat = dLat;
+      lng = dLng;
+    }
+  }
+  if (!lat && !lng && (alert.lat || alert.latitude)) {
+    const aLat = Number(alert.lat || alert.latitude);
+    const aLng = Number(alert.lng || alert.longitude);
+    if (Number.isFinite(aLat) && Number.isFinite(aLng) && !(aLat === 0 && aLng === 0)) {
+      lat = aLat;
+      lng = aLng;
+    }
+  }
+  if (!lat && !lng && senderUid && state.rooms) {
+    for (const [, rVal] of Object.entries(state.rooms)) {
+      const rm = asRecord(rVal);
+      const members = asRecord(rm.members);
+      if (members[senderUid]) {
+        const m = asRecord(members[senderUid]);
+        const mLat = Number(m.lat !== undefined ? m.lat : m.latitude);
+        const mLng = Number(m.lng !== undefined ? m.lng : m.longitude);
+        if (Number.isFinite(mLat) && Number.isFinite(mLng) && !(mLat === 0 && mLng === 0)) {
+          lat = mLat;
+          lng = mLng;
+          break;
+        }
+      }
+    }
+  }
+  if (!lat && !lng && senderUid && state.users && state.users[senderUid]) {
+    const u = asRecord(state.users[senderUid]);
+    const uLat = Number(u.lat !== undefined ? u.lat : u.latitude);
+    const uLng = Number(u.lng !== undefined ? u.lng : u.longitude);
+    if (Number.isFinite(uLat) && Number.isFinite(uLng) && !(uLat === 0 && uLng === 0)) {
+      lat = uLat;
+      lng = uLng;
+    }
+  }
+
+  // Direct RTDB fetch fallback if still zero
+  if (!lat && !lng && senderUid) {
+    try {
+      const snap = await get(ref(db, `users/${senderUid}`));
+      if (snap.exists()) {
+        const val = snap.val() || {};
+        const uLat = Number(val.lat !== undefined ? val.lat : val.latitude);
+        const uLng = Number(val.lng !== undefined ? val.lng : val.longitude);
+        if (Number.isFinite(uLat) && Number.isFinite(uLng) && !(uLat === 0 && uLng === 0)) {
+          lat = uLat;
+          lng = uLng;
+        }
+      }
+    } catch (e) {
+      console.warn("RTDB direct loc fetch error:", e);
+    }
+  }
+
+  // 6. Refresh markers so sender marker is placed with active SOS badge immediately
+  if (typeof window.__resqRefreshMarkers === "function") {
+    window.__resqRefreshMarkers();
+  }
+
+  // 7. Smooth flyTo zoom to user location on Leaflet map
   if (lat && lng) {
+    const targetLatLng = [lat, lng];
     const doZoom = () => {
       if (window.__resqLiveMap && window.__resqLiveMap.leaflet) {
         try {
-          window.__resqLiveMap.leaflet.invalidateSize();
-          window.__resqLiveMap.leaflet.setView([lat, lng], 17, { animate: true });
+          const map = window.__resqLiveMap.leaflet;
+          map.invalidateSize();
+          map.flyTo(targetLatLng, 18, {
+            animate: true,
+            duration: 1.2,
+            easeLinearity: 0.25
+          });
+
           if (window.__resqLiveMap.markers) {
-            const marker = window.__resqLiveMap.markers.get(`u:${senderUid}`) || window.__resqLiveMap.markers.get(`sos:${alert.key}`);
-            if (marker) marker.openPopup();
+            const marker = window.__resqLiveMap.markers.get(`u:${senderUid}`)
+              || window.__resqLiveMap.markers.get(`sos:${alert.key}`)
+              || window.__resqLiveMap.markers.get(`sos:${alert.id}`);
+            if (marker) {
+              marker.openPopup();
+            }
           }
         } catch (e) {
           console.warn("Leaflet zoom error:", e);
         }
       }
     };
-    [50, 150, 300, 600, 1000].forEach((delay) => setTimeout(doZoom, delay));
+    [60, 200, 450, 800, 1400].forEach((delay) => setTimeout(doZoom, delay));
+  } else {
+    showToast(`Waiting for GPS coordinates from ${alert.senderName || "user"}...`);
   }
 }
 
@@ -2679,13 +2739,13 @@ function updateSosAlarmSystem() {
       }
 
       // Zoom to user location on Live Map and open the detail sidebar!
-      focusSosSenderOnMap(latestAlert);
+      await focusSosSenderOnMap(latestAlert);
     };
   }
 
   if (btnView) {
-    btnView.onclick = () => {
-      focusSosSenderOnMap(latestAlert);
+    btnView.onclick = async () => {
+      await focusSosSenderOnMap(latestAlert);
     };
   }
 
@@ -4733,7 +4793,24 @@ function openCaseModal(roomId, alertId, senderUid, senderName) {
   const modal = document.getElementById("sosCaseUpdateModal");
   if (!modal) return;
 
-  activeCaseModalData = { roomId, alertId, senderUid, senderName, step: 1, status: "Admin Dispatched", desc: "Emergency responder assigned and notified." };
+  const matched = getSosAlerts().find(
+    (a) => (a.roomId === roomId || a.roomId === "DIRECT") && (a.key === alertId || a.id === alertId)
+  );
+  const curStep = (matched && matched.data && matched.data.progressStep) || 1;
+  const curStatus = (matched && matched.data && matched.data.progressStatus) || "Admin Dispatched";
+  const curNotes = (matched && matched.data && (matched.data.progressNotes || matched.data.notes)) || "Emergency assistance is assigned and responders have been notified.";
+  const resolvedName = senderName || (matched && (matched.senderName || (matched.data && (matched.data.senderName || matched.data.fromName)))) || "User";
+  const resolvedUid = senderUid || (matched && (matched.senderUid || (matched.data && (matched.data.senderUid || matched.data.fromUid)))) || "";
+
+  activeCaseModalData = {
+    roomId,
+    alertId,
+    senderUid: resolvedUid,
+    senderName: resolvedName,
+    step: Number(curStep) || 1,
+    status: curStatus,
+    desc: curNotes
+  };
 
   const title = document.getElementById("caseModalTitle");
   const sub = document.getElementById("caseModalSubtitle");
@@ -4742,18 +4819,18 @@ function openCaseModal(roomId, alertId, senderUid, senderName) {
   const msgBtn = document.getElementById("caseMessageBtn");
   const roomBtn = document.getElementById("caseRoomBtn");
 
-  if (title) title.textContent = `SOS: ${senderName || "User"}`;
+  if (title) title.textContent = `SOS: ${resolvedName}`;
   if (sub) sub.textContent = `${roomId === "DIRECT" ? "Direct SOS (No Room)" : `Room ${roomId || "-"}`} • Active Emergency Case`;
-  if (notesInput) notesInput.value = "Emergency assistance is assigned and responders have been notified.";
+  if (notesInput) notesInput.value = curNotes;
 
-  // Reset steps
+  // Reset/Set active step
   document.querySelectorAll(".sos-case-step-btn").forEach((btn) => {
-    btn.classList.toggle("is-active", btn.dataset.step === "1");
+    btn.classList.toggle("is-active", String(btn.dataset.step) === String(curStep));
   });
 
   if (callBtn) {
     callBtn.onclick = () => {
-      openCaseCallOptions(senderUid, senderName || "Sender");
+      openCaseCallOptions(resolvedUid, resolvedName);
     };
   }
   if (msgBtn) {
@@ -5545,8 +5622,14 @@ function handleAction(button) {
       const banner = document.getElementById("sosAlarmBanner");
       if (banner) banner.classList.add("hidden");
       await reserveSosCase(room, alert, uid, button.dataset.name || "Sender");
-      openCaseModal(room, alert, uid, button.dataset.name || "Sender");
       updateSosAlarmSystem();
+
+      const matchedAlert = getSosAlerts().find(
+        (a) => (a.roomId === room || a.roomId === "DIRECT") && (a.key === alert || a.id === alert)
+      ) || { key: alert, id: alert, roomId: room, senderUid: uid, senderName: button.dataset.name || "Sender", data: {} };
+
+      await focusSosSenderOnMap(matchedAlert);
+      openCaseModal(room, alert, uid, button.dataset.name || "Sender");
       return;
     }
     if (action === "close-case-modal") {
@@ -6256,9 +6339,9 @@ async function startAdminCall(uid, name, callType = "video") {
 
     const answerUnsub = onValue(ref(db, "calls/" + vcCurrentCallId + "/answer"), (snapshot) => {
       const data = snapshot.val();
-      if (data && !vcPeerConnection.currentRemoteDescription) {
+      if (data && data.sdp && !vcPeerConnection.currentRemoteDescription) {
         const rtcDescription = new RTCSessionDescription(data);
-        vcPeerConnection.setRemoteDescription(rtcDescription);
+        vcPeerConnection.setRemoteDescription(rtcDescription).catch(e => console.warn("Failed to set remote answer:", e));
       }
     });
     vcUnsubscribers.push(answerUnsub);
@@ -6298,11 +6381,17 @@ async function startAdminCall(uid, name, callType = "video") {
     });
     vcUnsubscribers.push(micUnsub);
 
+    const processedCandidates = new Set();
     const iceUnsub = onValue(ref(db, "calls/" + vcCurrentCallId + "/calleeCandidates"), (snapshot) => {
       snapshot.forEach(childSnapshot => {
+        const key = childSnapshot.key;
+        if (processedCandidates.has(key)) return;
+        processedCandidates.add(key);
         const data = childSnapshot.val();
-        const candidate = new RTCIceCandidate(data);
-        vcPeerConnection.addIceCandidate(candidate);
+        if (data && data.candidate) {
+          const candidate = new RTCIceCandidate(data);
+          vcPeerConnection.addIceCandidate(candidate).catch(() => {});
+        }
       });
     });
     vcUnsubscribers.push(iceUnsub);
@@ -6592,6 +6681,9 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
 
   // ── Map state ───────────────────────────────────────────────────
   const ms = { leaflet: null, markers: new Map(), filter: "all", initialized: false };
+  window.__resqLiveMap = ms;
+  window.__resqInitLiveMap = initMap;
+  window.__resqRefreshMarkers = refreshMarkers;
 
   function stCls(updatedAt) {
     const age = Date.now() - millis(updatedAt);
@@ -6694,7 +6786,8 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
       const activeUserMap = new Map();
       getRooms().forEach((room) => {
         room.members.forEach((mem) => {
-          const lat = Number(mem.data.lat), lng = Number(mem.data.lng);
+          const lat = Number(mem.data.lat !== undefined ? mem.data.lat : mem.data.latitude);
+          const lng = Number(mem.data.lng !== undefined ? mem.data.lng : mem.data.longitude);
           if (!lat && !lng) return;
           if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
           if (lat === 0 && lng === 0) return;
@@ -6733,6 +6826,74 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
         });
       });
 
+      // Also map users from state.users with coordinates
+      if (state.users) {
+        entries(state.users).forEach(([uid, uVal]) => {
+          const u = asRecord(uVal);
+          const lat = Number(u.lat !== undefined ? u.lat : u.latitude);
+          const lng = Number(u.lng !== undefined ? u.lng : u.longitude);
+          if (!lat || !lng || !Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return;
+          const userHasActiveSos = Boolean(getActiveSosForUser(uid));
+          const existing = activeUserMap.get(uid);
+          const uTime = millis(u.updatedAt || u.locationUpdatedAt);
+          if (!existing) {
+            activeUserMap.set(uid, {
+              room: null,
+              mem: { uid, data: u, updatedAt: uTime, batteryPct: Number.isFinite(Number(u.batteryPct)) ? Number(u.batteryPct) : null },
+              lat,
+              lng,
+              hasSos: userHasActiveSos,
+              updatedAt: uTime
+            });
+          } else {
+            if (uTime > existing.updatedAt) {
+              existing.lat = lat;
+              existing.lng = lng;
+              existing.updatedAt = uTime;
+            }
+            if (userHasActiveSos) {
+              existing.hasSos = true;
+            }
+          }
+        });
+      }
+
+      // Also ensure any sender with active SOS has their marker on the map!
+      getSosAlerts().filter((a) => a.active && !isCancelled(a.data)).forEach((alert) => {
+        const uid = alert.senderUid;
+        if (!uid) return;
+        let lat = Number(alert.data && (alert.data.lat !== undefined ? alert.data.lat : alert.data.latitude));
+        let lng = Number(alert.data && (alert.data.lng !== undefined ? alert.data.lng : alert.data.longitude));
+        const existing = activeUserMap.get(uid);
+        if (!lat || !lng) {
+          if (existing) {
+            lat = existing.lat;
+            lng = existing.lng;
+          } else if (state.users && state.users[uid]) {
+            const u = asRecord(state.users[uid]);
+            lat = Number(u.lat !== undefined ? u.lat : u.latitude);
+            lng = Number(u.lng !== undefined ? u.lng : u.longitude);
+          }
+        }
+        if (Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0)) {
+          if (!existing) {
+            const u = asRecord(state.users && state.users[uid]);
+            activeUserMap.set(uid, {
+              room: { code: alert.roomId },
+              mem: { uid, data: u, updatedAt: alert.createdAt || Date.now(), batteryPct: null },
+              lat,
+              lng,
+              hasSos: true,
+              updatedAt: alert.createdAt || Date.now()
+            });
+          } else {
+            existing.hasSos = true;
+            existing.lat = lat;
+            existing.lng = lng;
+          }
+        }
+      });
+
       activeUserMap.forEach(({ room, mem, lat, lng, hasSos }, uid) => {
         const key = `u:${uid}`;
         keep.add(key);
@@ -6760,7 +6921,7 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
           if (hasSos) {
             const activeSos = getActiveSosForUser(uid);
             if (activeSos) {
-              const rId = activeSos.roomId || room.code;
+              const rId = activeSos.roomId || (room && room.code ? room.code : "DIRECT");
               const aId = activeSos.key || activeSos.id;
               state.selected = { type: "sos", roomId: rId, alertId: aId };
             } else {
@@ -6778,10 +6939,27 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
     if (f === "sos") {
       getSosAlerts().filter((a) => a.active && !isCancelled(a.data)).forEach((alert) => {
         let lat=0, lng=0;
-        getRooms().forEach((rm)=>{
-          const m=rm.members.find((item) => item.uid === alert.senderUid);
-          if(m && Number(m.lat)&&Number(m.lng)){lat=Number(m.lat);lng=Number(m.lng);}
-        });
+        if (alert.data) {
+          if (Number(alert.data.lat) && Number(alert.data.lng)) {
+            lat = Number(alert.data.lat); lng = Number(alert.data.lng);
+          } else if (Number(alert.data.latitude) && Number(alert.data.longitude)) {
+            lat = Number(alert.data.latitude); lng = Number(alert.data.longitude);
+          }
+        }
+        if (!lat && !lng) {
+          getRooms().forEach((rm)=>{
+            const m=rm.members.find((item) => item.uid === alert.senderUid);
+            if(m && Number(m.lat)&&Number(m.lng)){lat=Number(m.lat);lng=Number(m.lng);}
+          });
+        }
+        if (!lat && !lng && alert.senderUid && state.users && state.users[alert.senderUid]) {
+          const u = asRecord(state.users[alert.senderUid]);
+          const uLat = Number(u.lat !== undefined ? u.lat : u.latitude);
+          const uLng = Number(u.lng !== undefined ? u.lng : u.longitude);
+          if (Number.isFinite(uLat) && Number.isFinite(uLng) && !(uLat === 0 && uLng === 0)) {
+            lat = uLat; lng = uLng;
+          }
+        }
         if(!lat&&!lng) return;
         const key=`sos:${alert.key}`; keep.add(key);
         const sn=escapeHtml(alert.senderName||userName(alert.senderUid));
@@ -6841,6 +7019,10 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
     if (!window._LeafletMap) {
       console.error("[LiveMap] Leaflet not loaded! window._LeafletMap is undefined.");
       return;
+    }
+    const view = document.getElementById("livemapView");
+    if (view && view.classList.contains("hidden") && state.activeView === "livemap") {
+      view.classList.remove("hidden");
     }
     const container = document.getElementById("livemapContainer");
     if (!container) { console.error("[LiveMap] #livemapContainer not found!"); return; }

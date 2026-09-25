@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=admin-clear-db-modal-106">
+  <link rel="stylesheet" href="/styles.css?v=admin-call-buttons-112">
   <script>
     (function() {
       try {
@@ -1196,7 +1196,11 @@
       </div>
 
       <footer class="sos-case-footer">
-        <button class="secondary-button" data-action="close-case-modal" type="button">Back</button>
+        <button class="secondary-button" data-action="close-case-modal" type="button">Close</button>
+        <button id="caseSaveBtn" class="primary-button icon-button" data-action="save-case-progress" type="button">
+          <i data-lucide="check" aria-hidden="true"></i>
+          <span>Save Changes</span>
+        </button>
       </footer>
     </div>
   </div>
@@ -1320,16 +1324,15 @@
         <i data-lucide="phone-incoming" aria-hidden="true"></i>
       </div>
       <div class="admin-call-details">
-        <div class="admin-call-badge">🚨 PANGGILAN KECEMASAN SOS</div>
         <h4 id="adminIncomingCallerName" class="admin-call-caller-name">Mangsa SOS</h4>
         <p id="adminIncomingCallDesc" class="admin-call-desc">Membuat panggilan kecemasan...</p>
       </div>
       <div class="admin-call-actions">
-        <button id="adminAcceptCallBtn" class="primary-button call-accept-btn" type="button">
+        <button id="adminAcceptCallBtn" class="call-accept-btn" type="button">
           <i data-lucide="phone" aria-hidden="true"></i>
           <span id="adminAcceptCallBtnText">Jawab Panggilan</span>
         </button>
-        <button id="adminDeclineCallBtn" class="secondary-button danger call-decline-btn" type="button">
+        <button id="adminDeclineCallBtn" class="call-decline-btn" type="button">
           <i data-lucide="phone-off" aria-hidden="true"></i>
           <span>Abaikan</span>
         </button>
@@ -1337,7 +1340,7 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js?v=admin-clear-db-modal-106"></script>
+  <script type="module" src="/app.js?v=admin-serve-no-auto-modal-110"></script>
 </body>
 </html>
 

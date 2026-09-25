@@ -425,31 +425,70 @@
                         app:strokeColor="@color/auth_field_stroke" />
                 </LinearLayout>
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/layout_name"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    app:errorEnabled="false"
+                <LinearLayout
+                    android:id="@+id/container_name"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    app:boxBackgroundColor="@color/auth_field"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/auth_field_stroke"
-                    app:hintEnabled="false">
+                    android:baselineAligned="false"
+                    android:orientation="horizontal">
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/input_name"
-                        android:layout_width="match_parent"
-                        android:layout_height="54dp"
-                        android:fontFamily="sans-serif"
-                        android:hint="@string/hint_name"
-                        android:inputType="textPersonName|textCapCharacters"
-                        android:textColor="@color/auth_field_text"
-                        android:textColorHint="@color/auth_field_hint"
-                        android:textSize="14.5sp" />
-                </com.google.android.material.textfield.TextInputLayout>
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_first_name"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        app:errorEnabled="false"
+                        app:errorTextAppearance="@style/TextAppearance.ResQTap.ErrorSmall"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        app:boxBackgroundColor="@color/auth_field"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/auth_field_stroke"
+                        app:hintEnabled="false">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_first_name"
+                            android:layout_width="match_parent"
+                            android:layout_height="54dp"
+                            android:fontFamily="sans-serif"
+                            android:hint="@string/hint_first_name"
+                            android:inputType="textPersonName|textCapCharacters"
+                            android:textColor="@color/auth_field_text"
+                            android:textColorHint="@color/auth_field_hint"
+                            android:textSize="14.5sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_last_name"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        app:errorEnabled="false"
+                        app:errorTextAppearance="@style/TextAppearance.ResQTap.ErrorSmall"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        app:boxBackgroundColor="@color/auth_field"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/auth_field_stroke"
+                        app:hintEnabled="false">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_last_name"
+                            android:layout_width="match_parent"
+                            android:layout_height="54dp"
+                            android:fontFamily="sans-serif"
+                            android:hint="@string/hint_last_name"
+                            android:inputType="textPersonName|textCapCharacters"
+                            android:textColor="@color/auth_field_text"
+                            android:textColorHint="@color/auth_field_hint"
+                            android:textSize="14.5sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layout_ic"
@@ -848,9 +887,14 @@
                         android:id="@+id/input_allergies"
                         android:layout_width="match_parent"
                         android:layout_height="54dp"
+                        android:clickable="true"
+                        android:cursorVisible="false"
+                        android:focusable="false"
                         android:fontFamily="sans-serif"
                         android:hint="@string/hint_allergies"
                         android:inputType="none"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
                         android:textColor="@color/auth_field_text"
                         android:textColorHint="@color/auth_field_hint"
                         android:textSize="14.5sp" />
@@ -879,6 +923,8 @@
                         android:fontFamily="sans-serif"
                         android:hint="@string/hint_specify_allergy"
                         android:inputType="text"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
                         android:textColor="@color/auth_field_text"
                         android:textColorHint="@color/auth_field_hint"
                         android:textSize="14.5sp" />
@@ -904,9 +950,14 @@
                         android:id="@+id/input_medications"
                         android:layout_width="match_parent"
                         android:layout_height="54dp"
+                        android:clickable="true"
+                        android:cursorVisible="false"
+                        android:focusable="false"
                         android:fontFamily="sans-serif"
                         android:hint="@string/hint_medications"
                         android:inputType="none"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
                         android:textColor="@color/auth_field_text"
                         android:textColorHint="@color/auth_field_hint"
                         android:textSize="14.5sp" />

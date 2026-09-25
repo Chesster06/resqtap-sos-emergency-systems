@@ -61,6 +61,19 @@
     <string name="register_title">கணக்கு உருவாக்கு</string>
     <string name="register_desc">பதிவு செய்ய கீழே உள்ள விவரங்களை நிரப்பவும்.</string>
     <string name="hint_name">பெயர்</string>
+    <string name="hint_first_name">முதல் பெயர்</string>
+    <string name="hint_last_name">கடைசி பெயர்</string>
+    <string name="error_required_first_name">முதல் பெயர் தேவை</string>
+    <string name="error_required_last_name">கடைசி பெயர் தேவை</string>
+    <string name="error_required_ic">உங்கள் அடையாள அட்டை எண்ணை உள்ளிடவும்</string>
+    <string name="error_invalid_ic">சரியான அடையாள அட்டை எண்ணை உள்ளிடவும் (குறைந்தது 6 இலக்கங்கள்)</string>
+    <string name="error_required_gender">உங்கள் பாலினத்தைத் தேர்ந்தெடுக்கவும்</string>
+    <string name="error_required_phone">உங்கள் தொலைபேசி எண்ணை உள்ளிடவும்</string>
+    <string name="error_invalid_phone">சரியான தொலைபேசி எண்ணை உள்ளிடவும் (குறைந்தது 7 இலக்கங்கள்)</string>
+    <string name="error_required_address">உங்கள் முகவரியை உள்ளிடவும்</string>
+    <string name="error_required_religion">உங்கள் மதத்தைத் தேர்ந்தெடுக்கவும்</string>
+    <string name="error_required_dob">உங்கள் பிறந்த தேதியைத் தேர்ந்தெடுக்கவும்</string>
+    <string name="error_required_ethnicity">உங்கள் இனத்தைத் தேர்ந்தெடுக்கவும்</string>
     <string name="hint_address">முகவரி</string>
     <string name="hint_blood_type">இரத்த வகை</string>
     <string name="hint_allergy">ஒவ்வாமை</string>
@@ -510,5 +523,14 @@
     <string name="friend_nickname_real_name_format">%1$s#%2$s • நண்பர்</string>
     <string name="friend_nickname_updated">புனைப்பெயர் புதுப்பிக்கப்பட்டது</string>
     <string name="friend_edit_nickname_desc">தனிப்பட்ட புனைப்பெயரைத் திருத்து</string>
+    <!-- Medical Summary Dialog & Multi-Select -->
+    <string name="medical_summary_title">மருத்துவ தகவல்</string>
+    <string name="medical_summary_desc">அவசர சுகாதார சுருக்கம்</string>
+    <string name="medical_summary_btn_edit">மருத்துவ சுயவிவரத்தைத் திருத்து</string>
+    <string name="medical_summary_close">மூடு</string>
+    <string name="medical_summary_none_allergies">ஒவ்வாமைகள் எதுவும் பதிவு செய்யப்படவில்லை</string>
+    <string name="medical_summary_none_conditions">மருத்துவ நிலை எதுவும் பதிவு செய்யப்படவில்லை</string>
+    <string name="select_allergies_title">ஒவ்வாமைகளைத் தேர்ந்தெடுக்கவும்</string>
+    <string name="select_conditions_title">மருத்துவ நிலை / மருந்துகளைத் தேர்ந்தெடுக்கவும்</string>
 </resources>
 

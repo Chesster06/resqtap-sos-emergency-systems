@@ -92,6 +92,8 @@ public class SosLivechatActivity extends BaseActivity {
     private BottomSheetDialog callWaitDialog;
     private DatabaseReference userCallRef;
     private ValueEventListener userCallListener;
+    private DatabaseReference adminCallIncomingRef;
+    private ValueEventListener adminCallIncomingListener;
 
     public static void launch(Context context, String roomCode, String alertId, String responderName, String responderUid) {
         if (context == null) return;
@@ -465,6 +467,7 @@ public class SosLivechatActivity extends BaseActivity {
      */
     private void showCallOptionsBottomSheet() {
         BottomSheetDialog dialog = new BottomSheetDialog(this, R.style.Theme_ResQTap_BottomSheetDialog);
+        dialog.setCanceledOnTouchOutside(false);
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_sos_call_options, null);
         dialog.setContentView(view);
 
@@ -499,6 +502,9 @@ public class SosLivechatActivity extends BaseActivity {
             return;
         }
 
+        // Mark that user is actively awaiting response for outgoing SOS call
+        CallSignalingClient.setAwaitingSosResponse(true);
+
         // Hantar permintaan panggilan ke Firebase RTDB
         DatabaseReference rtdb = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL).getReference();
 
@@ -524,6 +530,12 @@ public class SosLivechatActivity extends BaseActivity {
         stopCallListening();
 
         callWaitDialog = new BottomSheetDialog(this, R.style.Theme_ResQTap_BottomSheetDialog);
+        callWaitDialog.setCanceledOnTouchOutside(false);
+        callWaitDialog.setCancelable(false);
+        com.google.android.material.bottomsheet.BottomSheetBehavior<?> waitBehavior = callWaitDialog.getBehavior();
+        if (waitBehavior != null) {
+            waitBehavior.setHideable(false);
+        }
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_sos_call_options, null);
         callWaitDialog.setContentView(view);
 
@@ -549,12 +561,38 @@ public class SosLivechatActivity extends BaseActivity {
             });
         }
 
-        callWaitDialog.setOnDismissListener(d -> stopCallListening());
+        callWaitDialog.setOnDismissListener(d -> {
+            CallSignalingClient.setAwaitingSosResponse(false);
+            stopCallListening();
+        });
         callWaitDialog.show();
 
+        DatabaseReference rtdb = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL).getReference();
+
+        // Dengar status jika responder admin menolak panggilan
+        adminCallIncomingRef = rtdb.child("adminCalls").child("incoming");
+        adminCallIncomingListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (!snapshot.exists()) return;
+                String status = snapshot.child("status").getValue(String.class);
+                if ("declined".equalsIgnoreCase(status)) {
+                    stopCallListening();
+                    CallSignalingClient.setAwaitingSosResponse(false);
+                    if (callWaitDialog != null && callWaitDialog.isShowing()) {
+                        callWaitDialog.dismiss();
+                    }
+                    Toast.makeText(SosLivechatActivity.this, "Responder admin sedang sibuk atau tidak dapat menjawab panggilan buat masa ini.", Toast.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {}
+        };
+        adminCallIncomingRef.addValueEventListener(adminCallIncomingListener);
+
         if (myUid != null && !myUid.isEmpty()) {
-            userCallRef = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                    .getReference("userCalls").child(myUid).child("currentCall");
+            userCallRef = rtdb.child("userCalls").child(myUid).child("currentCall");
 
             userCallListener = new ValueEventListener() {
                 @Override
@@ -566,6 +604,7 @@ public class SosLivechatActivity extends BaseActivity {
                     if (serverCallType == null || serverCallType.isEmpty()) serverCallType = callType;
 
                     if ("ringing".equalsIgnoreCase(status) && callId != null && !callId.isEmpty()) {
+                        CallSignalingClient.setAwaitingSosResponse(false);
                         stopCallListening();
                         if (callWaitDialog != null && callWaitDialog.isShowing()) {
                             callWaitDialog.dismiss();
@@ -589,6 +628,7 @@ public class SosLivechatActivity extends BaseActivity {
     }
 
     private void cancelCallRequest() {
+        CallSignalingClient.setAwaitingSosResponse(false);
         DatabaseReference rtdb = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL).getReference();
         rtdb.child("adminCalls").child("incoming").child("status").setValue("cancelled");
         if (!roomCode.isEmpty() && !alertId.isEmpty()) {
@@ -601,6 +641,11 @@ public class SosLivechatActivity extends BaseActivity {
             userCallRef.removeEventListener(userCallListener);
             userCallListener = null;
             userCallRef = null;
+        }
+        if (adminCallIncomingRef != null && adminCallIncomingListener != null) {
+            adminCallIncomingRef.removeEventListener(adminCallIncomingListener);
+            adminCallIncomingListener = null;
+            adminCallIncomingRef = null;
         }
     }
 

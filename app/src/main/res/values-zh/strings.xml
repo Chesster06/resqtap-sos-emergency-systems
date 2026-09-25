@@ -61,6 +61,19 @@
     <string name="register_title">创建账户</string>
     <string name="register_desc">填写以下资料完成注册。</string>
     <string name="hint_name">姓名</string>
+    <string name="hint_first_name">名字</string>
+    <string name="hint_last_name">姓氏</string>
+    <string name="error_required_first_name">请填写名字</string>
+    <string name="error_required_last_name">请填写姓氏</string>
+    <string name="error_required_ic">请输入您的身份证号码</string>
+    <string name="error_invalid_ic">请输入有效的身份证号码（至少6位数字）</string>
+    <string name="error_required_gender">请选择您的性别</string>
+    <string name="error_required_phone">请输入您的电话号码</string>
+    <string name="error_invalid_phone">请输入有效的电话号码（至少7位数字）</string>
+    <string name="error_required_address">请输入您的住家地址</string>
+    <string name="error_required_religion">请选择您的宗教</string>
+    <string name="error_required_dob">请选择您的出生日期</string>
+    <string name="error_required_ethnicity">请选择您的种族</string>
     <string name="hint_address">地址</string>
     <string name="hint_blood_type">血型</string>
     <string name="hint_allergy">过敏</string>
@@ -511,5 +524,14 @@
     <string name="friend_nickname_real_name_format">%1$s#%2$s • 好友</string>
     <string name="friend_nickname_updated">备注名已更新</string>
     <string name="friend_edit_nickname_desc">修改专属备注名</string>
+    <!-- Medical Summary Dialog & Multi-Select -->
+    <string name="medical_summary_title">医疗信息</string>
+    <string name="medical_summary_desc">紧急健康信息摘要</string>
+    <string name="medical_summary_btn_edit">编辑医疗档案</string>
+    <string name="medical_summary_close">关闭</string>
+    <string name="medical_summary_none_allergies">未记录已知过敏</string>
+    <string name="medical_summary_none_conditions">未记录疾病或用药</string>
+    <string name="select_allergies_title">选择过敏项</string>
+    <string name="select_conditions_title">选择健康状况 / 药物</string>
 </resources>
 

@@ -8719,14 +8719,15 @@ body.dark-mode.admin-site-active .livechat-selected-attachment button:hover {
 }
 
 /* Floating Incoming SOS Call Alert for Admin */
+/* Floating Incoming SOS Call Alert for Admin */
 .admin-call-alert {
   position: fixed;
   top: 24px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 999999;
-  width: 92%;
-  max-width: 520px;
+  width: auto;
+  max-width: calc(100vw - 32px);
   animation: slideDownFade 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @keyframes slideDownFade {
@@ -8743,24 +8744,27 @@ body.dark-mode.admin-site-active .livechat-selected-attachment button:hover {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px 20px;
+  padding: 12px 18px;
   border-radius: 20px;
-  background: rgba(15, 23, 42, 0.92);
+  background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(16px);
-  border: 1.5px solid rgba(225, 29, 72, 0.4);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), 0 0 24px rgba(225, 29, 72, 0.35);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(225, 29, 72, 0.45);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgba(225, 29, 72, 0.35);
   color: #fff;
+  box-sizing: border-box;
 }
 .admin-call-pulse-avatar {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border-radius: 50%;
   background: #e11d48;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
+  flex-shrink: 0;
   animation: emergencyPulse 1.4s infinite ease-in-out;
 }
 @keyframes emergencyPulse {
@@ -8775,21 +8779,15 @@ body.dark-mode.admin-site-active .livechat-selected-attachment button:hover {
   }
 }
 .admin-call-details {
-  flex: 1;
-  min-width: 0;
-}
-.admin-call-badge {
-  display: inline-block;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #ff6b8b;
-  margin-bottom: 2px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 140px;
+  max-width: 220px;
 }
 .admin-call-caller-name {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.96rem;
+  font-weight: 800;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -8798,48 +8796,74 @@ body.dark-mode.admin-site-active .livechat-selected-attachment button:hover {
 }
 .admin-call-desc {
   font-size: 0.78rem;
-  color: #cbd5e1;
+  color: #94a3b8;
   margin: 2px 0 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .admin-call-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  gap: 10px !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+}
+.call-accept-btn,
+.call-decline-btn {
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  width: 124px !important;
+  min-width: 124px !important;
+  max-width: 124px !important;
+  margin: 0 !important;
+  padding: 0 12px !important;
+  font-size: 0.84rem !important;
+  font-weight: 700 !important;
+  font-family: inherit !important;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+  line-height: 1 !important;
+  text-decoration: none !important;
 }
 .call-accept-btn {
   background: #059669 !important;
-  color: #fff !important;
-  border: none !important;
-  padding: 8px 14px !important;
-  font-size: 0.85rem !important;
-  font-weight: 700 !important;
-  border-radius: 12px !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  cursor: pointer !important;
-  transition: background 0.15s ease !important;
+  color: #ffffff !important;
+  border: 1px solid #10b981 !important;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3) !important;
+  transition: all 0.15s ease !important;
 }
 .call-accept-btn:hover {
   background: #047857 !important;
+  border-color: #059669 !important;
 }
 .call-decline-btn {
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(239, 68, 68, 0.15) !important;
   color: #f87171 !important;
-  border: 1px solid rgba(248, 113, 113, 0.3) !important;
-  padding: 8px 12px !important;
-  font-size: 0.85rem !important;
-  border-radius: 12px !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  cursor: pointer !important;
+  border: 1px solid rgba(248, 113, 113, 0.35) !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
 }
 .call-decline-btn:hover {
-  background: rgba(239, 68, 68, 0.2) !important;
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-color: rgba(248, 113, 113, 0.5) !important;
+}
+.call-accept-btn i,
+.call-decline-btn i,
+.call-accept-btn svg,
+.call-decline-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0 !important;
 }
 
 /* ==========================================================================

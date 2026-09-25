@@ -170,10 +170,20 @@ public class RegisterActivity extends BaseActivity {
 
         imgAvatar = findViewById(R.id.img_profile_avatar);
         MaterialButton btnUploadPhoto = findViewById(R.id.btn_upload_photo);
-        TextInputLayout nameLayout = findViewById(R.id.layout_name);
+        TextInputLayout firstNameLayout = findViewById(R.id.layout_first_name);
+        TextInputLayout lastNameLayout = findViewById(R.id.layout_last_name);
+        TextInputLayout icLayout = findViewById(R.id.layout_ic);
+        TextInputLayout genderLayout = findViewById(R.id.layout_gender);
         TextInputLayout phoneLayout = findViewById(R.id.layout_phone);
         TextInputLayout addressLayout = findViewById(R.id.layout_address);
-        TextInputEditText name = findViewById(R.id.input_name);
+        TextInputLayout religionLayout = findViewById(R.id.layout_religion);
+        TextInputLayout layoutReligionOther = findViewById(R.id.layout_religion_other);
+        TextInputLayout dobLayout = findViewById(R.id.layout_dob);
+        TextInputLayout ethnicityLayout = findViewById(R.id.layout_ethnicity);
+        TextInputLayout layoutEthnicityOther = findViewById(R.id.layout_ethnicity_other);
+
+        TextInputEditText firstNameInput = findViewById(R.id.input_first_name);
+        TextInputEditText lastNameInput = findViewById(R.id.input_last_name);
         TextInputEditText icInput = findViewById(R.id.input_ic);
         MaterialAutoCompleteTextView genderInput = findViewById(R.id.input_gender);
         TextInputEditText phoneInput = findViewById(R.id.input_phone);
@@ -190,29 +200,82 @@ public class RegisterActivity extends BaseActivity {
         }
         TextInputEditText addressInput = findViewById(R.id.input_address);
         MaterialAutoCompleteTextView religionInput = findViewById(R.id.input_religion);
-        View layoutReligionOther = findViewById(R.id.layout_religion_other);
         TextInputEditText religionOtherInput = findViewById(R.id.input_religion_other);
         if (religionOtherInput != null) {
             religionOtherInput.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.AllCaps()});
+            religionOtherInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (layoutReligionOther != null) { layoutReligionOther.setError(null); layoutReligionOther.setErrorEnabled(false); }
+                }
+            });
         }
 
         TextInputEditText dobInput = findViewById(R.id.input_dob);
+        if (dobInput != null) {
+            dobInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (dobLayout != null) { dobLayout.setError(null); dobLayout.setErrorEnabled(false); }
+                }
+            });
+        }
+
         MaterialAutoCompleteTextView ethnicityInput = findViewById(R.id.input_ethnicity);
-        View layoutEthnicityOther = findViewById(R.id.layout_ethnicity_other);
         TextInputEditText ethnicityOtherInput = findViewById(R.id.input_ethnicity_other);
         if (ethnicityOtherInput != null) {
             ethnicityOtherInput.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.AllCaps()});
+            ethnicityOtherInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (layoutEthnicityOther != null) { layoutEthnicityOther.setError(null); layoutEthnicityOther.setErrorEnabled(false); }
+                }
+            });
         }
 
         MaterialButton btnNextToStep3 = findViewById(R.id.btn_next_to_step3);
 
-        if (name != null) {
-            name.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.AllCaps()});
-            name.addTextChangedListener(new TextWatcher() {
+        if (firstNameInput != null) {
+            firstNameInput.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.AllCaps()});
+            firstNameInput.addTextChangedListener(new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
                 @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
                 @Override public void afterTextChanged(Editable s) {
-                    if (nameLayout != null) { nameLayout.setError(null); nameLayout.setErrorEnabled(false); }
+                    if (firstNameLayout != null) { firstNameLayout.setError(null); firstNameLayout.setErrorEnabled(false); }
+                }
+            });
+        }
+        if (lastNameInput != null) {
+            lastNameInput.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.AllCaps()});
+            lastNameInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (lastNameLayout != null) { lastNameLayout.setError(null); lastNameLayout.setErrorEnabled(false); }
+                }
+            });
+        }
+        if (icInput != null) {
+            icInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (icLayout != null) { icLayout.setError(null); icLayout.setErrorEnabled(false); }
+                }
+            });
+        }
+        if (genderInput != null) {
+            genderInput.setOnItemClickListener((parent, view, position, id) -> {
+                if (genderLayout != null) { genderLayout.setError(null); genderLayout.setErrorEnabled(false); }
+            });
+            genderInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (genderLayout != null) { genderLayout.setError(null); genderLayout.setErrorEnabled(false); }
                 }
             });
         }
@@ -313,6 +376,10 @@ public class RegisterActivity extends BaseActivity {
                     if (layoutReligionOther != null) layoutReligionOther.setVisibility(View.GONE);
                     if (religionOtherInput != null) religionOtherInput.setText("");
                 }
+                if (religionLayout != null) {
+                    religionLayout.setError(null);
+                    religionLayout.setErrorEnabled(false);
+                }
             });
             religionInput.addTextChangedListener(new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -323,6 +390,10 @@ public class RegisterActivity extends BaseActivity {
                         if (layoutReligionOther != null) layoutReligionOther.setVisibility(View.VISIBLE);
                     } else {
                         if (layoutReligionOther != null) layoutReligionOther.setVisibility(View.GONE);
+                    }
+                    if (religionLayout != null) {
+                        religionLayout.setError(null);
+                        religionLayout.setErrorEnabled(false);
                     }
                 }
             });
@@ -345,6 +416,10 @@ public class RegisterActivity extends BaseActivity {
                     if (layoutEthnicityOther != null) layoutEthnicityOther.setVisibility(View.GONE);
                     if (ethnicityOtherInput != null) ethnicityOtherInput.setText("");
                 }
+                if (ethnicityLayout != null) {
+                    ethnicityLayout.setError(null);
+                    ethnicityLayout.setErrorEnabled(false);
+                }
             });
             ethnicityInput.addTextChangedListener(new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -355,6 +430,10 @@ public class RegisterActivity extends BaseActivity {
                         if (layoutEthnicityOther != null) layoutEthnicityOther.setVisibility(View.VISIBLE);
                     } else {
                         if (layoutEthnicityOther != null) layoutEthnicityOther.setVisibility(View.GONE);
+                    }
+                    if (ethnicityLayout != null) {
+                        ethnicityLayout.setError(null);
+                        ethnicityLayout.setErrorEnabled(false);
                     }
                 }
             });
@@ -376,40 +455,21 @@ public class RegisterActivity extends BaseActivity {
             });
         }
 
-        try {
-            String[] allergiesList = getResources().getStringArray(R.array.allergy_options);
-            allergiesInput.setAdapter(new ArrayAdapter<>(this, R.layout.item_dropdown_popup, allergiesList));
-            allergiesInput.setDropDownBackgroundResource(R.drawable.bg_dropdown_popup);
-        } catch (Exception ignored) {
-        }
-
+        View.OnClickListener allergiesClick = v -> {
+            String[] allergiesList;
+            try {
+                allergiesList = getResources().getStringArray(R.array.allergy_options);
+            } catch (Exception e) {
+                allergiesList = new String[]{"None", "Peanuts / Nuts", "Seafood / Shellfish", "Dairy / Lactose", "Eggs", "Wheat / Gluten", "Penicillin / Antibiotics", "Aspirin / NSAIDs", "Latex", "Dust / Pollen", "Others"};
+            }
+            showMultiSelectRegisterDialog(getString(R.string.select_allergies_title), allergiesList,
+                    allergiesInput, layoutAllergies, layoutAllergiesOther, allergiesOtherInput);
+        };
         if (allergiesInput != null) {
-            allergiesInput.setOnItemClickListener((parent, view, position, id) -> {
-                String selected = allergiesInput.getText() == null ? "" : allergiesInput.getText().toString();
-                if (isOtherSelected(selected)) {
-                    if (layoutAllergiesOther != null) layoutAllergiesOther.setVisibility(View.VISIBLE);
-                    if (allergiesOtherInput != null) allergiesOtherInput.requestFocus();
-                } else {
-                    if (layoutAllergiesOther != null) layoutAllergiesOther.setVisibility(View.GONE);
-                    if (allergiesOtherInput != null) allergiesOtherInput.setText("");
-                }
-            });
-            allergiesInput.addTextChangedListener(new TextWatcher() {
-                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-                @Override public void afterTextChanged(Editable s) {
-                    String selected = s == null ? "" : s.toString();
-                    if (isOtherSelected(selected)) {
-                        if (layoutAllergiesOther != null) layoutAllergiesOther.setVisibility(View.VISIBLE);
-                    } else {
-                        if (layoutAllergiesOther != null) layoutAllergiesOther.setVisibility(View.GONE);
-                    }
-                    if (layoutAllergies != null) {
-                        layoutAllergies.setError(null);
-                        layoutAllergies.setErrorEnabled(false);
-                    }
-                }
-            });
+            allergiesInput.setOnClickListener(allergiesClick);
+        }
+        if (layoutAllergies != null) {
+            layoutAllergies.setEndIconOnClickListener(allergiesClick);
         }
 
         if (allergiesOtherInput != null) {
@@ -425,40 +485,21 @@ public class RegisterActivity extends BaseActivity {
             });
         }
 
-        try {
-            String[] medicationsList = getResources().getStringArray(R.array.medication_options);
-            medicationsInput.setAdapter(new ArrayAdapter<>(this, R.layout.item_dropdown_popup, medicationsList));
-            medicationsInput.setDropDownBackgroundResource(R.drawable.bg_dropdown_popup);
-        } catch (Exception ignored) {
-        }
-
+        View.OnClickListener medicationsClick = v -> {
+            String[] medicationsList;
+            try {
+                medicationsList = getResources().getStringArray(R.array.medication_options);
+            } catch (Exception e) {
+                medicationsList = new String[]{"None", "Painkillers (Paracetamol / Panadol)", "Antibiotics", "Antihistamines (Allergy)", "Inhaler (Asthma)", "Insulin / Diabetes Meds", "Blood Pressure Meds (Hypertension)", "Heart / Cholesterol Meds", "Gastric / Antacid Meds", "Others"};
+            }
+            showMultiSelectRegisterDialog(getString(R.string.select_conditions_title), medicationsList,
+                    medicationsInput, layoutMedications, layoutMedicationsOther, medicationsOtherInput);
+        };
         if (medicationsInput != null) {
-            medicationsInput.setOnItemClickListener((parent, view, position, id) -> {
-                String selected = medicationsInput.getText() == null ? "" : medicationsInput.getText().toString();
-                if (isOtherSelected(selected)) {
-                    if (layoutMedicationsOther != null) layoutMedicationsOther.setVisibility(View.VISIBLE);
-                    if (medicationsOtherInput != null) medicationsOtherInput.requestFocus();
-                } else {
-                    if (layoutMedicationsOther != null) layoutMedicationsOther.setVisibility(View.GONE);
-                    if (medicationsOtherInput != null) medicationsOtherInput.setText("");
-                }
-            });
-            medicationsInput.addTextChangedListener(new TextWatcher() {
-                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-                @Override public void afterTextChanged(Editable s) {
-                    String selected = s == null ? "" : s.toString();
-                    if (isOtherSelected(selected)) {
-                        if (layoutMedicationsOther != null) layoutMedicationsOther.setVisibility(View.VISIBLE);
-                    } else {
-                        if (layoutMedicationsOther != null) layoutMedicationsOther.setVisibility(View.GONE);
-                    }
-                    if (layoutMedications != null) {
-                        layoutMedications.setError(null);
-                        layoutMedications.setErrorEnabled(false);
-                    }
-                }
-            });
+            medicationsInput.setOnClickListener(medicationsClick);
+        }
+        if (layoutMedications != null) {
+            layoutMedications.setEndIconOnClickListener(medicationsClick);
         }
 
         if (medicationsOtherInput != null) {
@@ -650,27 +691,26 @@ public class RegisterActivity extends BaseActivity {
             imgAvatar.setOnClickListener(v -> launchFrontCamera());
         }
 
-        name.addTextChangedListener(new android.text.TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(android.text.Editable s) {
-                if (s == null) return;
-                String up = s.toString().toUpperCase();
-                if (!up.equals(s.toString())) {
-                    name.removeTextChangedListener(this);
-                    name.setText(up);
-                    name.setSelection(up.length());
-                    name.addTextChangedListener(this);
-                }
-            }
-        });
-
         if (completeProfileMode) {
             registeredEmail = presetEmail == null ? "" : presetEmail;
             registeredUid = FirebaseAuth.getInstance().getCurrentUser() == null ? completeUid : FirebaseAuth.getInstance().getCurrentUser().getUid();
 
             // Auto-populate existing user data dari UserPrefs supaya pengguna tidak nampak form kosong
-            if (name != null && !UserPrefs.getName(this).isEmpty()) name.setText(UserPrefs.getName(this));
+            String savedFirstName = UserPrefs.getFirstName(this).trim();
+            String savedLastName = UserPrefs.getLastName(this).trim();
+            if (!savedFirstName.isEmpty()) {
+                if (firstNameInput != null) firstNameInput.setText(savedFirstName);
+                if (lastNameInput != null) lastNameInput.setText(savedLastName);
+            } else if (!UserPrefs.getName(this).isEmpty()) {
+                String savedFullName = UserPrefs.getName(this).trim();
+                int spaceIdx = savedFullName.indexOf(' ');
+                if (spaceIdx > 0) {
+                    if (firstNameInput != null) firstNameInput.setText(savedFullName.substring(0, spaceIdx).trim());
+                    if (lastNameInput != null) lastNameInput.setText(savedFullName.substring(spaceIdx + 1).trim());
+                } else {
+                    if (firstNameInput != null) firstNameInput.setText(savedFullName);
+                }
+            }
             if (icInput != null && !UserPrefs.getIcNumber(this).isEmpty()) icInput.setText(UserPrefs.getIcNumber(this));
             if (genderInput != null && !UserPrefs.getGender(this).isEmpty()) genderInput.setText(UserPrefs.getGender(this), false);
             if (phoneInput != null && !UserPrefs.getPhoneNumber(this).isEmpty()) {
@@ -953,21 +993,71 @@ public class RegisterActivity extends BaseActivity {
         });
 
         btnNextToStep3.setOnClickListener(v -> {
-            String nameValue = name.getText() == null ? "" : name.getText().toString().trim();
-            String phoneValue = phoneInput.getText() == null ? "" : phoneInput.getText().toString().trim();
+            String firstNameValue = firstNameInput.getText() == null ? "" : firstNameInput.getText().toString().trim();
+            String lastNameValue = lastNameInput.getText() == null ? "" : lastNameInput.getText().toString().trim();
+            String icValue = icInput.getText() == null ? "" : icInput.getText().toString().trim();
+            String genderValue = genderInput.getText() == null ? "" : genderInput.getText().toString().trim();
+            String rawPhone = phoneInput.getText() == null ? "" : phoneInput.getText().toString().trim();
             String addressValue = addressInput.getText() == null ? "" : addressInput.getText().toString().trim();
+            String religionSelection = religionInput.getText() == null ? "" : religionInput.getText().toString().trim();
+            String religionOther = religionOtherInput == null || religionOtherInput.getText() == null ? "" : religionOtherInput.getText().toString().trim();
+            String dobValue = dobInput.getText() == null ? "" : dobInput.getText().toString().trim();
+            String ethnicitySelection = ethnicityInput.getText() == null ? "" : ethnicityInput.getText().toString().trim();
+            String ethnicityOther = ethnicityOtherInput == null || ethnicityOtherInput.getText() == null ? "" : ethnicityOtherInput.getText().toString().trim();
 
-            if (nameValue.isEmpty()) {
-                if (nameLayout != null) {
-                    nameLayout.setError("Please enter your full name");
-                    scrollToField(nameLayout);
+            if (firstNameValue.isEmpty()) {
+                if (firstNameLayout != null) {
+                    firstNameLayout.setError(getString(R.string.error_required_first_name));
+                    scrollToField(firstNameLayout);
                 }
                 return;
             }
 
-            if (phoneValue.isEmpty()) {
+            if (lastNameValue.isEmpty()) {
+                if (lastNameLayout != null) {
+                    lastNameLayout.setError(getString(R.string.error_required_last_name));
+                    scrollToField(lastNameLayout);
+                }
+                return;
+            }
+
+            if (icValue.isEmpty()) {
+                if (icLayout != null) {
+                    icLayout.setError(getString(R.string.error_required_ic));
+                    scrollToField(icLayout);
+                }
+                return;
+            }
+
+            String icDigits = icValue.replaceAll("[^0-9]", "");
+            if (icDigits.length() < 6) {
+                if (icLayout != null) {
+                    icLayout.setError(getString(R.string.error_invalid_ic));
+                    scrollToField(icLayout);
+                }
+                return;
+            }
+
+            if (genderValue.isEmpty()) {
+                if (genderLayout != null) {
+                    genderLayout.setError(getString(R.string.error_required_gender));
+                    scrollToField(genderLayout);
+                }
+                return;
+            }
+
+            if (rawPhone.isEmpty()) {
                 if (phoneLayout != null) {
-                    phoneLayout.setError("Please enter your phone number");
+                    phoneLayout.setError(getString(R.string.error_required_phone));
+                    scrollToField(phoneLayout);
+                }
+                return;
+            }
+
+            String phoneDigits = rawPhone.replaceAll("[^0-9]", "");
+            if (phoneDigits.length() < 7) {
+                if (phoneLayout != null) {
+                    phoneLayout.setError(getString(R.string.error_invalid_phone));
                     scrollToField(phoneLayout);
                 }
                 return;
@@ -975,8 +1065,48 @@ public class RegisterActivity extends BaseActivity {
 
             if (addressValue.isEmpty()) {
                 if (addressLayout != null) {
-                    addressLayout.setError("Please enter your home address");
+                    addressLayout.setError(getString(R.string.error_required_address));
                     scrollToField(addressLayout);
+                }
+                return;
+            }
+
+            if (religionSelection.isEmpty()) {
+                if (religionLayout != null) {
+                    religionLayout.setError(getString(R.string.error_required_religion));
+                    scrollToField(religionLayout);
+                }
+                return;
+            }
+
+            if (isOtherSelected(religionSelection) && religionOther.isEmpty()) {
+                if (layoutReligionOther != null) {
+                    layoutReligionOther.setError(getString(R.string.error_specify_other));
+                    scrollToField(layoutReligionOther);
+                }
+                return;
+            }
+
+            if (dobValue.isEmpty()) {
+                if (dobLayout != null) {
+                    dobLayout.setError(getString(R.string.error_required_dob));
+                    scrollToField(dobLayout);
+                }
+                return;
+            }
+
+            if (ethnicitySelection.isEmpty()) {
+                if (ethnicityLayout != null) {
+                    ethnicityLayout.setError(getString(R.string.error_required_ethnicity));
+                    scrollToField(ethnicityLayout);
+                }
+                return;
+            }
+
+            if (isOtherSelected(ethnicitySelection) && ethnicityOther.isEmpty()) {
+                if (layoutEthnicityOther != null) {
+                    layoutEthnicityOther.setError(getString(R.string.error_specify_other));
+                    scrollToField(layoutEthnicityOther);
                 }
                 return;
             }
@@ -985,7 +1115,9 @@ public class RegisterActivity extends BaseActivity {
         });
 
         btnSaveDetails.setOnClickListener(v -> {
-            String nameValue = name.getText() == null ? "" : name.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
+            String firstNameValue = firstNameInput.getText() == null ? "" : firstNameInput.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
+            String lastNameValue = lastNameInput.getText() == null ? "" : lastNameInput.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
+            String nameValue = (firstNameValue + " " + lastNameValue).trim();
             String icValue = icInput.getText() == null ? "" : icInput.getText().toString().trim();
             String genderValue = genderInput.getText() == null ? "" : genderInput.getText().toString().trim();
 
@@ -1016,11 +1148,11 @@ public class RegisterActivity extends BaseActivity {
 
             String allergiesSelection = allergiesInput.getText() == null ? "" : allergiesInput.getText().toString().trim();
             String allergiesOther = allergiesOtherInput == null || allergiesOtherInput.getText() == null ? "" : allergiesOtherInput.getText().toString().trim();
-            String allergiesValue = isOtherSelected(allergiesSelection) ? (!allergiesOther.isEmpty() ? allergiesOther : allergiesSelection) : allergiesSelection;
+            String allergiesValue = buildMultiSelectValue(allergiesSelection, allergiesOther);
 
             String medicationsSelection = medicationsInput.getText() == null ? "" : medicationsInput.getText().toString().trim();
             String medicationsOther = medicationsOtherInput == null || medicationsOtherInput.getText() == null ? "" : medicationsOtherInput.getText().toString().trim();
-            String medicationsValue = isOtherSelected(medicationsSelection) ? (!medicationsOther.isEmpty() ? medicationsOther : medicationsSelection) : medicationsSelection;
+            String medicationsValue = buildMultiSelectValue(medicationsSelection, medicationsOther);
 
             String organDonorValue = organDonorInput.getText() == null ? "" : organDonorInput.getText().toString().trim();
 
@@ -1041,6 +1173,14 @@ public class RegisterActivity extends BaseActivity {
             String emRelationSelection = emergencyRelationInput.getText() == null ? "" : emergencyRelationInput.getText().toString().trim();
             String emRelationOther = emergencyRelationOtherInput == null || emergencyRelationOtherInput.getText() == null ? "" : emergencyRelationOtherInput.getText().toString().trim();
             String emRelationValue = isOtherSelected(emRelationSelection) ? (!emRelationOther.isEmpty() ? emRelationOther : emRelationSelection) : emRelationSelection;
+
+            // --- VALIDASI STEP 2: PERSONAL INFO SAFETY CHECK ---
+            if (firstNameValue.isEmpty() || lastNameValue.isEmpty() || icValue.isEmpty() || genderValue.isEmpty()
+                    || phoneValue.isEmpty() || addressValue.isEmpty() || religionSelection.isEmpty() || dobValue.isEmpty() || ethnicitySelection.isEmpty()) {
+                showStep2PersonalInfo();
+                Toast.makeText(this, "Please complete all personal information fields", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
             // --- VALIDASI STEP 3: MEDICAL & EMERGENCY INFO (REQUIRED) ---
             if (bloodValue.isEmpty()) {
@@ -1138,7 +1278,7 @@ public class RegisterActivity extends BaseActivity {
             FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
             if (currentUser != null) {
                 registeredUid = currentUser.getUid();
-                saveProfileToDatabase(registeredUid, registeredEmail, nameValue, icValue, genderValue, phoneValue, addressValue, religionValue, dobValue, ethnicityValue, bloodValue, allergiesValue, medicationsValue, organDonorValue, emNameValue, emPhoneValue, emRelationValue, btnSaveDetails);
+                saveProfileToDatabase(registeredUid, registeredEmail, firstNameValue, lastNameValue, nameValue, icValue, genderValue, phoneValue, addressValue, religionValue, dobValue, ethnicityValue, bloodValue, allergiesValue, medicationsValue, organDonorValue, emNameValue, emPhoneValue, emRelationValue, btnSaveDetails);
                 return;
             }
 
@@ -1152,7 +1292,7 @@ public class RegisterActivity extends BaseActivity {
                             return;
                         }
                         registeredUid = result.getUser().getUid();
-                        saveProfileToDatabase(registeredUid, registeredEmail, nameValue, icValue, genderValue, phoneValue, addressValue, religionValue, dobValue, ethnicityValue, bloodValue, allergiesValue, medicationsValue, organDonorValue, emNameValue, emPhoneValue, emRelationValue, btnSaveDetails);
+                        saveProfileToDatabase(registeredUid, registeredEmail, firstNameValue, lastNameValue, nameValue, icValue, genderValue, phoneValue, addressValue, religionValue, dobValue, ethnicityValue, bloodValue, allergiesValue, medicationsValue, organDonorValue, emNameValue, emPhoneValue, emRelationValue, btnSaveDetails);
                     })
                     .addOnFailureListener(e -> {
                         Log.e(TAG, "createUserWithEmailAndPassword failed at final save", e);
@@ -1163,7 +1303,7 @@ public class RegisterActivity extends BaseActivity {
                                     .addOnSuccessListener(authRes -> {
                                         if (authRes.getUser() != null) {
                                             registeredUid = authRes.getUser().getUid();
-                                            saveProfileToDatabase(registeredUid, registeredEmail, nameValue, icValue, genderValue, phoneValue, addressValue, religionValue, dobValue, ethnicityValue, bloodValue, allergiesValue, medicationsValue, organDonorValue, emNameValue, emPhoneValue, emRelationValue, btnSaveDetails);
+                                            saveProfileToDatabase(registeredUid, registeredEmail, firstNameValue, lastNameValue, nameValue, icValue, genderValue, phoneValue, addressValue, religionValue, dobValue, ethnicityValue, bloodValue, allergiesValue, medicationsValue, organDonorValue, emNameValue, emPhoneValue, emRelationValue, btnSaveDetails);
                                         } else {
                                             btnSaveDetails.setEnabled(true);
                                             showAccountExistsDialog(registeredEmail);
@@ -1259,13 +1399,15 @@ public class RegisterActivity extends BaseActivity {
     }
 
     /** Simpan profil penuh pengguna ke Firebase Realtime Database dan selesaikan pendaftaran. */
-    private void saveProfileToDatabase(String uid, String emailVal, String nameValue, String icValue, String genderValue,
+    private void saveProfileToDatabase(String uid, String emailVal, String firstNameValue, String lastNameValue, String nameValue, String icValue, String genderValue,
                                        String phoneValue, String addressValue, String religionValue, String dobValue,
                                        String ethnicityValue, String bloodValue, String allergiesValue,
                                        String medicationsValue, String organDonorValue, String emNameValue,
                                        String emPhoneValue, String emRelationValue, MaterialButton btnSaveDetails) {
         Map<String, Object> user = new HashMap<>();
         user.put("name", nameValue);
+        user.put("firstName", firstNameValue);
+        user.put("lastName", lastNameValue);
         user.put("email", String.valueOf(emailVal == null ? "" : emailVal).trim().toLowerCase(java.util.Locale.ROOT));
         user.put("icNumber", icValue);
         user.put("gender", genderValue);
@@ -1308,6 +1450,8 @@ public class RegisterActivity extends BaseActivity {
                     UserPrefs.setUid(this, uid);
                     UserPrefs.setEmail(this, emailVal);
                     UserPrefs.setName(this, nameValue);
+                    UserPrefs.setFirstName(this, firstNameValue);
+                    UserPrefs.setLastName(this, lastNameValue);
                     UserPrefs.setIcNumber(this, icValue);
                     UserPrefs.setGender(this, genderValue);
                     UserPrefs.setPhoneNumber(this, phoneValue);
@@ -1883,7 +2027,112 @@ public class RegisterActivity extends BaseActivity {
     private boolean isOtherSelected(String text) {
         if (text == null) return false;
         String t = text.trim().toLowerCase(java.util.Locale.ROOT);
-        return t.equals("others") || t.equals("other") || t.equals("lain-lain") || t.equals("其他") || t.equals("மற்றவை");
+        if (t.equals("others") || t.equals("other") || t.equals("lain-lain") || t.equals("其他") || t.equals("மற்றவை")) {
+            return true;
+        }
+        if (t.contains(",")) {
+            for (String part : t.split(",")) {
+                String p = part.trim();
+                if (p.equals("others") || p.equals("other") || p.equals("lain-lain") || p.equals("其他") || p.equals("மற்றவை")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private String buildMultiSelectValue(String selection, String otherText) {
+        if (selection == null || selection.trim().isEmpty()) return "";
+        if (!isOtherSelected(selection)) return selection.trim();
+        String[] parts = selection.split(",");
+        java.util.List<String> list = new java.util.ArrayList<>();
+        for (String p : parts) {
+            String item = p.trim();
+            if (isOtherSelected(item)) {
+                if (otherText != null && !otherText.trim().isEmpty()) {
+                    list.add(otherText.trim());
+                }
+            } else if (!item.isEmpty()) {
+                list.add(item);
+            }
+        }
+        return android.text.TextUtils.join(", ", list);
+    }
+
+    private void showMultiSelectRegisterDialog(String title, String[] options,
+                                               MaterialAutoCompleteTextView targetInput,
+                                               TextInputLayout targetLayout,
+                                               TextInputLayout otherLayout,
+                                               TextInputEditText otherInput) {
+        if (options == null || options.length == 0 || targetInput == null) return;
+        boolean[] checkedItems = new boolean[options.length];
+        String currentText = targetInput.getText() == null ? "" : targetInput.getText().toString().trim();
+        java.util.Set<String> selectedSet = new java.util.HashSet<>();
+        if (!currentText.isEmpty()) {
+            for (String part : currentText.split(",")) {
+                String t = part.trim();
+                if (!t.isEmpty()) selectedSet.add(t.toLowerCase(java.util.Locale.ROOT));
+            }
+        }
+        for (int i = 0; i < options.length; i++) {
+            if (selectedSet.contains(options[i].toLowerCase(java.util.Locale.ROOT))) {
+                checkedItems[i] = true;
+            }
+        }
+
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_ResQTap_AlertDialog);
+        builder.setTitle(title);
+        builder.setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_dialog_rounded));
+        builder.setMultiChoiceItems(options, checkedItems, (dialog, which, isChecked) -> {
+            checkedItems[which] = isChecked;
+            androidx.appcompat.app.AlertDialog alertDialog = (androidx.appcompat.app.AlertDialog) dialog;
+            android.widget.ListView listView = alertDialog.getListView();
+            if (which == 0) { // "None"
+                if (isChecked) {
+                    for (int i = 1; i < options.length; i++) {
+                        checkedItems[i] = false;
+                        if (listView != null) listView.setItemChecked(i, false);
+                    }
+                }
+            } else {
+                if (isChecked) {
+                    checkedItems[0] = false;
+                    if (listView != null) listView.setItemChecked(0, false);
+                }
+            }
+        });
+
+        builder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+            java.util.List<String> chosen = new java.util.ArrayList<>();
+            boolean hasOther = false;
+            for (int i = 0; i < options.length; i++) {
+                if (checkedItems[i]) {
+                    chosen.add(options[i]);
+                    if (isOtherSelected(options[i])) {
+                        hasOther = true;
+                    }
+                }
+            }
+            if (chosen.isEmpty()) {
+                chosen.add(options[0]);
+            }
+            String result = android.text.TextUtils.join(", ", chosen);
+            targetInput.setText(result);
+            if (targetLayout != null) {
+                targetLayout.setError(null);
+                targetLayout.setErrorEnabled(false);
+            }
+            if (hasOther) {
+                if (otherLayout != null) otherLayout.setVisibility(View.VISIBLE);
+                if (otherInput != null) otherInput.requestFocus();
+            } else {
+                if (otherLayout != null) otherLayout.setVisibility(View.GONE);
+                if (otherInput != null) otherInput.setText("");
+            }
+        });
+
+        builder.setNegativeButton(android.R.string.cancel, null);
+        builder.show();
     }
 }
 

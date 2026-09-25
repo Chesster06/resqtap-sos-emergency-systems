@@ -37,6 +37,19 @@
     <string name="register_title">Create Account</string>
     <string name="register_desc">Fill in the details below to register.</string>
     <string name="hint_name">Name</string>
+    <string name="hint_first_name">First Name</string>
+    <string name="hint_last_name">Last Name</string>
+    <string name="error_required_first_name">First name required</string>
+    <string name="error_required_last_name">Last name required</string>
+    <string name="error_required_ic">Please enter your IC number</string>
+    <string name="error_invalid_ic">Please enter a valid IC number (at least 6 digits)</string>
+    <string name="error_required_gender">Please select your gender</string>
+    <string name="error_required_phone">Please enter your phone number</string>
+    <string name="error_invalid_phone">Please enter a valid phone number (at least 7 digits)</string>
+    <string name="error_required_address">Please enter your home address</string>
+    <string name="error_required_religion">Please select your religion</string>
+    <string name="error_required_dob">Please select your date of birth</string>
+    <string name="error_required_ethnicity">Please select your ethnicity</string>
     <string name="hint_address">Address</string>
     <string name="hint_blood_type">Blood type</string>
     <string name="hint_allergy">Allergies</string>
@@ -1135,4 +1148,13 @@ Terms Version: 1.0</string>
     <string name="friend_nickname_updated">Nickname updated</string>
     <string name="friend_edit_nickname_desc">Edit private nickname</string>
     <string name="account_deleted_notice">Your session has expired or your account was removed by administrator.</string>
+    <!-- Medical Summary Dialog & Multi-Select -->
+    <string name="medical_summary_title">Medical Information</string>
+    <string name="medical_summary_desc">Quick emergency health summary</string>
+    <string name="medical_summary_btn_edit">Edit Medical Profile</string>
+    <string name="medical_summary_close">Close</string>
+    <string name="medical_summary_none_allergies">No known allergies</string>
+    <string name="medical_summary_none_conditions">No recorded conditions</string>
+    <string name="select_allergies_title">Select Allergies</string>
+    <string name="select_conditions_title">Select Conditions / Medications</string>
 </resources>

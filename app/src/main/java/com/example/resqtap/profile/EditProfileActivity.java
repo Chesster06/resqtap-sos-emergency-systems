@@ -272,14 +272,7 @@ public class EditProfileActivity extends BaseActivity {
             });
         }
 
-        // 2. Select from Gallery
-        View btnGallery = sheetView.findViewById(R.id.btn_option_gallery);
-        if (btnGallery != null) {
-            btnGallery.setOnClickListener(v -> {
-                dialog.dismiss();
-                launchImagePicker();
-            });
-        }
+
 
         // 3. Remove PFP
         View btnRemove = sheetView.findViewById(R.id.btn_option_remove_photo);
@@ -351,13 +344,109 @@ public class EditProfileActivity extends BaseActivity {
     // ──────────────────────────────
 
     private void showEditNameDialog() {
-        showInputDialog("Edit Name", UserPrefs.getName(this), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PERSON_NAME, newText -> {
-            if (newText.isEmpty()) return;
-            UserPrefs.setName(this, newText);
-            tvValueName.setText(newText);
-            syncProfileToFirebase();
-            showSavedToast("Name updated");
-        });
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_edit_name, null);
+        com.google.android.material.textfield.TextInputLayout layoutFirstName = dialogView.findViewById(R.id.layout_dialog_first_name);
+        com.google.android.material.textfield.TextInputEditText inputFirstName = dialogView.findViewById(R.id.input_dialog_first_name);
+        com.google.android.material.textfield.TextInputLayout layoutLastName = dialogView.findViewById(R.id.layout_dialog_last_name);
+        com.google.android.material.textfield.TextInputEditText inputLastName = dialogView.findViewById(R.id.input_dialog_last_name);
+        com.google.android.material.button.MaterialButton btnCancel = dialogView.findViewById(R.id.btn_dialog_name_cancel);
+        com.google.android.material.button.MaterialButton btnSave = dialogView.findViewById(R.id.btn_dialog_name_save);
+
+        // Force ALL CAPS on both fields
+        InputFilter[] capsFilter = new InputFilter[]{new InputFilter.AllCaps()};
+        if (inputFirstName != null) inputFirstName.setFilters(capsFilter);
+        if (inputLastName != null) inputLastName.setFilters(capsFilter);
+
+        // Pre-fill existing first & last name
+        String currentFirst = UserPrefs.getFirstName(this);
+        String currentLast = UserPrefs.getLastName(this);
+        if (currentFirst.isEmpty() && currentLast.isEmpty()) {
+            String existingFullName = UserPrefs.getName(this).trim();
+            if (!existingFullName.isEmpty()) {
+                String[] parts = existingFullName.split("\\s+", 2);
+                currentFirst = parts[0];
+                if (parts.length > 1) {
+                    currentLast = parts[1];
+                }
+            }
+        }
+
+        if (inputFirstName != null && isNotEmpty(currentFirst)) {
+            inputFirstName.setText(currentFirst.toUpperCase(Locale.ROOT));
+            inputFirstName.setSelection(inputFirstName.getText().length());
+        }
+        if (inputLastName != null && isNotEmpty(currentLast)) {
+            inputLastName.setText(currentLast.toUpperCase(Locale.ROOT));
+            inputLastName.setSelection(inputLastName.getText().length());
+        }
+
+        if (inputFirstName != null) {
+            inputFirstName.addTextChangedListener(new android.text.TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    if (layoutFirstName != null && layoutFirstName.getError() != null) {
+                        layoutFirstName.setError(null);
+                    }
+                }
+                @Override
+                public void afterTextChanged(android.text.Editable s) {}
+            });
+        }
+
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_ResQTap_AlertDialog)
+                .setView(dialogView)
+                .setCancelable(true)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        if (btnCancel != null) {
+            btnCancel.setOnClickListener(v -> dialog.dismiss());
+        }
+
+        if (btnSave != null) {
+            btnSave.setOnClickListener(v -> {
+                String first = inputFirstName != null && inputFirstName.getText() != null
+                        ? inputFirstName.getText().toString().trim().toUpperCase(Locale.ROOT) : "";
+                String last = inputLastName != null && inputLastName.getText() != null
+                        ? inputLastName.getText().toString().trim().toUpperCase(Locale.ROOT) : "";
+
+                if (first.isEmpty()) {
+                    if (layoutFirstName != null) {
+                        layoutFirstName.setError("First name is required");
+                    }
+                    if (inputFirstName != null) {
+                        inputFirstName.requestFocus();
+                    }
+                    return;
+                } else if (layoutFirstName != null) {
+                    layoutFirstName.setError(null);
+                }
+
+                UserPrefs.setFirstName(this, first);
+                UserPrefs.setLastName(this, last);
+
+                String fullName = (first + " " + last).trim();
+                UserPrefs.setName(this, fullName);
+
+                if (tvValueName != null) {
+                    tvValueName.setText(fullName);
+                }
+
+                syncProfileToFirebase();
+                showSavedToast("Name updated");
+                dialog.dismiss();
+            });
+        }
+
+        dialog.show();
+        if (inputFirstName != null) {
+            inputFirstName.requestFocus();
+        }
     }
 
     private void showEditEmailDialog() {
@@ -515,39 +604,87 @@ public class EditProfileActivity extends BaseActivity {
         }
         final String[] options = tempOptions;
         final String current = UserPrefs.getAllergies(this);
-        int matched = -1;
-        for (int i = 0; i < options.length; i++) {
-            if (options[i].equalsIgnoreCase(current)) {
-                matched = i;
-                break;
+        boolean[] checkedItems = new boolean[options.length];
+        java.util.Set<String> selectedSet = new java.util.HashSet<>();
+        if (isNotEmpty(current)) {
+            for (String part : current.split(",")) {
+                String t = part.trim();
+                if (!t.isEmpty()) selectedSet.add(t.toLowerCase(Locale.ROOT));
             }
         }
-        final int checkedItem = matched;
+        for (int i = 0; i < options.length; i++) {
+            if (selectedSet.contains(options[i].toLowerCase(Locale.ROOT))) {
+                checkedItems[i] = true;
+            }
+        }
 
-        new MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_ResQTap_AlertDialog)
-                .setTitle("Select Allergy")
-                .setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_dialog_rounded))
-                .setSingleChoiceItems(options, checkedItem, (dialog, which) -> {
-                    String selected = options[which];
-                    dialog.dismiss();
-                    if (isOtherSelected(selected)) {
-                        showInputDialog("Specify Allergy", (checkedItem == -1 && isNotEmpty(current)) ? current : "", InputType.TYPE_CLASS_TEXT, newText -> {
-                            String val = newText == null ? "" : newText.trim();
-                            String displayVal = val.isEmpty() ? "None" : val;
-                            UserPrefs.setAllergies(this, val);
-                            tvValueAllergies.setText(displayVal);
-                            syncProfileToFirebase();
-                            showSavedToast("Allergies updated");
-                        });
-                    } else {
-                        UserPrefs.setAllergies(this, selected);
-                        tvValueAllergies.setText(selected);
-                        syncProfileToFirebase();
-                        showSavedToast("Allergies updated");
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_ResQTap_AlertDialog);
+        builder.setTitle(getString(R.string.select_allergies_title));
+        builder.setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_dialog_rounded));
+        builder.setMultiChoiceItems(options, checkedItems, (dialog, which, isChecked) -> {
+            checkedItems[which] = isChecked;
+            androidx.appcompat.app.AlertDialog alertDialog = (androidx.appcompat.app.AlertDialog) dialog;
+            android.widget.ListView listView = alertDialog.getListView();
+            if (which == 0) { // None
+                if (isChecked) {
+                    for (int i = 1; i < options.length; i++) {
+                        checkedItems[i] = false;
+                        if (listView != null) listView.setItemChecked(i, false);
                     }
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                }
+            } else {
+                if (isChecked) {
+                    checkedItems[0] = false;
+                    if (listView != null) listView.setItemChecked(0, false);
+                }
+            }
+        });
+
+        builder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+            java.util.List<String> chosen = new java.util.ArrayList<>();
+            boolean hasOther = false;
+            for (int i = 0; i < options.length; i++) {
+                if (checkedItems[i]) {
+                    chosen.add(options[i]);
+                    if (isOtherSelected(options[i])) {
+                        hasOther = true;
+                    }
+                }
+            }
+            if (chosen.isEmpty()) {
+                chosen.add(options[0]);
+            }
+
+            if (hasOther) {
+                showInputDialog("Specify Allergy", "", InputType.TYPE_CLASS_TEXT, otherText -> {
+                    java.util.List<String> finalList = new java.util.ArrayList<>();
+                    for (String item : chosen) {
+                        if (isOtherSelected(item)) {
+                            if (otherText != null && !otherText.trim().isEmpty()) {
+                                finalList.add(otherText.trim());
+                            }
+                        } else {
+                            finalList.add(item);
+                        }
+                    }
+                    if (finalList.isEmpty()) finalList.add(options[0]);
+                    String finalVal = android.text.TextUtils.join(", ", finalList);
+                    UserPrefs.setAllergies(this, finalVal);
+                    tvValueAllergies.setText(finalVal.isEmpty() ? "None" : finalVal);
+                    syncProfileToFirebase();
+                    showSavedToast("Allergies updated");
+                });
+            } else {
+                String finalVal = android.text.TextUtils.join(", ", chosen);
+                UserPrefs.setAllergies(this, finalVal);
+                tvValueAllergies.setText(finalVal.isEmpty() ? "None" : finalVal);
+                syncProfileToFirebase();
+                showSavedToast("Allergies updated");
+            }
+        });
+
+        builder.setNegativeButton(android.R.string.cancel, null);
+        builder.show();
     }
 
     private void showEditConditionsDialog() {
@@ -562,42 +699,89 @@ public class EditProfileActivity extends BaseActivity {
         if (!isNotEmpty(currentConditions)) {
             currentConditions = UserPrefs.getMedications(this);
         }
-        int matched = -1;
-        for (int i = 0; i < options.length; i++) {
-            if (options[i].equalsIgnoreCase(currentConditions)) {
-                matched = i;
-                break;
+        boolean[] checkedItems = new boolean[options.length];
+        java.util.Set<String> selectedSet = new java.util.HashSet<>();
+        if (isNotEmpty(currentConditions)) {
+            for (String part : currentConditions.split(",")) {
+                String t = part.trim();
+                if (!t.isEmpty()) selectedSet.add(t.toLowerCase(Locale.ROOT));
             }
         }
-        final int checkedItem = matched;
-        final String finalCurrent = currentConditions;
+        for (int i = 0; i < options.length; i++) {
+            if (selectedSet.contains(options[i].toLowerCase(Locale.ROOT))) {
+                checkedItems[i] = true;
+            }
+        }
 
-        new MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_ResQTap_AlertDialog)
-                .setTitle("Select Medical Condition / Medication")
-                .setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_dialog_rounded))
-                .setSingleChoiceItems(options, checkedItem, (dialog, which) -> {
-                    String selected = options[which];
-                    dialog.dismiss();
-                    if (isOtherSelected(selected)) {
-                        showInputDialog("Specify Medical Condition / Medication", (checkedItem == -1 && isNotEmpty(finalCurrent)) ? finalCurrent : "", InputType.TYPE_CLASS_TEXT, newText -> {
-                            String val = newText == null ? "" : newText.trim();
-                            String displayVal = val.isEmpty() ? "None" : val;
-                            UserPrefs.setExistingConditions(this, val);
-                            UserPrefs.setMedications(this, val);
-                            tvValueConditions.setText(displayVal);
-                            syncProfileToFirebase();
-                            showSavedToast("Conditions updated");
-                        });
-                    } else {
-                        UserPrefs.setExistingConditions(this, selected);
-                        UserPrefs.setMedications(this, selected);
-                        tvValueConditions.setText(selected);
-                        syncProfileToFirebase();
-                        showSavedToast("Conditions updated");
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_ResQTap_AlertDialog);
+        builder.setTitle(getString(R.string.select_conditions_title));
+        builder.setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_dialog_rounded));
+        builder.setMultiChoiceItems(options, checkedItems, (dialog, which, isChecked) -> {
+            checkedItems[which] = isChecked;
+            androidx.appcompat.app.AlertDialog alertDialog = (androidx.appcompat.app.AlertDialog) dialog;
+            android.widget.ListView listView = alertDialog.getListView();
+            if (which == 0) { // None
+                if (isChecked) {
+                    for (int i = 1; i < options.length; i++) {
+                        checkedItems[i] = false;
+                        if (listView != null) listView.setItemChecked(i, false);
                     }
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                }
+            } else {
+                if (isChecked) {
+                    checkedItems[0] = false;
+                    if (listView != null) listView.setItemChecked(0, false);
+                }
+            }
+        });
+
+        builder.setPositiveButton(android.R.string.ok, (dialog, which) -> {
+            java.util.List<String> chosen = new java.util.ArrayList<>();
+            boolean hasOther = false;
+            for (int i = 0; i < options.length; i++) {
+                if (checkedItems[i]) {
+                    chosen.add(options[i]);
+                    if (isOtherSelected(options[i])) {
+                        hasOther = true;
+                    }
+                }
+            }
+            if (chosen.isEmpty()) {
+                chosen.add(options[0]);
+            }
+
+            if (hasOther) {
+                showInputDialog("Specify Medical Condition / Medication", "", InputType.TYPE_CLASS_TEXT, otherText -> {
+                    java.util.List<String> finalList = new java.util.ArrayList<>();
+                    for (String item : chosen) {
+                        if (isOtherSelected(item)) {
+                            if (otherText != null && !otherText.trim().isEmpty()) {
+                                finalList.add(otherText.trim());
+                            }
+                        } else {
+                            finalList.add(item);
+                        }
+                    }
+                    if (finalList.isEmpty()) finalList.add(options[0]);
+                    String finalVal = android.text.TextUtils.join(", ", finalList);
+                    UserPrefs.setExistingConditions(this, finalVal);
+                    UserPrefs.setMedications(this, finalVal);
+                    tvValueConditions.setText(finalVal.isEmpty() ? "None" : finalVal);
+                    syncProfileToFirebase();
+                    showSavedToast("Conditions updated");
+                });
+            } else {
+                String finalVal = android.text.TextUtils.join(", ", chosen);
+                UserPrefs.setExistingConditions(this, finalVal);
+                UserPrefs.setMedications(this, finalVal);
+                tvValueConditions.setText(finalVal.isEmpty() ? "None" : finalVal);
+                syncProfileToFirebase();
+                showSavedToast("Conditions updated");
+            }
+        });
+
+        builder.setNegativeButton(android.R.string.cancel, null);
+        builder.show();
     }
 
     private void showEditAddressDialog() {
@@ -623,42 +807,68 @@ public class EditProfileActivity extends BaseActivity {
     }
 
     private void showInputDialog(String title, String prefill, int inputType, InputFilter[] filters, OnInputSavedListener listener) {
-        FrameLayout container = new FrameLayout(this);
-        int marginHorizontal = dpToPx(24);
-        int marginTop = dpToPx(8);
-        int marginBottom = dpToPx(8);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        lp.setMargins(marginHorizontal, marginTop, marginHorizontal, marginBottom);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_edit_input, null);
+        TextView tvTitle = dialogView.findViewById(R.id.dialog_title);
+        TextView tvSubtitle = dialogView.findViewById(R.id.dialog_subtitle);
+        com.google.android.material.textfield.TextInputEditText editText = dialogView.findViewById(R.id.dialog_input_edit_text);
+        com.google.android.material.button.MaterialButton btnCancel = dialogView.findViewById(R.id.btn_dialog_cancel);
+        com.google.android.material.button.MaterialButton btnSave = dialogView.findViewById(R.id.btn_dialog_save);
 
-        EditText input = new EditText(this);
-        input.setLayoutParams(lp);
-        input.setInputType(inputType);
-        if (filters != null) {
-            input.setFilters(filters);
-        }
-        input.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.text_primary));
-        input.setHintTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.text_secondary));
-        input.setTextSize(16);
-        if (isNotEmpty(prefill)) {
-            input.setText(prefill);
-            input.setSelection(prefill.length());
-        }
-        input.setSingleLine(inputType != (InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE));
-        container.addView(input);
+        if (tvTitle != null) tvTitle.setText(title);
 
-        new MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_ResQTap_AlertDialog)
-                .setTitle(title)
-                .setView(container)
-                .setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_dialog_rounded))
-                .setPositiveButton("Save", (dialog, which) -> {
-                    String val = input.getText() == null ? "" : input.getText().toString().trim();
-                    if (listener != null) listener.onSaved(val);
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+        boolean isNameDialog = "Edit Name".equalsIgnoreCase(title);
+        if (tvSubtitle != null) {
+            if (isNameDialog) {
+                tvSubtitle.setVisibility(View.VISIBLE);
+                tvSubtitle.setText("Please enter your name in CAPITAL LETTERS (uppercase only)");
+            } else if ("Edit Address".equalsIgnoreCase(title)) {
+                tvSubtitle.setVisibility(View.VISIBLE);
+                tvSubtitle.setText("Please enter your full address");
+            } else {
+                tvSubtitle.setVisibility(View.GONE);
+            }
+        }
+
+        if (editText != null) {
+            editText.setInputType(inputType);
+            if (filters != null) {
+                editText.setFilters(filters);
+            }
+            if (isNotEmpty(prefill)) {
+                editText.setText(prefill);
+                editText.setSelection(prefill.length());
+            }
+            editText.setSingleLine(inputType != (InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE));
+        }
+
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_ResQTap_AlertDialog)
+                .setView(dialogView)
+                .setCancelable(true)
+                .create();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        if (btnCancel != null) {
+            btnCancel.setOnClickListener(v -> dialog.dismiss());
+        }
+
+        if (btnSave != null) {
+            btnSave.setOnClickListener(v -> {
+                String val = editText != null && editText.getText() != null ? editText.getText().toString().trim() : "";
+                if (isNameDialog) {
+                    val = val.toUpperCase(Locale.ROOT);
+                }
+                if (listener != null) listener.onSaved(val);
+                dialog.dismiss();
+            });
+        }
+
+        dialog.show();
+        if (editText != null) {
+            editText.requestFocus();
+        }
     }
 
     private void syncProfileToFirebase() {
@@ -833,6 +1043,17 @@ public class EditProfileActivity extends BaseActivity {
     private boolean isOtherSelected(String text) {
         if (text == null) return false;
         String t = text.trim().toLowerCase(java.util.Locale.ROOT);
-        return t.equals("others") || t.equals("other") || t.equals("lain-lain") || t.equals("其他") || t.equals("மற்றவை");
+        if (t.equals("others") || t.equals("other") || t.equals("lain-lain") || t.equals("其他") || t.equals("மற்றவை")) {
+            return true;
+        }
+        if (t.contains(",")) {
+            for (String part : t.split(",")) {
+                String p = part.trim();
+                if (p.equals("others") || p.equals("other") || p.equals("lain-lain") || p.equals("其他") || p.equals("மற்றவை")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

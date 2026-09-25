@@ -166,9 +166,13 @@
 
                                 <!-- Blood Type Card -->
                                 <com.google.android.material.card.MaterialCardView
+                                    android:id="@+id/card_medical_blood"
                                     android:layout_width="0dp"
                                     android:layout_height="74dp"
                                     android:layout_weight="1"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    android:foreground="?attr/selectableItemBackground"
                                     app:cardBackgroundColor="@color/med_card_blood_bg"
                                     app:cardCornerRadius="18dp"
                                     app:cardElevation="0dp"
@@ -227,10 +231,14 @@
 
                                 <!-- Allergies Card -->
                                 <com.google.android.material.card.MaterialCardView
+                                    android:id="@+id/card_medical_allergies"
                                     android:layout_width="0dp"
                                     android:layout_height="74dp"
                                     android:layout_marginStart="8dp"
                                     android:layout_weight="1.2"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    android:foreground="?attr/selectableItemBackground"
                                     app:cardBackgroundColor="@color/med_card_allergy_bg"
                                     app:cardCornerRadius="18dp"
                                     app:cardElevation="0dp"
@@ -288,10 +296,14 @@
 
                                 <!-- Medical Conditions Card -->
                                 <com.google.android.material.card.MaterialCardView
+                                    android:id="@+id/card_medical_conditions"
                                     android:layout_width="0dp"
                                     android:layout_height="74dp"
                                     android:layout_marginStart="8dp"
                                     android:layout_weight="1"
+                                    android:clickable="true"
+                                    android:focusable="true"
+                                    android:foreground="?attr/selectableItemBackground"
                                     app:cardBackgroundColor="@color/med_card_conditions_bg"
                                     app:cardCornerRadius="18dp"
                                     app:cardElevation="0dp"

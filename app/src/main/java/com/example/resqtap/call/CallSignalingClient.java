@@ -33,6 +33,16 @@ public class CallSignalingClient {
         rootRef = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL).getReference();
     }
 
+    private static volatile boolean awaitingSosResponse = false;
+
+    public static void setAwaitingSosResponse(boolean awaiting) {
+        awaitingSosResponse = awaiting;
+    }
+
+    public static boolean isAwaitingSosResponse() {
+        return awaitingSosResponse;
+    }
+
     /** Ambil atau muat data Instance. */
     public static synchronized CallSignalingClient getInstance() {
         if (instance == null) {
@@ -110,11 +120,25 @@ public class CallSignalingClient {
     public void rejectCall(String myUid, String callId) {
         if (myUid == null || myUid.isEmpty() || callId == null || callId.isEmpty()) return;
 
-        Map<String, Object> updates = new HashMap<>();
-        updates.put("status", "rejected");
-        updates.put("rejectedAt", com.google.firebase.database.ServerValue.TIMESTAMP);
+        DatabaseReference callRef = rootRef.child("userCalls").child(myUid).child("currentCall");
+        callRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    String status = snapshot.child("status").getValue(String.class);
+                    if ("accepted".equalsIgnoreCase(status) || "ended".equalsIgnoreCase(status)) {
+                        return;
+                    }
+                }
+                Map<String, Object> updates = new HashMap<>();
+                updates.put("status", "rejected");
+                updates.put("rejectedAt", com.google.firebase.database.ServerValue.TIMESTAMP);
+                callRef.updateChildren(updates);
+            }
 
-        rootRef.child("userCalls").child(myUid).child("currentCall").updateChildren(updates);
+            @Override
+            public void onCancelled(DatabaseError error) {}
+        });
     }
 
     /** Fungsi untuk endCall. */
