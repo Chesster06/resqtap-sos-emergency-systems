@@ -58,8 +58,10 @@ const AI_CHAT_EXPIRY_MS = 5 * 60 * 1000;
 const NOTIFICATION_PAGE_SIZES = [10, 20, 30];
 const NOTIFICATION_CATEGORIES = [
   { id: "all", label: "All", icon: "layers-3" },
+  { id: "calls", label: "Calls", icon: "phone-call", types: ["Video Call", "Voice Call", "Incoming Call", "Answered Call", "Missed Call", "Declined Call", "Call Ended", "SOS Call Request"] },
+  { id: "system", label: "System & Cleanup", icon: "database", types: ["Database Reset", "System Cleanup"] },
   { id: "notice", label: "Notifications", icon: "bell-ring", types: ["Notifications"] },
-  { id: "sos", label: "SOS", icon: "siren", types: ["SOS Alert", "SOS Cancelled"] },
+  { id: "sos", label: "SOS", icon: "siren", types: ["SOS Alert", "SOS Cancelled", "SOS Resolved"] },
   { id: "bell", label: "Bell", icon: "bell", types: ["Bell"] },
   { id: "legacy", label: "Legacy", icon: "archive", types: ["Legacy Delivery"] }
 ];
@@ -829,6 +831,8 @@ const state = {
   admins: {},
   legacyAlerts: {},
   incidentReports: {},
+  adminAuditLogs: {},
+  callLogs: {},
   adminNotifications: {},
   supportChats: {},
   aiChats: {},
@@ -1180,6 +1184,12 @@ function startDataListeners() {
   });
   subscribe("incidentReports", (value) => {
     state.incidentReports = asRecord(value);
+  });
+  subscribe("admin_audit_logs", (value) => {
+    state.adminAuditLogs = asRecord(value);
+  });
+  subscribe("call_logs", (value) => {
+    state.callLogs = asRecord(value);
   });
   subscribe("admin_notifications", (value) => {
     state.adminNotifications = asRecord(value);
@@ -1724,8 +1734,123 @@ function getNotificationHistory() {
     };
   });
 
+  const auditNotifications = entries(state.adminAuditLogs).map(([id, value]) => {
+    const audit = asRecord(value);
+    const accountsDeleted = Number(audit.accountsDeleted) || 0;
+    const accountsKept = Number(audit.accountsKept) || 0;
+    const roomsDeleted = Number(audit.roomsDeleted) || 0;
+    const messagesRemoved = Number(audit.messagesRemoved) || 0;
+    const sosAlertsRemoved = Number(audit.sosAlertsRemoved) || 0;
+    const callsRemoved = Number(audit.callsRemoved) || 0;
+    const incidentReportsRemoved = Number(audit.incidentReportsRemoved) || 0;
+    const triggeredBy = text(audit.triggeredBy || "Admin Session");
+    const action = text(audit.action || "clear_database");
+    const details = text(audit.details || `Database reset: ${accountsDeleted} accounts deleted`);
+
+    let subStats = `${accountsDeleted} akaun`;
+    if (roomsDeleted > 0) subStats += `, ${roomsDeleted} bilik`;
+    if (messagesRemoved > 0) subStats += `, ${messagesRemoved} mesej`;
+    if (callsRemoved > 0) subStats += `, ${callsRemoved} panggilan`;
+    if (sosAlertsRemoved > 0) subStats += `, ${sosAlertsRemoved} SOS`;
+    if (incidentReportsRemoved > 0) subStats += `, ${incidentReportsRemoved} laporan`;
+    subStats += " dipadam";
+
+    return {
+      id,
+      type: text(audit.type || "Database Reset"),
+      canDelete: true,
+      recipient: "System / All Users",
+      recipientMeta: subStats,
+      sender: triggeredBy,
+      senderMeta: action,
+      title: text(audit.type || "Database Reset"),
+      message: details,
+      roomId: "-",
+      sentAt: millis(audit.timestamp || audit.createdAt),
+      source: "admin_audit_logs"
+    };
+  });
+
+  const callNotifications = entries(state.callLogs).map(([id, value]) => {
+    const call = asRecord(value);
+    const isVideo = text(call.callType) === "video";
+    const status = text(call.status || "ended").toLowerCase();
+    const callerName = text(call.callerName || userName(call.callerUid) || "Pengguna");
+    const calleeName = text(call.calleeName || userName(call.calleeUid) || "Admin");
+    const duration = Number(call.duration) || 0;
+    const durationText = duration > 0 ? ` (${Math.floor(duration / 60)}m ${duration % 60}s)` : "";
+
+    let callTypeLabel = isVideo ? "Video Call" : "Voice Call";
+    let statusText = status;
+    if (status === "answered") {
+      callTypeLabel = "Answered Call";
+      statusText = "Dijawab";
+    } else if (status === "declined") {
+      callTypeLabel = "Declined Call";
+      statusText = "Ditolak";
+    } else if (status === "missed") {
+      callTypeLabel = "Missed Call";
+      statusText = "Terlepas";
+    } else if (status === "ended") {
+      callTypeLabel = "Call Ended";
+      statusText = `Selesai${durationText}`;
+    } else if (status === "ringing" || status === "calling" || status === "outgoing") {
+      callTypeLabel = "Incoming Call";
+      statusText = "Panggilan Masuk / Keluar";
+    }
+
+    return {
+      id,
+      type: callTypeLabel,
+      canDelete: true,
+      recipient: calleeName,
+      recipientMeta: `Status: ${statusText}`,
+      sender: callerName,
+      senderMeta: text(call.callerUid || "-"),
+      title: `${isVideo ? "Panggilan Video" : "Panggilan Suara"} (${statusText})`,
+      message: `${isVideo ? "Video Call" : "Voice Call"} antara ${callerName} & ${calleeName}. Tempoh: ${duration > 0 ? duration + "s" : "-"}`,
+      roomId: text(call.roomId || "-"),
+      sentAt: millis(call.timestamp || call.createdAt || call.answeredAt || call.endedAt),
+      source: "call_logs"
+    };
+  });
+
+  const sosCallRequests = [];
+  getSosAlerts().forEach((alert) => {
+    const data = asRecord(alert.data);
+    const cr = asRecord(data.callRequest);
+    if (cr && cr.status) {
+      const crId = `sos_call_${alert.roomId}_${alert.id}`;
+      if (!state.callLogs || !state.callLogs[crId]) {
+        const isVideo = text(cr.callType) === "video";
+        const crStatus = text(cr.status);
+        let crType = "SOS Call Request";
+        if (crStatus === "answered") crType = "Answered Call";
+        else if (crStatus === "declined") crType = "Declined Call";
+
+        sosCallRequests.push({
+          id: crId,
+          type: crType,
+          canDelete: false,
+          recipient: "ResQTap Support (Admin)",
+          recipientMeta: `Status: ${crStatus}`,
+          sender: alert.senderName || userName(alert.senderUid),
+          senderMeta: text(alert.senderUid),
+          title: `SOS ${isVideo ? "Video" : "Voice"} Call (${crStatus})`,
+          message: `Permintaan panggilan kecemasan daripada mangsa SOS di bilik ${alert.roomId}. Status: ${crStatus}`,
+          roomId: alert.roomId,
+          sentAt: millis(cr.timestamp || cr.answeredAt || cr.declinedAt || alert.createdAt),
+          source: "rooms/sosAlerts/callRequest"
+        });
+      }
+    }
+  });
+
   return bellNotifications
     .concat(adminNotifications)
+    .concat(auditNotifications)
+    .concat(callNotifications)
+    .concat(sosCallRequests)
     .concat(sosNotifications)
     .sort((a, b) => b.sentAt - a.sentAt);
 }
@@ -2422,6 +2547,9 @@ function handleAdminIncomingCall(data) {
         acceptBtn.onclick = async () => {
           alertEl.classList.add("hidden");
           callRingtoneSound.stop();
+          const logId = data.callLogId || `call_${data.timestamp || Date.now()}`;
+          vcActiveCallLogId = logId;
+          vcActiveCallStartTime = Date.now();
           try {
             await update(ref(db, "adminCalls/incoming"), {
               status: "answered",
@@ -2433,8 +2561,22 @@ function handleAdminIncomingCall(data) {
                 answeredAt: serverTimestamp()
               });
             }
+            await update(ref(db, `call_logs/${logId}`), {
+              id: logId,
+              callType: data.callType || "video",
+              callerUid: data.callerUid || "",
+              callerName: callerName,
+              calleeUid: state.currentUser ? state.currentUser.uid : "admin",
+              calleeName: "ResQTap Support (Admin)",
+              status: "answered",
+              roomId: data.roomId || "-",
+              alertId: data.alertId || "-",
+              timestamp: callTime,
+              answeredAt: Date.now(),
+              source: "adminCalls/incoming"
+            });
           } catch (e) {}
-          startAdminCall(data.callerUid, callerName, data.callType || "video");
+          startAdminCall(data.callerUid, callerName, data.callType || "video", logId);
         };
       }
 
@@ -2442,6 +2584,7 @@ function handleAdminIncomingCall(data) {
         declineBtn.onclick = async () => {
           alertEl.classList.add("hidden");
           callRingtoneSound.stop();
+          const logId = data.callLogId || `call_${data.timestamp || Date.now()}`;
           try {
             await update(ref(db, "adminCalls/incoming"), {
               status: "declined",
@@ -2453,6 +2596,21 @@ function handleAdminIncomingCall(data) {
                 declinedAt: serverTimestamp()
               });
             }
+            await update(ref(db, `call_logs/${logId}`), {
+              id: logId,
+              callType: data.callType || "video",
+              callerUid: data.callerUid || "",
+              callerName: callerName,
+              calleeUid: state.currentUser ? state.currentUser.uid : "admin",
+              calleeName: "ResQTap Support (Admin)",
+              status: "declined",
+              roomId: data.roomId || "-",
+              alertId: data.alertId || "-",
+              timestamp: callTime,
+              declinedAt: Date.now(),
+              duration: 0,
+              source: "adminCalls/incoming"
+            });
           } catch (e) {}
         };
       }
@@ -3108,9 +3266,18 @@ function renderNotices() {
   els.notificationPrevPageButton.disabled = page <= 1;
   els.notificationNextPageButton.disabled = page >= totalPages;
   els.notificationsTableBody.innerHTML = rows.length ? rows.map((notification) => {
-    const tone = notification.type.includes("SOS")
-      ? (notification.type.includes("Cancelled") ? "good" : "alert")
-      : "";
+    let tone = "";
+    if (notification.type.includes("SOS")) {
+      tone = notification.type.includes("Cancelled") ? "good" : "alert";
+    } else if (notification.type === "Database Reset" || notification.type === "System Cleanup") {
+      tone = "warn";
+    } else if (notification.type.includes("Answered")) {
+      tone = "good";
+    } else if (notification.type.includes("Missed") || notification.type.includes("Declined")) {
+      tone = "alert";
+    } else if (notification.type.includes("Call")) {
+      tone = "warn";
+    }
     return `
       <tr>
         <td>${pill(notification.type, tone)}</td>
@@ -5076,7 +5243,9 @@ async function deleteNotification(noticeId) {
   const currentSnapshot = await get(ref(db, "broadcastNotifications/current/id"));
   const updates = {
     [`admin_notifications/${noticeId}`]: null,
-    [`broadcastNotifications/history/${noticeId}`]: null
+    [`broadcastNotifications/history/${noticeId}`]: null,
+    [`admin_audit_logs/${noticeId}`]: null,
+    [`call_logs/${noticeId}`]: null
   };
   if (text(currentSnapshot.val()).trim() === noticeId) {
     updates["broadcastNotifications/current"] = null;
@@ -5371,6 +5540,12 @@ async function clearHistory() {
   if (entries(state.legacyAlerts).length) {
     updates.sos_alerts = null;
   }
+  if (entries(state.adminAuditLogs).length) {
+    updates.admin_audit_logs = null;
+  }
+  if (entries(state.callLogs).length) {
+    updates.call_logs = null;
+  }
 
   if (!Object.keys(updates).length) {
     showToast("No history logs to clear.");
@@ -5532,6 +5707,24 @@ async function executeClearDatabase() {
         updates[`incidentReports/${reportId}`] = null;
       }
     });
+
+    // Log client-side audit record
+    const auditLogId = `audit_${Date.now()}`;
+    const auditTimestamp = serverTimestamp();
+    updates[`admin_audit_logs/${auditLogId}`] = {
+      id: auditLogId,
+      type: "Database Reset",
+      action: "clear_database",
+      triggeredBy: (state.currentUser && (state.currentUser.email || state.currentUser.uid)) || "Admin Session",
+      accountsDeleted: deleteUids.size,
+      roomsDeleted: 0,
+      messagesRemoved: 0,
+      sosAlertsRemoved: 0,
+      callsRemoved: 0,
+      details: `Sesi pembersihan database (client): ${deleteUids.size} akaun selain @resqtap telah dipadam.`,
+      timestamp: Date.now(),
+      createdAt: auditTimestamp
+    };
 
     await update(ref(db), updates);
     closeClearDbModal();
@@ -6193,6 +6386,8 @@ let vcCurrentCallId = null;
 let vcTargetUid = null;
 let vcCurrentCallType = "video";
 let vcUnsubscribers = [];
+let vcActiveCallLogId = null;
+let vcActiveCallStartTime = null;
 
 const elsVc = {
   modal: document.getElementById("videoCallModal"),
@@ -6223,7 +6418,7 @@ const elsVc = {
 
 let isVcMicEnabled = true;
 let isVcCamEnabled = true;
-async function startAdminCall(uid, name, callType = "video") {
+async function startAdminCall(uid, name, callType = "video", existingCallLogId = null) {
   if (vcPeerConnection) endAdminCall();
 
   const isVoiceCall = callType === "voice";
@@ -6234,6 +6429,27 @@ async function startAdminCall(uid, name, callType = "video") {
   elsVc.floatingName.textContent = displayName;
   if (elsVc.voiceName) elsVc.voiceName.textContent = displayName;
   if (elsVc.voiceLabel) elsVc.voiceLabel.textContent = isVoiceCall ? "Voice call" : "Video call";
+
+  if (existingCallLogId) {
+    vcActiveCallLogId = existingCallLogId;
+    vcActiveCallStartTime = Date.now();
+  } else {
+    const logId = `call_${Date.now()}`;
+    vcActiveCallLogId = logId;
+    vcActiveCallStartTime = Date.now();
+    update(ref(db, `call_logs/${logId}`), {
+      id: logId,
+      callType: vcCurrentCallType,
+      callerUid: state.currentUser ? state.currentUser.uid : "admin",
+      callerName: "ResQTap Support (Admin)",
+      calleeUid: uid,
+      calleeName: displayName,
+      status: "outgoing",
+      roomId: "-",
+      timestamp: Date.now(),
+      source: "admin_outgoing_call"
+    }).catch(() => {});
+  }
 
   const userPhoto = state.users[uid]?.photoUrl;
   if (userPhoto) {
@@ -6417,6 +6633,17 @@ async function startAdminCall(uid, name, callType = "video") {
 function endAdminCall() {
   vcUnsubscribers.forEach(unsub => unsub());
   vcUnsubscribers = [];
+
+  if (vcActiveCallLogId) {
+    const durationSec = vcActiveCallStartTime ? Math.max(0, Math.round((Date.now() - vcActiveCallStartTime) / 1000)) : 0;
+    update(ref(db, `call_logs/${vcActiveCallLogId}`), {
+      status: "ended",
+      endedAt: Date.now(),
+      duration: durationSec
+    }).catch(() => {});
+    vcActiveCallLogId = null;
+    vcActiveCallStartTime = null;
+  }
 
   if (vcTargetUid && vcCurrentCallId) {
     update(ref(db, "userCalls/" + vcTargetUid + "/currentCall"), { status: "ended" });

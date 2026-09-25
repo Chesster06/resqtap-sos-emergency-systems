@@ -201,12 +201,24 @@ async function resetDatabaseAccounts() {
             }
           }
         }
+        // Clean messages within the room sent by deleted users
+        if (room.messages && typeof room.messages === "object") {
+          for (const [msgId, msg] of Object.entries(room.messages)) {
+            if (msg && deleteUids.has(msg.senderUid)) {
+              console.log(`- Remove message ${msgId} sent by ${msg.senderUid} from room ${roomId}`);
+              updates[`rooms/${roomId}/messages/${msgId}`] = null;
+              stats.messagesRemoved++;
+            }
+          }
+        }
+
         // Clean sosAlerts within the room sent by deleted users
         if (room.sosAlerts && typeof room.sosAlerts === "object") {
           for (const [alertId, alert] of Object.entries(room.sosAlerts)) {
             if (alert && (deleteUids.has(alert.fromUid) || deleteUids.has(alert.senderUid))) {
               console.log(`- Remove sosAlert ${alertId} by ${alert.fromUid || alert.senderUid} from room ${roomId}`);
               updates[`rooms/${roomId}/sosAlerts/${alertId}`] = null;
+              stats.sosAlertsRemoved++;
             }
           }
         }
@@ -221,6 +233,7 @@ async function resetDatabaseAccounts() {
       if (report && deleteUids.has(report.senderUid)) {
         console.log(`- Remove incidentReport ${reportId} by ${report.senderUid}`);
         updates[`incidentReports/${reportId}`] = null;
+        stats.incidentReportsRemoved++;
       }
     }
   }
@@ -232,23 +245,80 @@ async function resetDatabaseAccounts() {
       if (callData && (deleteUids.has(callData.callerUid) || deleteUids.has(callData.calleeUid))) {
         console.log(`- Remove call ${callId}`);
         updates[`calls/${callId}`] = null;
+        stats.callsRemoved++;
       }
     }
   }
 
+  // 8b. Clean call_logs associated with deleted UIDs
+  const callLogsSnap = await db.ref("call_logs").once("value");
+  if (callLogsSnap.exists()) {
+    for (const [callLogId, callLogData] of Object.entries(callLogsSnap.val() || {})) {
+      if (callLogData && (deleteUids.has(callLogData.callerUid) || deleteUids.has(callLogData.calleeUid))) {
+        console.log(`- Remove call_log ${callLogId}`);
+        updates[`call_logs/${callLogId}`] = null;
+      }
+    }
+  }
+
+  // 9. Clean adminCalls/incoming if caller is a deleted user or test call left over
+  const adminCallsSnap = await db.ref("adminCalls/incoming").once("value");
+  if (adminCallsSnap.exists()) {
+    const call = adminCallsSnap.val();
+    if (call && (deleteUids.has(call.callerUid) || !call.status || call.status === "cancelled" || call.status === "declined" || call.status === "ended")) {
+      console.log(`- Clear stale/deleted adminCalls/incoming (caller: ${call.callerUid || "unknown"})`);
+      updates["adminCalls/incoming"] = null;
+      stats.adminCallsRemoved++;
+    }
+  }
+
+  // 10. Clean standalone / legacy sos_alerts
+  const topSosSnap = await db.ref("sos_alerts").once("value");
+  if (topSosSnap.exists()) {
+    for (const [alertId, alert] of Object.entries(topSosSnap.val() || {})) {
+      if (alert && (deleteUids.has(alert.senderUid) || deleteUids.has(alert.fromUid))) {
+        console.log(`- Remove standalone sos_alert ${alertId} by ${alert.senderUid || alert.fromUid}`);
+        updates[`sos_alerts/${alertId}`] = null;
+        stats.sosAlertsRemoved++;
+      }
+    }
+  }
+
+  // 11. Record Session Audit Log into admin_audit_logs for Admin Dashboard
+  const auditLogId = `audit_${Date.now()}`;
+  const auditTimestamp = Date.now();
+  updates[`admin_audit_logs/${auditLogId}`] = {
+    id: auditLogId,
+    type: "Database Reset",
+    action: "clear_database",
+    triggeredBy: "Admin Session",
+    accountsDeleted: deleteUids.size,
+    accountsKept: resqtapUids.size,
+    roomsDeleted: stats.roomsDeleted,
+    messagesRemoved: stats.messagesRemoved,
+    sosAlertsRemoved: stats.sosAlertsRemoved,
+    callsRemoved: stats.callsRemoved,
+    incidentReportsRemoved: stats.incidentReportsRemoved,
+    details: `Sesi pembersihan database selesai: ${deleteUids.size} akaun, ${stats.roomsDeleted} bilik, ${stats.messagesRemoved} mesej, dan ${stats.callsRemoved} panggilan dipadam.`,
+    timestamp: auditTimestamp,
+    createdAt: auditTimestamp
+  };
+
   // Apply RTDB updates
-  console.log(`\nExecuting ${Object.keys(updates).length} RTDB updates...`);
-  if (Object.keys(updates).length > 0) {
+  stats.totalRtdbUpdates = Object.keys(updates).length;
+  console.log(`\nExecuting ${stats.totalRtdbUpdates} RTDB updates...`);
+  if (stats.totalRtdbUpdates > 0) {
     await db.ref().update(updates);
     console.log("RTDB updates applied successfully.");
   }
 
-  // 8. Delete users from Firebase Auth
+  // 12. Delete users from Firebase Auth
   console.log("\nDeleting users from Firebase Auth...");
   for (const uid of deleteUids) {
     try {
       await admin.auth().deleteUser(uid);
       console.log(`[AUTH] Deleted user: ${uid}`);
+      stats.authDeleted++;
     } catch (e) {
       if (e.code === "auth/user-not-found") {
         console.log(`[AUTH] User ${uid} already not in Auth.`);
@@ -258,7 +328,26 @@ async function resetDatabaseAccounts() {
     }
   }
 
+  const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
+
   console.log("\n==================================================");
+  console.log("             STATISTIK PEMBERSIHAN                ");
+  console.log("==================================================");
+  console.log(`- Akaun Auth Dipadam        : ${stats.authDeleted}`);
+  console.log(`- Akaun @resqtap Dikekalkan : ${resqtapUids.size}`);
+  console.log(`- Profil Pengguna RTDB      : ${deleteUids.size}`);
+  console.log(`- Public IDs Dibuang        : ${deletePublicIds.size}`);
+  console.log(`- Emel Dibuang              : ${deleteEmails.size}`);
+  console.log(`- Bilik Dipadam Penuh       : ${stats.roomsDeleted}`);
+  console.log(`- Ahli Bilik Dikeluarkan    : ${stats.membersRemoved}`);
+  console.log(`- Mesej Sembang Dibuang     : ${stats.messagesRemoved}`);
+  console.log(`- Kes SOS Dibuang           : ${stats.sosAlertsRemoved}`);
+  console.log(`- Panggilan Dibuang         : ${stats.callsRemoved}`);
+  console.log(`- Panggilan Masuk Admin     : ${stats.adminCallsRemoved}`);
+  console.log(`- Laporan Insiden Dibuang   : ${stats.incidentReportsRemoved}`);
+  console.log(`- Jumlah Kemaskini RTDB     : ${stats.totalRtdbUpdates}`);
+  console.log(`- Masa Diambil              : ${durationSec}s`);
+  console.log("==================================================");
   console.log("   RESET SELESAI! SEMUA AKAUN SELAIN @RESQTAP");
   console.log("   TELAH DIPADAM SEPENUHNYA DARI DATABASE & AUTH.");
   console.log("==================================================");
@@ -269,7 +358,9 @@ async function resetDatabaseAccounts() {
     deleteCount: deleteUids.size,
     deletedUids: Array.from(deleteUids),
     deletedEmails: Array.from(deleteEmails),
-    message: `Reset selesai! ${deleteUids.size} akaun selain @resqtap telah dipadam sepenuhnya dari Database & Auth.`
+    stats,
+    durationSec,
+    message: `Reset selesai! ${deleteUids.size} akaun selain @resqtap telah dipadam sepenuhnya dari Database & Auth (${durationSec}s).`
   };
 }
 

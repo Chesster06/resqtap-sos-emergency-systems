@@ -207,6 +207,14 @@
     "adminCalls": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "admin_audit_logs": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "call_logs": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }
