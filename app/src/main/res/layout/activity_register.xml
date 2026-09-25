@@ -445,7 +445,7 @@
                         android:layout_height="54dp"
                         android:fontFamily="sans-serif"
                         android:hint="@string/hint_name"
-                        android:inputType="textPersonName"
+                        android:inputType="textPersonName|textCapCharacters"
                         android:textColor="@color/auth_field_text"
                         android:textColorHint="@color/auth_field_hint"
                         android:textSize="14.5sp" />

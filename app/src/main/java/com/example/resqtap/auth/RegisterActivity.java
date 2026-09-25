@@ -183,6 +183,7 @@ public class RegisterActivity extends BaseActivity {
         MaterialButton btnNextToStep3 = findViewById(R.id.btn_next_to_step3);
 
         if (name != null) {
+            name.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.AllCaps()});
             name.addTextChangedListener(new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
                 @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -676,14 +677,14 @@ public class RegisterActivity extends BaseActivity {
         });
 
         btnSaveDetails.setOnClickListener(v -> {
-            String nameValue = name.getText() == null ? "" : name.getText().toString().trim();
+            String nameValue = name.getText() == null ? "" : name.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
             String icValue = icInput.getText() == null ? "" : icInput.getText().toString().trim();
             String genderValue = genderInput.getText() == null ? "" : genderInput.getText().toString().trim();
             String phoneValue = phoneInput.getText() == null ? "" : phoneInput.getText().toString().trim();
             String addressValue = addressInput.getText() == null ? "" : addressInput.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
             String religionValue = religionInput.getText() == null ? "" : religionInput.getText().toString().trim();
             String dobValue = dobInput.getText() == null ? "" : dobInput.getText().toString().trim();
-            String ethnicityValue = ethnicityInput.getText() == null ? "" : ethnicityInput.getText().toString().trim();
+            String ethnicityValue = ethnicityInput.getText() == null ? "" : ethnicityInput.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
 
             String bloodValue = bloodType.getText() == null ? "" : bloodType.getText().toString().trim();
 

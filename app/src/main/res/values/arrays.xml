@@ -1,24 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="relationship_options">
-        <item>Family</item>
-        <item>Friend</item>
-        <item>Guardian</item>
+        <item>FAMILY</item>
+        <item>FRIEND</item>
+        <item>GUARDIAN</item>
     </string-array>
 
     <string-array name="religion_options">
-        <item>Islam</item>
-        <item>Christian</item>
-        <item>Buddhist</item>
-        <item>Hindu</item>
-        <item>Other</item>
+        <item>ISLAM</item>
+        <item>CHRISTIAN</item>
+        <item>BUDDHIST</item>
+        <item>HINDU</item>
+        <item>OTHER</item>
     </string-array>
 
     <string-array name="ethnicity_options">
-        <item>Malay</item>
-        <item>Chinese</item>
-        <item>Indian</item>
-        <item>Other</item>
+        <item>MALAY</item>
+        <item>CHINESE</item>
+        <item>INDIAN</item>
+        <item>BUMIPUTERA SABAH</item>
+        <item>BUMIPUTERA SARAWAK</item>
+        <item>OTHER</item>
     </string-array>
 
     <string-array name="tts_language_options">
@@ -29,9 +31,9 @@
     </string-array>
 
     <string-array name="gender_options">
-        <item>Male</item>
-        <item>Female</item>
-        <item>Other</item>
+        <item>MALE</item>
+        <item>FEMALE</item>
+        <item>OTHER</item>
     </string-array>
 
     <string-array name="organ_donor_options">

@@ -1,24 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="relationship_options">
-        <item>Keluarga</item>
-        <item>Rakan</item>
-        <item>Penjaga</item>
+        <item>KELUARGA</item>
+        <item>RAKAN</item>
+        <item>PENJAGA</item>
     </string-array>
 
     <string-array name="religion_options">
-        <item>Islam</item>
-        <item>Kristian</item>
-        <item>Buddha</item>
-        <item>Hindu</item>
-        <item>Lain-lain</item>
+        <item>ISLAM</item>
+        <item>KRISTIAN</item>
+        <item>BUDDHA</item>
+        <item>HINDU</item>
+        <item>LAIN-LAIN</item>
     </string-array>
 
     <string-array name="ethnicity_options">
-        <item>Melayu</item>
-        <item>Cina</item>
-        <item>India</item>
-        <item>Lain-lain</item>
+        <item>MELAYU</item>
+        <item>CINA</item>
+        <item>INDIA</item>
+        <item>BUMIPUTERA SABAH</item>
+        <item>BUMIPUTERA SARAWAK</item>
+        <item>LAIN-LAIN</item>
     </string-array>
 
     <string-array name="tts_language_options">
@@ -29,9 +31,9 @@
     </string-array>
 
     <string-array name="gender_options">
-        <item>Lelaki</item>
-        <item>Perempuan</item>
-        <item>Lain-lain</item>
+        <item>LELAKI</item>
+        <item>PEREMPUAN</item>
+        <item>LAIN-LAIN</item>
     </string-array>
 
     <string-array name="organ_donor_options">
