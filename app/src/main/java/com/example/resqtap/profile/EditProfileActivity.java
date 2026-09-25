@@ -408,7 +408,7 @@ public class EditProfileActivity extends BaseActivity {
     }
 
     private void showGenderPickerDialog() {
-        String[] genders = new String[]{"Male", "Female", "Other"};
+        String[] genders = new String[]{"Male", "Female"};
         String current = UserPrefs.getGender(this);
         int checkedItem = 0;
         for (int i = 0; i < genders.length; i++) {

@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="relationship_options">
-        <item>家人</item>
+        <item>父母（父亲 / 母亲）</item>
+        <item>配偶（丈夫 / 妻子）</item>
+        <item>子女（儿子 / 女儿）</item>
+        <item>兄弟姐妹</item>
+        <item>亲属 / 家人</item>
         <item>朋友</item>
         <item>监护人</item>
+        <item>伴侣</item>
+        <item>同事</item>
+        <item>邻居</item>
+        <item>其他</item>
     </string-array>
 
     <string-array name="religion_options">
@@ -33,7 +41,6 @@
     <string-array name="gender_options">
         <item>男</item>
         <item>女</item>
-        <item>其他</item>
     </string-array>
 
     <string-array name="organ_donor_options">

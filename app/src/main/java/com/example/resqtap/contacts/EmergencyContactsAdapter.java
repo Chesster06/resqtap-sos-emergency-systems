@@ -99,18 +99,21 @@ public class EmergencyContactsAdapter extends RecyclerView.Adapter<EmergencyCont
         if (lower.contains("doctor") || lower.contains("hospital") || lower.contains("medical") || lower.contains("clinic")) {
             badge.setBackground(ContextCompat.getDrawable(ctx, R.drawable.bg_badge_doctor));
             badge.setTextColor(0xFF1A73E8);
-        } else if (lower.contains("babysitter") || lower.contains("nanny") || lower.contains("caregiver")) {
+        } else if (lower.contains("babysitter") || lower.contains("nanny") || lower.contains("caregiver") || lower.contains("guardian") || lower.contains("penjaga")) {
             badge.setBackground(ContextCompat.getDrawable(ctx, R.drawable.bg_badge_babysitter));
             badge.setTextColor(0xFF137333);
-        } else if (lower.contains("school") || lower.contains("teacher") || lower.contains("daycare") || lower.contains("college")) {
+        } else if (lower.contains("school") || lower.contains("teacher") || lower.contains("daycare") || lower.contains("college") || lower.contains("work") || lower.contains("colleague") || lower.contains("coworker") || lower.contains("sekerja")) {
             badge.setBackground(ContextCompat.getDrawable(ctx, R.drawable.bg_badge_school));
             badge.setTextColor(0xFF00796B);
         } else if (lower.contains("family") || lower.contains("parent") || lower.contains("mother") || lower.contains("father")
                 || lower.contains("spouse") || lower.contains("wife") || lower.contains("husband") || lower.contains("sibling")
-                || lower.contains("sister") || lower.contains("brother") || lower.contains("child") || lower.contains("son") || lower.contains("daughter")) {
+                || lower.contains("sister") || lower.contains("brother") || lower.contains("child") || lower.contains("son") || lower.contains("daughter")
+                || lower.contains("partner") || lower.contains("keluarga") || lower.contains("ibu") || lower.contains("bapa")
+                || lower.contains("suami") || lower.contains("isteri") || lower.contains("anak") || lower.contains("adik")
+                || lower.contains("saudara") || lower.contains("pasangan")) {
             badge.setBackground(ContextCompat.getDrawable(ctx, R.drawable.bg_badge_family));
             badge.setTextColor(0xFF7C3AED);
-        } else if (lower.contains("friend")) {
+        } else if (lower.contains("friend") || lower.contains("rakan") || lower.contains("teman") || lower.contains("neighbor") || lower.contains("jiran")) {
             badge.setBackground(ContextCompat.getDrawable(ctx, R.drawable.bg_badge_friend));
             badge.setTextColor(0xFFB45309);
         } else {

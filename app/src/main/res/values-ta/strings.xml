@@ -420,12 +420,26 @@
     <string name="hint_gender">பாலினம்</string>
     <string name="hint_allergies">ஒவ்வாமை</string>
     <string name="hint_specify_allergy">ஒவ்வாமையை குறிப்பிடவும்</string>
+    <string name="hint_specify_religion">மதத்தை குறிப்பிடவும்</string>
+    <string name="hint_specify_ethnicity">இனத்தை குறிப்பிடவும்</string>
+    <string name="hint_search_country">நாடு அல்லது குறியீட்டைத் தேடுக...</string>
     <string name="hint_medications">தற்போதைய மருந்துகள்</string>
     <string name="hint_specify_medication">மருந்து / நிலையை குறிப்பிடவும்</string>
     <string name="hint_organ_donor">உறுப்பு தான நிலை</string>
     <string name="hint_emergency_name">அவசர தொடர்பு பெயர்</string>
     <string name="hint_emergency_phone">அவசர தொடர்பு தொலைபேசி</string>
     <string name="hint_emergency_relation">உறவுமுறை</string>
+    <string name="hint_specify_relation">உறவைக் குறிப்பிடவும்</string>
+
+    <string name="error_required_blood_type">தயவுசெய்து உங்கள் இரத்த வகையைத் தேர்ந்தெடுக்கவும்</string>
+    <string name="error_required_allergies">ஒவ்வாமை நிலையைத் தேர்ந்தெடுக்கவும்</string>
+    <string name="error_required_medications">மருந்து நிலையைத் தேர்ந்தெடுக்கவும்</string>
+    <string name="error_required_organ_donor">உறுப்பு தான நிலையைத் தேர்ந்தெடுக்கவும்</string>
+    <string name="error_required_emergency_name">அவசர தொடர்பு பெயரை உள்ளிடவும்</string>
+    <string name="error_required_emergency_phone">அவசர தொடர்பு தொலைபேசி எண்ணை உள்ளிடவும்</string>
+    <string name="error_invalid_emergency_phone">சரியான தொலைபேசி எண்ணை உள்ளிடவும் (குறைந்தது 7 இலக்கங்கள்)</string>
+    <string name="error_required_emergency_relation">உறவைத் தேர்ந்தெடுக்கவும்</string>
+    <string name="error_specify_other">தயவுசெய்து விவரங்களைக் குறிப்பிடவும்</string>
 
     <string name="login_welcome_back">மீண்டும் வருக</string>
     <string name="login_sign_in_sub">உங்கள் கணக்கில் உள்நுழையவும்</string>

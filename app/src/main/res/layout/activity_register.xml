@@ -506,32 +506,81 @@
                         android:textSize="14.5sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/layout_phone"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    app:errorEnabled="false"
+                <LinearLayout
+                    android:id="@+id/container_phone"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    app:boxBackgroundColor="@color/auth_field"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/auth_field_stroke"
-                    app:hintEnabled="false">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/input_phone"
-                        android:layout_width="match_parent"
+                    <!-- Country Code Dropdown Trigger -->
+                    <LinearLayout
+                        android:id="@+id/btn_country_picker"
+                        android:layout_width="wrap_content"
                         android:layout_height="54dp"
-                        android:fontFamily="sans-serif"
-                        android:hint="@string/hint_phone"
-                        android:inputType="phone"
-                        android:textColor="@color/auth_field_text"
-                        android:textColorHint="@color/auth_field_hint"
-                        android:textSize="14.5sp" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:background="@drawable/bg_country_picker_button"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="10dp">
+
+                        <TextView
+                            android:id="@+id/tv_country_flag"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🇲🇾"
+                            android:textSize="19sp" />
+
+                        <TextView
+                            android:id="@+id/tv_country_code"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="5dp"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="+60"
+                            android:textColor="@color/auth_field_text"
+                            android:textSize="14sp" />
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_marginStart="3dp"
+                            android:contentDescription="Dropdown"
+                            android:src="@drawable/ic_chevron_down_24"
+                            app:tint="@color/auth_field_hint" />
+                    </LinearLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_phone"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        app:errorEnabled="false"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        app:boxBackgroundColor="@color/auth_field"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/auth_field_stroke"
+                        app:hintEnabled="false">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_phone"
+                            android:layout_width="match_parent"
+                            android:layout_height="54dp"
+                            android:fontFamily="sans-serif"
+                            android:hint="@string/hint_phone"
+                            android:inputType="phone"
+                            android:textColor="@color/auth_field_text"
+                            android:textColorHint="@color/auth_field_hint"
+                            android:textSize="14.5sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layout_address"
@@ -583,6 +632,34 @@
                         android:fontFamily="sans-serif"
                         android:hint="@string/hint_religion"
                         android:inputType="none"
+                        android:textColor="@color/auth_field_text"
+                        android:textColorHint="@color/auth_field_hint"
+                        android:textSize="14.5sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_religion_other"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    app:errorEnabled="false"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone"
+                    app:boxBackgroundColor="@color/auth_field"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeColor="@color/auth_field_stroke"
+                    app:hintEnabled="false">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/input_religion_other"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:fontFamily="sans-serif"
+                        android:hint="@string/hint_specify_religion"
+                        android:inputType="text|textCapCharacters"
                         android:textColor="@color/auth_field_text"
                         android:textColorHint="@color/auth_field_hint"
                         android:textSize="14.5sp" />
@@ -642,6 +719,34 @@
                         android:fontFamily="sans-serif"
                         android:hint="@string/hint_ethnicity"
                         android:inputType="none"
+                        android:textColor="@color/auth_field_text"
+                        android:textColorHint="@color/auth_field_hint"
+                        android:textSize="14.5sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_ethnicity_other"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    app:errorEnabled="false"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone"
+                    app:boxBackgroundColor="@color/auth_field"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeColor="@color/auth_field_stroke"
+                    app:hintEnabled="false">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/input_ethnicity_other"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:fontFamily="sans-serif"
+                        android:hint="@string/hint_specify_ethnicity"
+                        android:inputType="text|textCapCharacters"
                         android:textColor="@color/auth_field_text"
                         android:textColorHint="@color/auth_field_hint"
                         android:textSize="14.5sp" />
@@ -906,32 +1011,81 @@
                         android:textSize="14.5sp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/layout_emergency_phone"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    app:errorEnabled="false"
+                <LinearLayout
+                    android:id="@+id/container_emergency_phone"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    app:boxBackgroundColor="@color/auth_field"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/auth_field_stroke"
-                    app:hintEnabled="false">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/input_emergency_phone"
-                        android:layout_width="match_parent"
+                    <!-- Emergency Country Code Dropdown Trigger -->
+                    <LinearLayout
+                        android:id="@+id/btn_emergency_country_picker"
+                        android:layout_width="wrap_content"
                         android:layout_height="54dp"
-                        android:fontFamily="sans-serif"
-                        android:hint="@string/hint_emergency_phone"
-                        android:inputType="phone"
-                        android:textColor="@color/auth_field_text"
-                        android:textColorHint="@color/auth_field_hint"
-                        android:textSize="14.5sp" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:background="@drawable/bg_country_picker_button"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="10dp">
+
+                        <TextView
+                            android:id="@+id/tv_emergency_country_flag"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🇲🇾"
+                            android:textSize="19sp" />
+
+                        <TextView
+                            android:id="@+id/tv_emergency_country_code"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="5dp"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="+60"
+                            android:textColor="@color/auth_field_text"
+                            android:textSize="14sp" />
+
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_marginStart="3dp"
+                            android:contentDescription="Dropdown"
+                            android:src="@drawable/ic_chevron_down_24"
+                            app:tint="@color/auth_field_hint" />
+                    </LinearLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/layout_emergency_phone"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        app:errorEnabled="false"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        app:boxBackgroundColor="@color/auth_field"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/auth_field_stroke"
+                        app:hintEnabled="false">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/input_emergency_phone"
+                            android:layout_width="match_parent"
+                            android:layout_height="54dp"
+                            android:fontFamily="sans-serif"
+                            android:hint="@string/hint_emergency_phone"
+                            android:inputType="phone"
+                            android:textColor="@color/auth_field_text"
+                            android:textColorHint="@color/auth_field_hint"
+                            android:textSize="14.5sp" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/layout_emergency_relation"
@@ -956,6 +1110,34 @@
                         android:fontFamily="sans-serif"
                         android:hint="@string/hint_emergency_relation"
                         android:inputType="none"
+                        android:textColor="@color/auth_field_text"
+                        android:textColorHint="@color/auth_field_hint"
+                        android:textSize="14.5sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_emergency_relation_other"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    app:errorEnabled="false"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone"
+                    app:boxBackgroundColor="@color/auth_field"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeColor="@color/auth_field_stroke"
+                    app:hintEnabled="false">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/input_emergency_relation_other"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:fontFamily="sans-serif"
+                        android:hint="@string/hint_specify_relation"
+                        android:inputType="text"
                         android:textColor="@color/auth_field_text"
                         android:textColorHint="@color/auth_field_hint"
                         android:textSize="14.5sp" />

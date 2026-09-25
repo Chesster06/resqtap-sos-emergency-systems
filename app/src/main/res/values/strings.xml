@@ -995,12 +995,26 @@ Terms Version: 1.0</string>
     <string name="hint_gender">Gender</string>
     <string name="hint_allergies">Allergies</string>
     <string name="hint_specify_allergy">Specify Allergy</string>
+    <string name="hint_specify_religion">Specify Religion</string>
+    <string name="hint_specify_ethnicity">Specify Ethnicity</string>
+    <string name="hint_search_country">Search country or code...</string>
     <string name="hint_medications">Current Medications</string>
     <string name="hint_specify_medication">Specify Medication / Condition</string>
     <string name="hint_organ_donor">Organ Donor Status</string>
     <string name="hint_emergency_name">Emergency Contact Name</string>
     <string name="hint_emergency_phone">Emergency Contact Phone Number</string>
     <string name="hint_emergency_relation">Relationship</string>
+    <string name="hint_specify_relation">Specify Relationship</string>
+
+    <string name="error_required_blood_type">Please select your blood type</string>
+    <string name="error_required_allergies">Please select allergy status</string>
+    <string name="error_required_medications">Please select medication status</string>
+    <string name="error_required_organ_donor">Please select organ donor status</string>
+    <string name="error_required_emergency_name">Please enter emergency contact name</string>
+    <string name="error_required_emergency_phone">Please enter emergency contact phone number</string>
+    <string name="error_invalid_emergency_phone">Please enter a valid phone number (at least 7 digits)</string>
+    <string name="error_required_emergency_relation">Please select relationship</string>
+    <string name="error_specify_other">Please specify details</string>
 
     <string name="login_welcome_back">Welcome Back</string>
     <string name="login_sign_in_sub">Sign in to your account</string>

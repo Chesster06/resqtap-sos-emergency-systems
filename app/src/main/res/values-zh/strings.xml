@@ -428,12 +428,26 @@
     <string name="hint_gender">性别</string>
     <string name="hint_allergies">过敏</string>
     <string name="hint_specify_allergy">注明过敏</string>
+    <string name="hint_specify_religion">注明宗教</string>
+    <string name="hint_specify_ethnicity">注明族群</string>
+    <string name="hint_search_country">搜索国家或区号...</string>
     <string name="hint_medications">当前用药</string>
     <string name="hint_specify_medication">注明用药 / 健康状况</string>
     <string name="hint_organ_donor">器官捐献状态</string>
     <string name="hint_emergency_name">紧急联系人姓名</string>
     <string name="hint_emergency_phone">紧急联系人电话</string>
     <string name="hint_emergency_relation">与联系人关系</string>
+    <string name="hint_specify_relation">注明关系</string>
+
+    <string name="error_required_blood_type">请选择您的血型</string>
+    <string name="error_required_allergies">请选择过敏状况</string>
+    <string name="error_required_medications">请选择当前用药状况</string>
+    <string name="error_required_organ_donor">请选择器官捐献状态</string>
+    <string name="error_required_emergency_name">请输入紧急联系人姓名</string>
+    <string name="error_required_emergency_phone">请输入紧急联系人电话号码</string>
+    <string name="error_invalid_emergency_phone">请输入有效的电话号码（至少7位数字）</string>
+    <string name="error_required_emergency_relation">请选择与联系人的关系</string>
+    <string name="error_specify_other">请注明详细信息</string>
 
     <string name="login_welcome_back">欢迎回来</string>
     <string name="login_sign_in_sub">登录你的账户</string>

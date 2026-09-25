@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="relationship_options">
-        <item>KELUARGA</item>
-        <item>RAKAN</item>
-        <item>PENJAGA</item>
+        <item>Ibu Bapa (Bapa / Ibu)</item>
+        <item>Pasangan (Suami / Isteri)</item>
+        <item>Anak (Lelaki / Perempuan)</item>
+        <item>Adik-beradik (Abang / Kakak / Adik)</item>
+        <item>Keluarga / Saudara Mara</item>
+        <item>Rakan</item>
+        <item>Penjaga</item>
+        <item>Pasangan Hidup</item>
+        <item>Rakan Sekerja</item>
+        <item>Jiran</item>
+        <item>Lain-lain</item>
     </string-array>
 
     <string-array name="religion_options">
@@ -33,7 +41,6 @@
     <string-array name="gender_options">
         <item>LELAKI</item>
         <item>PEREMPUAN</item>
-        <item>LAIN-LAIN</item>
     </string-array>
 
     <string-array name="organ_donor_options">

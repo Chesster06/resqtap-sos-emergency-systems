@@ -6,6 +6,7 @@ import com.example.resqtap.home.MainActivity;
 import com.example.resqtap.friend.QrCodeUtils;
 import com.example.resqtap.room.FirebaseRoomClient;
 import com.example.resqtap.utils.AvatarUtils;
+import com.example.resqtap.utils.CountryCodeHelper;
 import com.example.resqtap.utils.ThemeUtils;
 import com.example.resqtap.utils.UserPrefs;
 
@@ -176,10 +177,33 @@ public class RegisterActivity extends BaseActivity {
         TextInputEditText icInput = findViewById(R.id.input_ic);
         MaterialAutoCompleteTextView genderInput = findViewById(R.id.input_gender);
         TextInputEditText phoneInput = findViewById(R.id.input_phone);
+        View btnCountryPicker = findViewById(R.id.btn_country_picker);
+        TextView tvCountryFlag = findViewById(R.id.tv_country_flag);
+        TextView tvCountryCode = findViewById(R.id.tv_country_code);
+        if (btnCountryPicker != null) {
+            btnCountryPicker.setOnClickListener(v -> {
+                CountryCodeHelper.showCountryPicker(this, btnCountryPicker, country -> {
+                    if (tvCountryFlag != null) tvCountryFlag.setText(country.flag);
+                    if (tvCountryCode != null) tvCountryCode.setText(country.dialCode);
+                });
+            });
+        }
         TextInputEditText addressInput = findViewById(R.id.input_address);
         MaterialAutoCompleteTextView religionInput = findViewById(R.id.input_religion);
+        View layoutReligionOther = findViewById(R.id.layout_religion_other);
+        TextInputEditText religionOtherInput = findViewById(R.id.input_religion_other);
+        if (religionOtherInput != null) {
+            religionOtherInput.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.AllCaps()});
+        }
+
         TextInputEditText dobInput = findViewById(R.id.input_dob);
         MaterialAutoCompleteTextView ethnicityInput = findViewById(R.id.input_ethnicity);
+        View layoutEthnicityOther = findViewById(R.id.layout_ethnicity_other);
+        TextInputEditText ethnicityOtherInput = findViewById(R.id.input_ethnicity_other);
+        if (ethnicityOtherInput != null) {
+            ethnicityOtherInput.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.AllCaps()});
+        }
+
         MaterialButton btnNextToStep3 = findViewById(R.id.btn_next_to_step3);
 
         if (name != null) {
@@ -212,19 +236,42 @@ public class RegisterActivity extends BaseActivity {
             });
         }
 
+        TextInputLayout layoutBloodType = findViewById(R.id.layout_blood_type);
         MaterialAutoCompleteTextView bloodType = findViewById(R.id.input_blood_type);
+
+        TextInputLayout layoutAllergies = findViewById(R.id.layout_allergies);
         MaterialAutoCompleteTextView allergiesInput = findViewById(R.id.input_allergies);
-        View layoutAllergiesOther = findViewById(R.id.layout_allergies_other);
+        TextInputLayout layoutAllergiesOther = findViewById(R.id.layout_allergies_other);
         TextInputEditText allergiesOtherInput = findViewById(R.id.input_allergies_other);
 
+        TextInputLayout layoutMedications = findViewById(R.id.layout_medications);
         MaterialAutoCompleteTextView medicationsInput = findViewById(R.id.input_medications);
-        View layoutMedicationsOther = findViewById(R.id.layout_medications_other);
+        TextInputLayout layoutMedicationsOther = findViewById(R.id.layout_medications_other);
         TextInputEditText medicationsOtherInput = findViewById(R.id.input_medications_other);
 
+        TextInputLayout layoutOrganDonor = findViewById(R.id.layout_organ_donor);
         MaterialAutoCompleteTextView organDonorInput = findViewById(R.id.input_organ_donor);
+
+        TextInputLayout layoutEmergencyName = findViewById(R.id.layout_emergency_name);
         TextInputEditText emergencyNameInput = findViewById(R.id.input_emergency_name);
+
+        TextInputLayout layoutEmergencyPhone = findViewById(R.id.layout_emergency_phone);
         TextInputEditText emergencyPhoneInput = findViewById(R.id.input_emergency_phone);
+        View btnEmergencyCountryPicker = findViewById(R.id.btn_emergency_country_picker);
+        TextView tvEmergencyCountryFlag = findViewById(R.id.tv_emergency_country_flag);
+        TextView tvEmergencyCountryCode = findViewById(R.id.tv_emergency_country_code);
+        if (btnEmergencyCountryPicker != null) {
+            btnEmergencyCountryPicker.setOnClickListener(v -> {
+                CountryCodeHelper.showCountryPicker(this, btnEmergencyCountryPicker, country -> {
+                    if (tvEmergencyCountryFlag != null) tvEmergencyCountryFlag.setText(country.flag);
+                    if (tvEmergencyCountryCode != null) tvEmergencyCountryCode.setText(country.dialCode);
+                });
+            });
+        }
+        TextInputLayout layoutEmergencyRelation = findViewById(R.id.layout_emergency_relation);
         MaterialAutoCompleteTextView emergencyRelationInput = findViewById(R.id.input_emergency_relation);
+        TextInputLayout layoutEmergencyRelationOther = findViewById(R.id.layout_emergency_relation_other);
+        TextInputEditText emergencyRelationOtherInput = findViewById(R.id.input_emergency_relation_other);
         MaterialButton btnSaveDetails = findViewById(R.id.btn_save_details);
 
         MaterialButton btnGetStarted = findViewById(R.id.btn_get_started);
@@ -256,6 +303,31 @@ public class RegisterActivity extends BaseActivity {
         } catch (Exception ignored) {
         }
 
+        if (religionInput != null) {
+            religionInput.setOnItemClickListener((parent, view, position, id) -> {
+                String selected = religionInput.getText() == null ? "" : religionInput.getText().toString();
+                if (isOtherSelected(selected)) {
+                    if (layoutReligionOther != null) layoutReligionOther.setVisibility(View.VISIBLE);
+                    if (religionOtherInput != null) religionOtherInput.requestFocus();
+                } else {
+                    if (layoutReligionOther != null) layoutReligionOther.setVisibility(View.GONE);
+                    if (religionOtherInput != null) religionOtherInput.setText("");
+                }
+            });
+            religionInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    String selected = s == null ? "" : s.toString();
+                    if (isOtherSelected(selected)) {
+                        if (layoutReligionOther != null) layoutReligionOther.setVisibility(View.VISIBLE);
+                    } else {
+                        if (layoutReligionOther != null) layoutReligionOther.setVisibility(View.GONE);
+                    }
+                }
+            });
+        }
+
         try {
             String[] ethnicities = getResources().getStringArray(R.array.ethnicity_options);
             ethnicityInput.setAdapter(new ArrayAdapter<>(this, R.layout.item_dropdown_popup, ethnicities));
@@ -263,9 +335,46 @@ public class RegisterActivity extends BaseActivity {
         } catch (Exception ignored) {
         }
 
-        String[] bloodTypes = new String[]{"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "-"};
+        if (ethnicityInput != null) {
+            ethnicityInput.setOnItemClickListener((parent, view, position, id) -> {
+                String selected = ethnicityInput.getText() == null ? "" : ethnicityInput.getText().toString();
+                if (isOtherSelected(selected)) {
+                    if (layoutEthnicityOther != null) layoutEthnicityOther.setVisibility(View.VISIBLE);
+                    if (ethnicityOtherInput != null) ethnicityOtherInput.requestFocus();
+                } else {
+                    if (layoutEthnicityOther != null) layoutEthnicityOther.setVisibility(View.GONE);
+                    if (ethnicityOtherInput != null) ethnicityOtherInput.setText("");
+                }
+            });
+            ethnicityInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    String selected = s == null ? "" : s.toString();
+                    if (isOtherSelected(selected)) {
+                        if (layoutEthnicityOther != null) layoutEthnicityOther.setVisibility(View.VISIBLE);
+                    } else {
+                        if (layoutEthnicityOther != null) layoutEthnicityOther.setVisibility(View.GONE);
+                    }
+                }
+            });
+        }
+
+        String[] bloodTypes = new String[]{"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"};
         bloodType.setAdapter(new ArrayAdapter<>(this, R.layout.item_dropdown_popup, bloodTypes));
         bloodType.setDropDownBackgroundResource(R.drawable.bg_dropdown_popup);
+        if (bloodType != null) {
+            bloodType.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (layoutBloodType != null) {
+                        layoutBloodType.setError(null);
+                        layoutBloodType.setErrorEnabled(false);
+                    }
+                }
+            });
+        }
 
         try {
             String[] allergiesList = getResources().getStringArray(R.array.allergy_options);
@@ -294,6 +403,23 @@ public class RegisterActivity extends BaseActivity {
                         if (layoutAllergiesOther != null) layoutAllergiesOther.setVisibility(View.VISIBLE);
                     } else {
                         if (layoutAllergiesOther != null) layoutAllergiesOther.setVisibility(View.GONE);
+                    }
+                    if (layoutAllergies != null) {
+                        layoutAllergies.setError(null);
+                        layoutAllergies.setErrorEnabled(false);
+                    }
+                }
+            });
+        }
+
+        if (allergiesOtherInput != null) {
+            allergiesOtherInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (layoutAllergiesOther != null) {
+                        layoutAllergiesOther.setError(null);
+                        layoutAllergiesOther.setErrorEnabled(false);
                     }
                 }
             });
@@ -327,6 +453,23 @@ public class RegisterActivity extends BaseActivity {
                     } else {
                         if (layoutMedicationsOther != null) layoutMedicationsOther.setVisibility(View.GONE);
                     }
+                    if (layoutMedications != null) {
+                        layoutMedications.setError(null);
+                        layoutMedications.setErrorEnabled(false);
+                    }
+                }
+            });
+        }
+
+        if (medicationsOtherInput != null) {
+            medicationsOtherInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (layoutMedicationsOther != null) {
+                        layoutMedicationsOther.setError(null);
+                        layoutMedicationsOther.setErrorEnabled(false);
+                    }
                 }
             });
         }
@@ -338,11 +481,92 @@ public class RegisterActivity extends BaseActivity {
         } catch (Exception ignored) {
         }
 
+        if (organDonorInput != null) {
+            organDonorInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (layoutOrganDonor != null) {
+                        layoutOrganDonor.setError(null);
+                        layoutOrganDonor.setErrorEnabled(false);
+                    }
+                }
+            });
+        }
+
+        if (emergencyNameInput != null) {
+            emergencyNameInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (layoutEmergencyName != null) {
+                        layoutEmergencyName.setError(null);
+                        layoutEmergencyName.setErrorEnabled(false);
+                    }
+                }
+            });
+        }
+
+        if (emergencyPhoneInput != null) {
+            emergencyPhoneInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (layoutEmergencyPhone != null) {
+                        layoutEmergencyPhone.setError(null);
+                        layoutEmergencyPhone.setErrorEnabled(false);
+                    }
+                }
+            });
+        }
+
         try {
             String[] relations = getResources().getStringArray(R.array.relationship_options);
             emergencyRelationInput.setAdapter(new ArrayAdapter<>(this, R.layout.item_dropdown_popup, relations));
             emergencyRelationInput.setDropDownBackgroundResource(R.drawable.bg_dropdown_popup);
         } catch (Exception ignored) {
+        }
+
+        if (emergencyRelationInput != null) {
+            emergencyRelationInput.setOnItemClickListener((parent, view, position, id) -> {
+                String selected = emergencyRelationInput.getText() == null ? "" : emergencyRelationInput.getText().toString();
+                if (isOtherSelected(selected)) {
+                    if (layoutEmergencyRelationOther != null) layoutEmergencyRelationOther.setVisibility(View.VISIBLE);
+                    if (emergencyRelationOtherInput != null) emergencyRelationOtherInput.requestFocus();
+                } else {
+                    if (layoutEmergencyRelationOther != null) layoutEmergencyRelationOther.setVisibility(View.GONE);
+                    if (emergencyRelationOtherInput != null) emergencyRelationOtherInput.setText("");
+                }
+            });
+            emergencyRelationInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    String selected = s == null ? "" : s.toString();
+                    if (isOtherSelected(selected)) {
+                        if (layoutEmergencyRelationOther != null) layoutEmergencyRelationOther.setVisibility(View.VISIBLE);
+                    } else {
+                        if (layoutEmergencyRelationOther != null) layoutEmergencyRelationOther.setVisibility(View.GONE);
+                    }
+                    if (layoutEmergencyRelation != null) {
+                        layoutEmergencyRelation.setError(null);
+                        layoutEmergencyRelation.setErrorEnabled(false);
+                    }
+                }
+            });
+        }
+
+        if (emergencyRelationOtherInput != null) {
+            emergencyRelationOtherInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    if (layoutEmergencyRelationOther != null) {
+                        layoutEmergencyRelationOther.setError(null);
+                        layoutEmergencyRelationOther.setErrorEnabled(false);
+                    }
+                }
+            });
         }
 
         if (dobInput != null) {
@@ -449,11 +673,77 @@ public class RegisterActivity extends BaseActivity {
             if (name != null && !UserPrefs.getName(this).isEmpty()) name.setText(UserPrefs.getName(this));
             if (icInput != null && !UserPrefs.getIcNumber(this).isEmpty()) icInput.setText(UserPrefs.getIcNumber(this));
             if (genderInput != null && !UserPrefs.getGender(this).isEmpty()) genderInput.setText(UserPrefs.getGender(this), false);
-            if (phoneInput != null && !UserPrefs.getPhoneNumber(this).isEmpty()) phoneInput.setText(UserPrefs.getPhoneNumber(this));
+            if (phoneInput != null && !UserPrefs.getPhoneNumber(this).isEmpty()) {
+                String savedPhone = UserPrefs.getPhoneNumber(this).trim();
+                CountryCodeHelper.Country matched = null;
+                if (savedPhone.startsWith("+")) {
+                    for (CountryCodeHelper.Country c : CountryCodeHelper.getAllCountries()) {
+                        if (savedPhone.startsWith(c.dialCode)) {
+                            matched = c;
+                            break;
+                        }
+                    }
+                }
+                if (matched != null) {
+                    if (tvCountryFlag != null) tvCountryFlag.setText(matched.flag);
+                    if (tvCountryCode != null) tvCountryCode.setText(matched.dialCode);
+                    phoneInput.setText(savedPhone.substring(matched.dialCode.length()).trim());
+                } else {
+                    phoneInput.setText(savedPhone);
+                }
+            }
             if (addressInput != null && !UserPrefs.getAddress(this).isEmpty()) addressInput.setText(UserPrefs.getAddress(this));
-            if (religionInput != null && !UserPrefs.getReligion(this).isEmpty()) religionInput.setText(UserPrefs.getReligion(this), false);
+            if (religionInput != null && !UserPrefs.getReligion(this).isEmpty()) {
+                String savedRel = UserPrefs.getReligion(this);
+                if (isOtherSelected(savedRel)) {
+                    religionInput.setText(savedRel, false);
+                    if (layoutReligionOther != null) layoutReligionOther.setVisibility(View.VISIBLE);
+                } else {
+                    boolean isStandard = false;
+                    try {
+                        String[] options = getResources().getStringArray(R.array.religion_options);
+                        for (String opt : options) {
+                            if (opt.equalsIgnoreCase(savedRel)) {
+                                isStandard = true;
+                                break;
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                    if (isStandard) {
+                        religionInput.setText(savedRel, false);
+                    } else {
+                        religionInput.setText("OTHER", false);
+                        if (layoutReligionOther != null) layoutReligionOther.setVisibility(View.VISIBLE);
+                        if (religionOtherInput != null) religionOtherInput.setText(savedRel);
+                    }
+                }
+            }
             if (dobInput != null && !UserPrefs.getDateOfBirth(this).isEmpty()) dobInput.setText(UserPrefs.getDateOfBirth(this));
-            if (ethnicityInput != null && !UserPrefs.getEthnicity(this).isEmpty()) ethnicityInput.setText(UserPrefs.getEthnicity(this), false);
+            if (ethnicityInput != null && !UserPrefs.getEthnicity(this).isEmpty()) {
+                String savedEth = UserPrefs.getEthnicity(this);
+                if (isOtherSelected(savedEth)) {
+                    ethnicityInput.setText(savedEth, false);
+                    if (layoutEthnicityOther != null) layoutEthnicityOther.setVisibility(View.VISIBLE);
+                } else {
+                    boolean isStandard = false;
+                    try {
+                        String[] options = getResources().getStringArray(R.array.ethnicity_options);
+                        for (String opt : options) {
+                            if (opt.equalsIgnoreCase(savedEth)) {
+                                isStandard = true;
+                                break;
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                    if (isStandard) {
+                        ethnicityInput.setText(savedEth, false);
+                    } else {
+                        ethnicityInput.setText("OTHER", false);
+                        if (layoutEthnicityOther != null) layoutEthnicityOther.setVisibility(View.VISIBLE);
+                        if (ethnicityOtherInput != null) ethnicityOtherInput.setText(savedEth);
+                    }
+                }
+            }
 
             if (bloodType != null && !UserPrefs.getBloodType(this).isEmpty()) bloodType.setText(UserPrefs.getBloodType(this), false);
             if (allergiesInput != null && !UserPrefs.getAllergies(this).isEmpty()) allergiesInput.setText(UserPrefs.getAllergies(this), false);
@@ -464,7 +754,25 @@ public class RegisterActivity extends BaseActivity {
             if (!contacts.isEmpty()) {
                 com.example.resqtap.contacts.EmergencyContact firstContact = contacts.get(0);
                 if (emergencyNameInput != null) emergencyNameInput.setText(firstContact.name);
-                if (emergencyPhoneInput != null) emergencyPhoneInput.setText(firstContact.phone);
+                if (emergencyPhoneInput != null && firstContact.phone != null) {
+                    String emSaved = firstContact.phone.trim();
+                    CountryCodeHelper.Country emMatched = null;
+                    if (emSaved.startsWith("+")) {
+                        for (CountryCodeHelper.Country c : CountryCodeHelper.getAllCountries()) {
+                            if (emSaved.startsWith(c.dialCode)) {
+                                emMatched = c;
+                                break;
+                            }
+                        }
+                    }
+                    if (emMatched != null) {
+                        if (tvEmergencyCountryFlag != null) tvEmergencyCountryFlag.setText(emMatched.flag);
+                        if (tvEmergencyCountryCode != null) tvEmergencyCountryCode.setText(emMatched.dialCode);
+                        emergencyPhoneInput.setText(emSaved.substring(emMatched.dialCode.length()).trim());
+                    } else {
+                        emergencyPhoneInput.setText(emSaved);
+                    }
+                }
                 if (emergencyRelationInput != null) emergencyRelationInput.setText(firstContact.relationship, false);
             }
 
@@ -680,11 +988,29 @@ public class RegisterActivity extends BaseActivity {
             String nameValue = name.getText() == null ? "" : name.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
             String icValue = icInput.getText() == null ? "" : icInput.getText().toString().trim();
             String genderValue = genderInput.getText() == null ? "" : genderInput.getText().toString().trim();
-            String phoneValue = phoneInput.getText() == null ? "" : phoneInput.getText().toString().trim();
+
+            String rawPhone = phoneInput.getText() == null ? "" : phoneInput.getText().toString().trim();
+            String codeVal = tvCountryCode != null ? tvCountryCode.getText().toString().trim() : "+60";
+            String phoneValue;
+            if (rawPhone.isEmpty()) {
+                phoneValue = "";
+            } else if (rawPhone.startsWith("+")) {
+                phoneValue = rawPhone;
+            } else {
+                String clean = rawPhone.startsWith("0") ? rawPhone.substring(1) : rawPhone;
+                phoneValue = codeVal + clean;
+            }
+
             String addressValue = addressInput.getText() == null ? "" : addressInput.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
-            String religionValue = religionInput.getText() == null ? "" : religionInput.getText().toString().trim();
+            String religionSelection = religionInput.getText() == null ? "" : religionInput.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
+            String religionOther = religionOtherInput == null || religionOtherInput.getText() == null ? "" : religionOtherInput.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
+            String religionValue = isOtherSelected(religionSelection) ? (!religionOther.isEmpty() ? religionOther : religionSelection) : religionSelection;
+
             String dobValue = dobInput.getText() == null ? "" : dobInput.getText().toString().trim();
-            String ethnicityValue = ethnicityInput.getText() == null ? "" : ethnicityInput.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
+
+            String ethnicitySelection = ethnicityInput.getText() == null ? "" : ethnicityInput.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
+            String ethnicityOther = ethnicityOtherInput == null || ethnicityOtherInput.getText() == null ? "" : ethnicityOtherInput.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
+            String ethnicityValue = isOtherSelected(ethnicitySelection) ? (!ethnicityOther.isEmpty() ? ethnicityOther : ethnicitySelection) : ethnicitySelection;
 
             String bloodValue = bloodType.getText() == null ? "" : bloodType.getText().toString().trim();
 
@@ -699,8 +1025,112 @@ public class RegisterActivity extends BaseActivity {
             String organDonorValue = organDonorInput.getText() == null ? "" : organDonorInput.getText().toString().trim();
 
             String emNameValue = emergencyNameInput.getText() == null ? "" : emergencyNameInput.getText().toString().trim();
-            String emPhoneValue = emergencyPhoneInput.getText() == null ? "" : emergencyPhoneInput.getText().toString().trim();
-            String emRelationValue = emergencyRelationInput.getText() == null ? "" : emergencyRelationInput.getText().toString().trim();
+
+            String rawEmPhone = emergencyPhoneInput.getText() == null ? "" : emergencyPhoneInput.getText().toString().trim();
+            String emCodeVal = tvEmergencyCountryCode != null ? tvEmergencyCountryCode.getText().toString().trim() : "+60";
+            String emPhoneValue;
+            if (rawEmPhone.isEmpty()) {
+                emPhoneValue = "";
+            } else if (rawEmPhone.startsWith("+")) {
+                emPhoneValue = rawEmPhone;
+            } else {
+                String cleanEm = rawEmPhone.startsWith("0") ? rawEmPhone.substring(1) : rawEmPhone;
+                emPhoneValue = emCodeVal + cleanEm;
+            }
+
+            String emRelationSelection = emergencyRelationInput.getText() == null ? "" : emergencyRelationInput.getText().toString().trim();
+            String emRelationOther = emergencyRelationOtherInput == null || emergencyRelationOtherInput.getText() == null ? "" : emergencyRelationOtherInput.getText().toString().trim();
+            String emRelationValue = isOtherSelected(emRelationSelection) ? (!emRelationOther.isEmpty() ? emRelationOther : emRelationSelection) : emRelationSelection;
+
+            // --- VALIDASI STEP 3: MEDICAL & EMERGENCY INFO (REQUIRED) ---
+            if (bloodValue.isEmpty()) {
+                if (layoutBloodType != null) {
+                    layoutBloodType.setError(getString(R.string.error_required_blood_type));
+                    scrollToField(layoutBloodType);
+                }
+                return;
+            }
+
+            if (allergiesSelection.isEmpty()) {
+                if (layoutAllergies != null) {
+                    layoutAllergies.setError(getString(R.string.error_required_allergies));
+                    scrollToField(layoutAllergies);
+                }
+                return;
+            }
+
+            if (isOtherSelected(allergiesSelection) && allergiesOther.isEmpty()) {
+                if (layoutAllergiesOther != null) {
+                    layoutAllergiesOther.setError(getString(R.string.error_specify_other));
+                    scrollToField(layoutAllergiesOther);
+                }
+                return;
+            }
+
+            if (medicationsSelection.isEmpty()) {
+                if (layoutMedications != null) {
+                    layoutMedications.setError(getString(R.string.error_required_medications));
+                    scrollToField(layoutMedications);
+                }
+                return;
+            }
+
+            if (isOtherSelected(medicationsSelection) && medicationsOther.isEmpty()) {
+                if (layoutMedicationsOther != null) {
+                    layoutMedicationsOther.setError(getString(R.string.error_specify_other));
+                    scrollToField(layoutMedicationsOther);
+                }
+                return;
+            }
+
+            if (organDonorValue.isEmpty()) {
+                if (layoutOrganDonor != null) {
+                    layoutOrganDonor.setError(getString(R.string.error_required_organ_donor));
+                    scrollToField(layoutOrganDonor);
+                }
+                return;
+            }
+
+            if (emNameValue.isEmpty()) {
+                if (layoutEmergencyName != null) {
+                    layoutEmergencyName.setError(getString(R.string.error_required_emergency_name));
+                    scrollToField(layoutEmergencyName);
+                }
+                return;
+            }
+
+            if (rawEmPhone.isEmpty()) {
+                if (layoutEmergencyPhone != null) {
+                    layoutEmergencyPhone.setError(getString(R.string.error_required_emergency_phone));
+                    scrollToField(layoutEmergencyPhone);
+                }
+                return;
+            }
+
+            String emDigits = rawEmPhone.replaceAll("[^0-9]", "");
+            if (emDigits.length() < 7) {
+                if (layoutEmergencyPhone != null) {
+                    layoutEmergencyPhone.setError(getString(R.string.error_invalid_emergency_phone));
+                    scrollToField(layoutEmergencyPhone);
+                }
+                return;
+            }
+
+            if (emRelationSelection.isEmpty()) {
+                if (layoutEmergencyRelation != null) {
+                    layoutEmergencyRelation.setError(getString(R.string.error_required_emergency_relation));
+                    scrollToField(layoutEmergencyRelation);
+                }
+                return;
+            }
+
+            if (isOtherSelected(emRelationSelection) && emRelationOther.isEmpty()) {
+                if (layoutEmergencyRelationOther != null) {
+                    layoutEmergencyRelationOther.setError(getString(R.string.error_specify_other));
+                    scrollToField(layoutEmergencyRelationOther);
+                }
+                return;
+            }
 
             btnSaveDetails.setEnabled(false);
 

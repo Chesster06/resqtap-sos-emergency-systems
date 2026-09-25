@@ -795,12 +795,26 @@
     <string name="hint_gender">Jantina</string>
     <string name="hint_allergies">Alahan</string>
     <string name="hint_specify_allergy">Nyatakan Alahan</string>
+    <string name="hint_specify_religion">Nyatakan Agama</string>
+    <string name="hint_specify_ethnicity">Nyatakan Bangsa</string>
+    <string name="hint_search_country">Cari negara atau kod...</string>
     <string name="hint_medications">Ubat-Ubatan Semasa</string>
     <string name="hint_specify_medication">Nyatakan Ubat / Masalah Kesihatan</string>
     <string name="hint_organ_donor">Status Penderma Organ</string>
     <string name="hint_emergency_name">Nama Waris Kecemasan</string>
     <string name="hint_emergency_phone">Nombor Telefon Waris</string>
     <string name="hint_emergency_relation">Hubungan Waris</string>
+    <string name="hint_specify_relation">Nyatakan Hubungan</string>
+
+    <string name="error_required_blood_type">Sila pilih jenis darah anda</string>
+    <string name="error_required_allergies">Sila pilih status alahan anda</string>
+    <string name="error_required_medications">Sila pilih status ubat-ubatan anda</string>
+    <string name="error_required_organ_donor">Sila pilih status penderma organ</string>
+    <string name="error_required_emergency_name">Sila masukkan nama kontak kecemasan</string>
+    <string name="error_required_emergency_phone">Sila masukkan nombor telefon kontak kecemasan</string>
+    <string name="error_invalid_emergency_phone">Sila masukkan nombor telefon yang sah (sekurang-kurangnya 7 digit)</string>
+    <string name="error_required_emergency_relation">Sila pilih hubungan</string>
+    <string name="error_specify_other">Sila nyatakan butiran</string>
 
     <string name="login_welcome_back">Selamat Kembali</string>
     <string name="login_sign_in_sub">Log masuk ke akaun anda</string>
