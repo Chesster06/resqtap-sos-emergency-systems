@@ -6530,10 +6530,35 @@ async function startAdminCall(uid, name, callType = "video", existingCallLogId =
   if (elsVc.remoteCamOffIndicator) elsVc.remoteCamOffIndicator.classList.add("hidden");
 
   try {
-    vcLocalStream = await navigator.mediaDevices.getUserMedia(
-      isVoiceCall ? { audio: true, video: false } : { video: true, audio: true }
-    );
-    if (!isVoiceCall) {
+    let stream = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(
+        isVoiceCall ? { audio: true, video: false } : { video: true, audio: true }
+      );
+    } catch (mediaErr) {
+      console.warn("Could not get media stream:", mediaErr);
+      if (!isVoiceCall) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          isVoiceCall = true;
+          vcCurrentCallType = "voice";
+          showToast("Kamera tidak dapat diakses. Beralih ke panggilan suara.");
+          if (elsVc.modal) elsVc.modal.classList.add("voice-mode");
+          if (elsVc.voicePanel) elsVc.voicePanel.classList.remove("hidden");
+        } catch (audioErr) {
+          showToast("Sila benarkan akses mikrofon/kamera dalam pelayar anda.");
+          endAdminCall();
+          return;
+        }
+      } else {
+        showToast("Sila benarkan akses mikrofon dalam pelayar anda: " + mediaErr.message);
+        endAdminCall();
+        return;
+      }
+    }
+
+    vcLocalStream = stream;
+    if (!isVoiceCall && elsVc.localVideo) {
       elsVc.localVideo.srcObject = vcLocalStream;
     }
 
@@ -6546,34 +6571,38 @@ async function startAdminCall(uid, name, callType = "video", existingCallLogId =
     });
 
     vcPeerConnection.ontrack = (event) => {
-      elsVc.overlay.classList.add("hidden");
+      if (elsVc.overlay) elsVc.overlay.classList.add("hidden");
       if (!vcRemoteStream) {
         vcRemoteStream = new MediaStream();
-        elsVc.remoteVideo.srcObject = vcRemoteStream;
+        if (elsVc.remoteVideo) elsVc.remoteVideo.srcObject = vcRemoteStream;
       }
       vcRemoteStream.addTrack(event.track);
-      elsVc.remoteVideo.play().catch(() => {});
+      if (elsVc.remoteVideo) {
+        elsVc.remoteVideo.play().catch(() => {});
+      }
     };
 
     const callRef = push(ref(db, "calls"));
     vcCurrentCallId = callRef.key;
 
     vcPeerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
+      if (event.candidate && vcCurrentCallId) {
         push(ref(db, "calls/" + vcCurrentCallId + "/callerCandidates"), {
           candidate: event.candidate.candidate,
           sdpMid: event.candidate.sdpMid,
           sdpMLineIndex: event.candidate.sdpMLineIndex
-        });
+        }).catch(() => {});
       }
     };
 
     const offer = await vcPeerConnection.createOffer();
     await vcPeerConnection.setLocalDescription(offer);
 
+    const callerUid = (state.currentUser && state.currentUser.uid) ? state.currentUser.uid : "admin";
+
     await update(ref(db, "calls/" + vcCurrentCallId), {
       offer: { type: offer.type, sdp: offer.sdp },
-      callerUid: state.currentUser.uid,
+      callerUid: callerUid,
       callerName: "ResQTap",
       callerPhotoUrl: "",
       callType: vcCurrentCallType,
@@ -6591,7 +6620,7 @@ async function startAdminCall(uid, name, callType = "video", existingCallLogId =
 
     const answerUnsub = onValue(ref(db, "calls/" + vcCurrentCallId + "/answer"), (snapshot) => {
       const data = snapshot.val();
-      if (data && data.sdp && !vcPeerConnection.currentRemoteDescription) {
+      if (data && data.sdp && vcPeerConnection && !vcPeerConnection.currentRemoteDescription) {
         const rtcDescription = new RTCSessionDescription(data);
         vcPeerConnection.setRemoteDescription(rtcDescription).catch(e => console.warn("Failed to set remote answer:", e));
       }
@@ -6599,7 +6628,7 @@ async function startAdminCall(uid, name, callType = "video", existingCallLogId =
     vcUnsubscribers.push(answerUnsub);
 
     const cameraStateRef = ref(db, `calls/${vcCurrentCallId}/cameraState`);
-    set(child(cameraStateRef, 'caller'), !isVoiceCall);
+    set(child(cameraStateRef, 'caller'), !isVoiceCall).catch(() => {});
     if (!isVoiceCall) {
       const cameraUnsub = onValue(child(cameraStateRef, 'callee'), (snapshot) => {
         if (snapshot.exists()) {
@@ -6617,7 +6646,7 @@ async function startAdminCall(uid, name, callType = "video", existingCallLogId =
     }
 
     const micStateRef = ref(db, `calls/${vcCurrentCallId}/micState`);
-    set(child(micStateRef, 'caller'), true);
+    set(child(micStateRef, 'caller'), true).catch(() => {});
 
     const micUnsub = onValue(child(micStateRef, 'callee'), (snapshot) => {
       if (snapshot.exists()) {
@@ -6640,7 +6669,7 @@ async function startAdminCall(uid, name, callType = "video", existingCallLogId =
         if (processedCandidates.has(key)) return;
         processedCandidates.add(key);
         const data = childSnapshot.val();
-        if (data && data.candidate) {
+        if (data && data.candidate && vcPeerConnection) {
           const candidate = new RTCIceCandidate(data);
           vcPeerConnection.addIceCandidate(candidate).catch(() => {});
         }
@@ -6650,36 +6679,37 @@ async function startAdminCall(uid, name, callType = "video", existingCallLogId =
 
     vcPeerConnection.onconnectionstatechange = () => {
       if (!vcPeerConnection) return;
-      const state = vcPeerConnection.connectionState;
-      if (state === "closed") {
+      const connState = vcPeerConnection.connectionState;
+      if (connState === "closed") {
         endAdminCall();
-      } else if (state === "disconnected" || state === "failed") {
+      } else if (connState === "disconnected" || connState === "failed") {
         setTimeout(() => {
           if (vcPeerConnection && (vcPeerConnection.connectionState === "disconnected" || vcPeerConnection.connectionState === "failed")) {
             showToast("Panggilan telah ditamatkan");
             endAdminCall();
           }
-        }, 1500);
+        }, 2000);
       }
     };
 
     vcPeerConnection.oniceconnectionstatechange = () => {
       if (!vcPeerConnection) return;
-      const state = vcPeerConnection.iceConnectionState;
-      if (state === "closed") {
+      const iceState = vcPeerConnection.iceConnectionState;
+      if (iceState === "closed") {
         endAdminCall();
-      } else if (state === "disconnected" || state === "failed") {
+      } else if (iceState === "disconnected" || iceState === "failed") {
         setTimeout(() => {
           if (vcPeerConnection && (vcPeerConnection.iceConnectionState === "disconnected" || vcPeerConnection.iceConnectionState === "failed")) {
             showToast("Panggilan telah ditamatkan");
             endAdminCall();
           }
-        }, 1500);
+        }, 2000);
       }
     };
 
     const statusUnsub = onValue(ref(db, "userCalls/" + uid + "/currentCall/status"), (snapshot) => {
       const status = snapshot.val();
+      if (!status) return;
       if (status === "chat_instead") {
         showToast("Pengguna memilih untuk bersembang (Chat instead)");
         const targetUid = uid;
@@ -6687,17 +6717,21 @@ async function startAdminCall(uid, name, callType = "video", existingCallLogId =
         switchToChatForUser(targetUid);
         return;
       }
-      if (status === "rejected" || status === "ended" || status === null) {
-        showToast(status === null ? "Call ended" : "Call " + status);
+      if (status === "rejected") {
+        showToast("Panggilan telah ditolak oleh pengguna");
+        endAdminCall();
+      } else if (status === "ended") {
+        showToast("Panggilan telah ditamatkan");
         endAdminCall();
       } else if (status === "accepted") {
-        elsVc.status.textContent = "Connecting...";
+        if (elsVc.status) elsVc.status.textContent = "Connecting...";
       }
     });
     vcUnsubscribers.push(statusUnsub);
 
     const callStatusUnsub = onValue(ref(db, "calls/" + vcCurrentCallId + "/status"), (snapshot) => {
       const status = snapshot.val();
+      if (!status) return;
       if (status === "chat_instead") {
         showToast("Pengguna memilih untuk bersembang (Chat instead)");
         const targetUid = uid;
@@ -6711,24 +6745,6 @@ async function startAdminCall(uid, name, callType = "video", existingCallLogId =
       }
     });
     vcUnsubscribers.push(callStatusUnsub);
-
-    const callNodeUnsub = onValue(ref(db, "calls/" + vcCurrentCallId), (snapshot) => {
-      if (!snapshot.exists()) {
-        endAdminCall();
-      }
-    });
-    vcUnsubscribers.push(callNodeUnsub);
-
-    const adminCallIncomingUnsub = onValue(ref(db, "adminCalls/incoming"), (snapshot) => {
-      if (snapshot.exists()) {
-        const val = snapshot.val();
-        if (val && val.callerUid === uid && (val.status === "ended" || val.status === "cancelled")) {
-          showToast("Panggilan telah ditamatkan oleh pengguna");
-          endAdminCall();
-        }
-      }
-    });
-    vcUnsubscribers.push(adminCallIncomingUnsub);
 
   } catch (error) {
     console.error("Call error:", error);
@@ -6764,7 +6780,13 @@ function switchToChatForUser(uid) {
 }
 
 function endAdminCall(preserveStatus = false) {
-  vcUnsubscribers.forEach(unsub => unsub());
+  if (!vcPeerConnection && !vcCurrentCallId && !vcTargetUid && (!elsVc.modal || elsVc.modal.classList.contains("hidden"))) {
+    return;
+  }
+
+  vcUnsubscribers.forEach(unsub => {
+    try { unsub(); } catch (e) {}
+  });
   vcUnsubscribers = [];
 
   if (vcActiveCallLogId) {
@@ -6780,6 +6802,7 @@ function endAdminCall(preserveStatus = false) {
 
   if (vcTargetUid && vcCurrentCallId) {
     const targetUidToClean = vcTargetUid;
+    const callIdToClean = vcCurrentCallId;
     if (!preserveStatus) {
       update(ref(db, "userCalls/" + targetUidToClean + "/currentCall"), { status: "ended" }).catch(() => {});
     } else {
@@ -6787,39 +6810,36 @@ function endAdminCall(preserveStatus = false) {
         update(ref(db, "userCalls/" + targetUidToClean + "/currentCall"), { status: "ended" }).catch(() => {});
       }, 2500);
     }
-    remove(ref(db, "calls/" + vcCurrentCallId)).catch(() => {});
+    remove(ref(db, "calls/" + callIdToClean)).catch(() => {});
   }
 
-  update(ref(db, "adminCalls/incoming"), {
-    status: "ended",
-    endedAt: serverTimestamp()
-  }).catch(() => {});
-
   if (vcPeerConnection) {
-    vcPeerConnection.close();
+    try { vcPeerConnection.close(); } catch (e) {}
     vcPeerConnection = null;
   }
   if (vcLocalStream) {
-    vcLocalStream.getTracks().forEach(track => track.stop());
+    try { vcLocalStream.getTracks().forEach(track => track.stop()); } catch (e) {}
     vcLocalStream = null;
   }
 
-  elsVc.localVideo.srcObject = null;
-  elsVc.remoteVideo.srcObject = null;
+  if (elsVc.localVideo) elsVc.localVideo.srcObject = null;
+  if (elsVc.remoteVideo) elsVc.remoteVideo.srcObject = null;
   vcRemoteStream = null;
   vcCurrentCallId = null;
   vcTargetUid = null;
   vcCurrentCallType = "video";
 
-  elsVc.modal.classList.remove("floating");
-  elsVc.modal.classList.remove("voice-mode");
+  if (elsVc.modal) {
+    elsVc.modal.classList.remove("floating");
+    elsVc.modal.classList.remove("voice-mode");
+    elsVc.modal.style.left = "";
+    elsVc.modal.style.top = "";
+    elsVc.modal.style.right = "";
+    elsVc.modal.style.bottom = "";
+    elsVc.modal.classList.add("hidden");
+  }
   if (elsVc.voicePanel) elsVc.voicePanel.classList.add("hidden");
-  elsVc.modal.style.left = "";
-  elsVc.modal.style.top = "";
-  elsVc.modal.style.right = "";
-  elsVc.modal.style.bottom = "";
-  elsVc.modal.classList.add("hidden");
-  elsVc.bottomSheet.classList.remove("show");
+  if (elsVc.bottomSheet) elsVc.bottomSheet.classList.remove("show");
 }
 
 elsVc.minimizeBtn.addEventListener("click", (e) => {
