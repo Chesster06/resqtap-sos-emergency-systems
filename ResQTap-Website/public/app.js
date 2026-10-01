@@ -4995,6 +4995,8 @@ function openCaseModal(roomId, alertId, senderUid, senderName) {
     btn.classList.toggle("is-active", String(btn.dataset.step) === String(curStep));
   });
 
+  updateCaseAutoSaveStatus("All changes auto-saved", "saved");
+
   if (callBtn) {
     callBtn.onclick = () => {
       openCaseCallOptions(resolvedUid, resolvedName);
@@ -5080,15 +5082,39 @@ function closeCaseModal() {
   activeCaseModalData = null;
 }
 
-let isSavingCaseProgress = false;
+function updateCaseAutoSaveStatus(msg, type = "saved") {
+  const indicator = document.getElementById("caseAutoSaveStatus");
+  if (!indicator) return;
+  if (type === "saving") {
+    indicator.className = "sos-case-autosave is-saving";
+    indicator.innerHTML = `<i data-lucide="refresh-cw" class="spin" style="width:14px;height:14px;"></i> <span id="caseAutoSaveText">${msg || "Saving changes..."}</span>`;
+  } else if (type === "error") {
+    indicator.className = "sos-case-autosave is-error";
+    indicator.innerHTML = `<i data-lucide="alert-circle" style="width:14px;height:14px;"></i> <span id="caseAutoSaveText">${msg || "Error saving"}</span>`;
+  } else {
+    indicator.className = "sos-case-autosave is-saved";
+    indicator.innerHTML = `<i data-lucide="check" style="width:14px;height:14px;"></i> <span id="caseAutoSaveText">${msg || "All changes auto-saved"}</span>`;
+  }
+  refreshIcons();
+}
 
-async function saveCaseProgress(shouldClose = false) {
-  if (isSavingCaseProgress) return;
+let isSavingCaseProgress = false;
+let pendingCaseSave = false;
+
+async function saveCaseProgress(options = {}) {
+  const shouldClose = options === true || (options && options.shouldClose);
+  const silent = Boolean(options && options.silent);
+
+  if (isSavingCaseProgress) {
+    pendingCaseSave = true;
+    return;
+  }
   if (!activeCaseModalData) {
-    showToast("No active case to update.");
     return;
   }
   isSavingCaseProgress = true;
+  updateCaseAutoSaveStatus("Saving changes...", "saving");
+
   const { roomId, alertId, senderUid } = activeCaseModalData;
   const targetSenderName = activeCaseModalData.senderName || "user";
   const activeStepBtn = document.querySelector(".sos-case-step-btn.is-active");
@@ -5144,13 +5170,6 @@ async function saveCaseProgress(shouldClose = false) {
     });
   }
 
-  const saveBtn = document.getElementById("caseSaveBtn");
-  if (saveBtn) {
-    saveBtn.disabled = true;
-    saveBtn.style.opacity = "0.7";
-    saveBtn.style.pointerEvents = "none";
-  }
-
   try {
     await update(ref(db, `rooms/${roomId}/sosAlerts/${alertId}`), primaryUpdates);
     if (Object.keys(crossRoomUpdates).length > 0) {
@@ -5160,7 +5179,10 @@ async function saveCaseProgress(shouldClose = false) {
         console.warn("Non-blocking cross-room update notice:", crossErr);
       }
     }
-    showToast(`Status updated: ${status}`);
+    updateCaseAutoSaveStatus("All changes auto-saved", "saved");
+    if (!silent) {
+      showToast(`Status updated: ${status}`);
+    }
 
     if (Number(step) === 4) {
       sosAlarmSound.mute(alertId);
@@ -5188,13 +5210,15 @@ async function saveCaseProgress(shouldClose = false) {
     render();
   } catch (err) {
     console.error("Failed to save case progress:", err);
-    showToast("Error updating case: " + (err.message || err));
+    updateCaseAutoSaveStatus("Error auto-saving", "error");
+    if (!silent) {
+      showToast("Error updating case: " + (err.message || err));
+    }
   } finally {
     isSavingCaseProgress = false;
-    if (saveBtn) {
-      saveBtn.disabled = false;
-      saveBtn.style.opacity = "1";
-      saveBtn.style.pointerEvents = "auto";
+    if (pendingCaseSave) {
+      pendingCaseSave = false;
+      saveCaseProgress(options);
     }
   }
 }
@@ -7501,54 +7525,82 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
   }
 })();
 
-// SOS Case Modal Listeners & Stepper Setup
+// SOS Case Modal Listeners & Stepper Setup with Automatic Saving
 (function initSosCaseModalListeners() {
-  function setup() {
-    // Stepper buttons - click automatically updates stage
-    document.querySelectorAll(".sos-case-step-btn").forEach((btn) => {
-      btn.onclick = async () => {
-        document.querySelectorAll(".sos-case-step-btn").forEach((b) => b.classList.remove("is-active"));
-        btn.classList.add("is-active");
-        if (activeCaseModalData) {
-          activeCaseModalData.step = Number(btn.dataset.step) || 1;
-          activeCaseModalData.status = btn.dataset.status || "In Progress";
-          activeCaseModalData.desc = btn.dataset.desc || "";
-        }
-        const notesInput = document.getElementById("caseNotesInput");
-        if (notesInput && btn.dataset.desc) {
-          notesInput.value = btn.dataset.desc;
-        }
-        await saveCaseProgress(false);
-      };
-    });
+  let notesDebounceTimer = null;
 
-    // Quick tag chips - click automatically updates notes and saves
-    document.querySelectorAll(".sos-tag-chip").forEach((chip) => {
-      chip.onclick = async () => {
-        const notesInput = document.getElementById("caseNotesInput");
-        if (notesInput && chip.dataset.note) {
-          notesInput.value = chip.dataset.note;
-          await saveCaseProgress(false);
-        }
-      };
-    });
-
-    // Press Enter in caseNotesInput to instantly update notes
-    const notesInput = document.getElementById("caseNotesInput");
-    if (notesInput) {
-      notesInput.addEventListener("keydown", async (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          await saveCaseProgress(false);
-        }
-      });
+  // Delegated click handling on document for stages and quick tags
+  document.addEventListener("click", async (e) => {
+    // 1. Click stage step button (Dispatched, En Route, On Scene, Resolved)
+    const stepBtn = e.target.closest(".sos-case-step-btn");
+    if (stepBtn) {
+      e.preventDefault();
+      document.querySelectorAll(".sos-case-step-btn").forEach((b) => b.classList.remove("is-active"));
+      stepBtn.classList.add("is-active");
+      if (activeCaseModalData) {
+        activeCaseModalData.step = Number(stepBtn.dataset.step) || 1;
+        activeCaseModalData.status = stepBtn.dataset.status || "In Progress";
+        activeCaseModalData.desc = stepBtn.dataset.desc || "";
+      }
+      const notesInput = document.getElementById("caseNotesInput");
+      if (notesInput && stepBtn.dataset.desc) {
+        notesInput.value = stepBtn.dataset.desc;
+      }
+      await saveCaseProgress();
+      return;
     }
+
+    // 2. Click quick note tag chip
+    const tagChip = e.target.closest(".sos-tag-chip");
+    if (tagChip) {
+      e.preventDefault();
+      const notesInput = document.getElementById("caseNotesInput");
+      if (notesInput && tagChip.dataset.note) {
+        notesInput.value = tagChip.dataset.note;
+        await saveCaseProgress();
+      }
+      return;
+    }
+  });
+
+  function setupNotesInput() {
+    const notesInput = document.getElementById("caseNotesInput");
+    if (!notesInput) return;
+
+    // Auto-save while typing (debounced)
+    notesInput.addEventListener("input", () => {
+      updateCaseAutoSaveStatus("Saving notes...", "saving");
+      clearTimeout(notesDebounceTimer);
+      notesDebounceTimer = setTimeout(() => {
+        saveCaseProgress({ silent: true });
+      }, 500);
+    });
+
+    // Save immediately when clicking outside (blur) or on change
+    notesInput.addEventListener("change", () => {
+      clearTimeout(notesDebounceTimer);
+      saveCaseProgress({ silent: true });
+    });
+
+    notesInput.addEventListener("blur", () => {
+      clearTimeout(notesDebounceTimer);
+      saveCaseProgress({ silent: true });
+    });
+
+    // Press Enter to commit note immediately and unfocus
+    notesInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        clearTimeout(notesDebounceTimer);
+        notesInput.blur();
+      }
+    });
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", setup);
+    document.addEventListener("DOMContentLoaded", setupNotesInput);
   } else {
-    setup();
+    setupNotesInput();
   }
 })();
 

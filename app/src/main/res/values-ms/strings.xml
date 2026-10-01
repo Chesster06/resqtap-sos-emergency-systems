@@ -977,6 +977,15 @@
     <string name="sending_alarm_btn_chat">Sembang SOS</string>
     <string name="sending_alarm_quiet_badge">MOD PENGHANTAR SENYAP</string>
     <string name="sending_alarm_cancelled_success">Penggera kecemasan telah dibatalkan.</string>
+    <string name="sending_alarm_calling_title">Panggilan Kecemasan…</string>
+    <string name="sending_alarm_calling_desc">Kenalan anda, pengguna berdekatan, dan organisasi keselamatan dapat melihat permintaan bantuan anda</string>
+    <string name="sending_alarm_brand_motto">Keselamatan Anda Keutamaan</string>
+    <string name="sending_alarm_safe_now">Saya Selamat Sekarang</string>
+    <string name="sending_alarm_confirm_safe_title">Hentikan Penggera SOS?</string>
+    <string name="sending_alarm_confirm_safe_desc">Adakah anda pasti mahu hentikan SOS? Tindakan ini akan membatalkan isyarat kecemasan kepada admin dan responder.</string>
+    <string name="sending_alarm_confirm_safe_btn">Ya, Saya Selamat</string>
+    <string name="sending_alarm_dialog_continue_sos">Teruskan Bantuan</string>
+    <string name="sending_alarm_dialog_stop_sos">Hentikan SOS</string>
 
     <string name="security_change_password_modal_desc">Masukkan kata laluan semasa dan tetapkan kata laluan baharu.</string>
     <string name="security_password_too_short">Kata laluan baharu mestilah sekurang-kurangnya 6 aksara.</string>

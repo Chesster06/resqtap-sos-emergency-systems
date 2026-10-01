@@ -248,7 +248,7 @@
             android:turnScreenOn="true"
             android:excludeFromRecents="true"
             android:launchMode="singleTop"
-            android:exported="false" />
+            android:exported="true" />
 
         <activity
             android:name=".sos.SosProgressActivity"

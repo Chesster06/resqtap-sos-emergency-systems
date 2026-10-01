@@ -8641,6 +8641,39 @@ body.dark-mode.admin-site-active .livechat-selected-attachment button:hover {
   border-top: 1px solid var(--line);
   background: var(--panel-soft);
 }
+@keyframes caseAutoSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.sos-case-autosave {
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #10b981;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.sos-case-autosave.is-saving {
+  color: #38bdf8;
+}
+.sos-case-autosave.is-error {
+  color: #f43f5e;
+}
+.sos-case-autosave svg {
+  width: 15px;
+  height: 15px;
+}
+.sos-case-autosave .spin {
+  animation: caseAutoSpin 0.9s linear infinite;
+}
+
 
 /* Call Options Modal & Cards */
 .call-options-card {

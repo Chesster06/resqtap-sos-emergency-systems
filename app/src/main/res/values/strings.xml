@@ -1185,6 +1185,15 @@ Terms Version: 1.0</string>
     <string name="sending_alarm_btn_chat">Emergency Chat</string>
     <string name="sending_alarm_quiet_badge">SILENT SENDER MODE</string>
     <string name="sending_alarm_cancelled_success">Emergency alarm cancelled.</string>
+    <string name="sending_alarm_calling_title">Emergency Calling…</string>
+    <string name="sending_alarm_calling_desc">Your Contact, app users nearby, and your organization will see your request help</string>
+    <string name="sending_alarm_brand_motto">Safety is Freedom</string>
+    <string name="sending_alarm_safe_now">I\'m Safe Now</string>
+    <string name="sending_alarm_confirm_safe_title">Stop SOS Alarm?</string>
+    <string name="sending_alarm_confirm_safe_desc">Are you sure you are safe? This will cancel the emergency signal sent to admin and room responders.</string>
+    <string name="sending_alarm_confirm_safe_btn">Yes, I am Safe</string>
+    <string name="sending_alarm_dialog_continue_sos">Keep Calling</string>
+    <string name="sending_alarm_dialog_stop_sos">Stop SOS</string>
 
     <string name="security_change_password_modal_desc">Enter current password and set a new password.</string>
     <string name="security_password_too_short">New password must be at least 6 characters.</string>

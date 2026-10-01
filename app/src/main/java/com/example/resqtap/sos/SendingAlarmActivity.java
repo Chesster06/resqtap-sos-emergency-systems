@@ -1,5 +1,6 @@
 package com.example.resqtap.sos;
 
+import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.app.KeyguardManager;
@@ -11,11 +12,10 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.ImageView;
-import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -28,6 +28,7 @@ import com.example.resqtap.utils.UserPrefs;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -44,9 +45,12 @@ import java.util.Map;
 
 /**
  * SendingAlarmActivity
- * Skrin utama apabila penggera kecemasan sedang dihantar (Selepas countdown 10 saat selesai):
- * Menyalakan siren kecemasan & getaran tempatan, memancarkan amaran ke Firebase (Admin & Rooms),
- * menyegerakkan koordinat GPS secara langsung, dan menyediakan "Slide to cancel SOS" slider.
+ * Skrin penghantaran SOS moden bertema Pink (mengikut rujukan UI InSafe):
+ * - Radar bulatan berpusat dengan logo rasmi ResQTap dan animasi kelip-kelip / breathing pulse
+ * - Animasi titik bergerak (...) pada "Emergency Calling..."
+ * - Mod senyap pada peranti mangsa (tiada siren memekakkan telinga sendiri)
+ * - Pemancaran automatik ke Firebase RTDB (Admin & Room) dengan koordinat GPS terkini
+ * - Butang "I'm Safe Now" untuk membatalkan kecemasan
  */
 public class SendingAlarmActivity extends AppCompatActivity {
 
@@ -61,15 +65,15 @@ public class SendingAlarmActivity extends AppCompatActivity {
     private final Map<String, String> activeSosIds = new HashMap<>();
     private final Map<DatabaseReference, ValueEventListener> reservationListeners = new HashMap<>();
 
-    private View pulseRing;
-    private CircularProgressView progressDial;
-    private TextView tvDestinations;
-    private TextView tvGpsCoords;
-    private TextView tvAdminState;
-    private MaterialButton btnOpenChat;
-    private SeekBar seekCancel;
+    private View viewRadarOuterRing;
+    private View viewRadarInnerRing;
+    private View cardRadarCenterLogo;
+    private View[] avatarNodes;
 
-    private ObjectAnimator pulseAnimator;
+    private TextView tvCallingTitle;
+    private MaterialButton btnSafeNow;
+
+    private final List<AnimatorSet> activeAnimators = new ArrayList<>();
     private boolean isSosCancelled = false;
 
     private FusedLocationProviderClient fusedLocationClient;
@@ -77,6 +81,25 @@ public class SendingAlarmActivity extends AppCompatActivity {
     private double lastKnownLng = 0.0;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private int dotsCount = 0;
+    private String baseCallingTitle = "";
+
+    /** Animasi titik bergerak: Calling -> Calling. -> Calling.. -> Calling... */
+    private final Runnable dotsRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing() || isDestroyed()) return;
+            dotsCount = (dotsCount + 1) % 4; // 0, 1, 2, 3
+            StringBuilder sb = new StringBuilder(baseCallingTitle);
+            for (int i = 0; i < dotsCount; i++) {
+                sb.append(".");
+            }
+            if (tvCallingTitle != null) {
+                tvCallingTitle.setText(sb.toString());
+            }
+            handler.postDelayed(this, 400);
+        }
+    };
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -127,24 +150,46 @@ public class SendingAlarmActivity extends AppCompatActivity {
 
         bindViews();
         silenceLocalDevice();
-        startDialAnimation();
+        startRadarAnimations();
         initGpsAndDispatchSos();
+
+        // Tangani butang back sistem
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                showSafeConfirmationDialog();
+            }
+        });
     }
 
     private void bindViews() {
-        pulseRing = findViewById(R.id.sending_alarm_dial_base);
-        progressDial = findViewById(R.id.sending_alarm_progress_dial);
-        tvDestinations = findViewById(R.id.tv_sending_alarm_destinations);
-        tvGpsCoords = findViewById(R.id.tv_sending_alarm_gps_coords);
-        tvAdminState = findViewById(R.id.tv_sending_alarm_admin_state);
-        btnOpenChat = findViewById(R.id.btn_sending_alarm_open_chat);
-        seekCancel = findViewById(R.id.seek_sending_alarm_cancel);
+        btnSafeNow = findViewById(R.id.btn_sending_alarm_safe_now);
+        tvCallingTitle = findViewById(R.id.tv_sending_alarm_calling_title);
 
-        if (btnOpenChat != null) {
-            btnOpenChat.setOnClickListener(v -> openEmergencyChat());
+        viewRadarOuterRing = findViewById(R.id.view_radar_outer_ring);
+        viewRadarInnerRing = findViewById(R.id.view_radar_inner_ring);
+        cardRadarCenterLogo = findViewById(R.id.card_radar_center_logo);
+
+        avatarNodes = new View[]{
+                findViewById(R.id.avatar_node_1),
+                findViewById(R.id.avatar_node_2),
+                findViewById(R.id.avatar_node_3),
+                findViewById(R.id.avatar_node_4),
+                findViewById(R.id.avatar_node_5),
+                findViewById(R.id.avatar_node_6)
+        };
+
+        if (btnSafeNow != null) {
+            btnSafeNow.setOnClickListener(v -> showSafeConfirmationDialog());
         }
 
-        setupCancelSlider();
+        // Mulakan animasi teks "Calling..." dengan titik bergerak
+        if (tvCallingTitle != null) {
+            String raw = getString(R.string.sending_alarm_calling_title);
+            baseCallingTitle = raw.replace("…", "").replace("...", "").trim();
+            tvCallingTitle.setText(baseCallingTitle);
+            handler.post(dotsRunnable);
+        }
     }
 
     /** Memastikan peranti penghantar kekal senyap (tiada siren/getaran membingitkan pada telefon mangsa) */
@@ -155,23 +200,99 @@ public class SendingAlarmActivity extends AppCompatActivity {
         } catch (Exception ignored) {}
     }
 
-    private void startDialAnimation() {
-        if (pulseRing != null) {
-            pulseAnimator = ObjectAnimator.ofFloat(pulseRing, "scaleX", 1.0f, 1.12f, 1.0f);
-            pulseAnimator.setDuration(1200);
-            pulseAnimator.setRepeatCount(ValueAnimator.INFINITE);
-            pulseAnimator.setRepeatMode(ValueAnimator.RESTART);
-            pulseAnimator.start();
+    /** Memulakan animasi orbit radar (kelip-kelip / breathing pulse) dan apungan avatar */
+    private void startRadarAnimations() {
+        // 1. Animasi nafas & kelip-kelip untuk gegelung luar
+        if (viewRadarOuterRing != null) {
+            ObjectAnimator scaleX = ObjectAnimator.ofFloat(viewRadarOuterRing, "scaleX", 0.95f, 1.08f);
+            scaleX.setDuration(1600);
+            scaleX.setRepeatCount(ValueAnimator.INFINITE);
+            scaleX.setRepeatMode(ValueAnimator.REVERSE);
 
-            ObjectAnimator pulseY = ObjectAnimator.ofFloat(pulseRing, "scaleY", 1.0f, 1.12f, 1.0f);
-            pulseY.setDuration(1200);
-            pulseY.setRepeatCount(ValueAnimator.INFINITE);
-            pulseY.setRepeatMode(ValueAnimator.RESTART);
-            pulseY.start();
+            ObjectAnimator scaleY = ObjectAnimator.ofFloat(viewRadarOuterRing, "scaleY", 0.95f, 1.08f);
+            scaleY.setDuration(1600);
+            scaleY.setRepeatCount(ValueAnimator.INFINITE);
+            scaleY.setRepeatMode(ValueAnimator.REVERSE);
+
+            ObjectAnimator alpha = ObjectAnimator.ofFloat(viewRadarOuterRing, "alpha", 0.40f, 0.95f);
+            alpha.setDuration(1600);
+            alpha.setRepeatCount(ValueAnimator.INFINITE);
+            alpha.setRepeatMode(ValueAnimator.REVERSE);
+
+            AnimatorSet setOuter = new AnimatorSet();
+            setOuter.playTogether(scaleX, scaleY, alpha);
+            setOuter.start();
+            activeAnimators.add(setOuter);
         }
 
-        if (progressDial != null) {
-            progressDial.setProgress(1.0f);
+        // 2. Animasi nafas & kelip-kelip untuk gegelung dalam
+        if (viewRadarInnerRing != null) {
+            ObjectAnimator scaleX = ObjectAnimator.ofFloat(viewRadarInnerRing, "scaleX", 0.94f, 1.10f);
+            scaleX.setDuration(1300);
+            scaleX.setRepeatCount(ValueAnimator.INFINITE);
+            scaleX.setRepeatMode(ValueAnimator.REVERSE);
+
+            ObjectAnimator scaleY = ObjectAnimator.ofFloat(viewRadarInnerRing, "scaleY", 0.94f, 1.10f);
+            scaleY.setDuration(1300);
+            scaleY.setRepeatCount(ValueAnimator.INFINITE);
+            scaleY.setRepeatMode(ValueAnimator.REVERSE);
+
+            ObjectAnimator alpha = ObjectAnimator.ofFloat(viewRadarInnerRing, "alpha", 0.50f, 1.0f);
+            alpha.setDuration(1300);
+            alpha.setRepeatCount(ValueAnimator.INFINITE);
+            alpha.setRepeatMode(ValueAnimator.REVERSE);
+
+            AnimatorSet setInner = new AnimatorSet();
+            setInner.playTogether(scaleX, scaleY, alpha);
+            setInner.start();
+            activeAnimators.add(setInner);
+        }
+
+        // 3. Denyutan hub logo app di pusat
+        if (cardRadarCenterLogo != null) {
+            ObjectAnimator scaleX = ObjectAnimator.ofFloat(cardRadarCenterLogo, "scaleX", 1.0f, 1.06f);
+            scaleX.setDuration(950);
+            scaleX.setRepeatCount(ValueAnimator.INFINITE);
+            scaleX.setRepeatMode(ValueAnimator.REVERSE);
+
+            ObjectAnimator scaleY = ObjectAnimator.ofFloat(cardRadarCenterLogo, "scaleY", 1.0f, 1.06f);
+            scaleY.setDuration(950);
+            scaleY.setRepeatCount(ValueAnimator.INFINITE);
+            scaleY.setRepeatMode(ValueAnimator.REVERSE);
+
+            AnimatorSet setCenter = new AnimatorSet();
+            setCenter.playTogether(scaleX, scaleY);
+            setCenter.start();
+            activeAnimators.add(setCenter);
+        }
+
+        // 4. Animasi apungan halus untuk setiap avatar node
+        if (avatarNodes != null) {
+            for (int i = 0; i < avatarNodes.length; i++) {
+                View node = avatarNodes[i];
+                if (node == null) continue;
+
+                float translationDelta = (i % 2 == 0) ? 6f : -6f;
+                ObjectAnimator transY = ObjectAnimator.ofFloat(node, "translationY", 0f, translationDelta, 0f);
+                transY.setDuration(1800 + (i * 200));
+                transY.setRepeatCount(ValueAnimator.INFINITE);
+                transY.setRepeatMode(ValueAnimator.REVERSE);
+
+                ObjectAnimator nodeScaleX = ObjectAnimator.ofFloat(node, "scaleX", 1.0f, 1.04f, 1.0f);
+                nodeScaleX.setDuration(1800 + (i * 200));
+                nodeScaleX.setRepeatCount(ValueAnimator.INFINITE);
+                nodeScaleX.setRepeatMode(ValueAnimator.RESTART);
+
+                ObjectAnimator nodeScaleY = ObjectAnimator.ofFloat(node, "scaleY", 1.0f, 1.04f, 1.0f);
+                nodeScaleY.setDuration(1800 + (i * 200));
+                nodeScaleY.setRepeatCount(ValueAnimator.INFINITE);
+                nodeScaleY.setRepeatMode(ValueAnimator.RESTART);
+
+                AnimatorSet nodeSet = new AnimatorSet();
+                nodeSet.playTogether(transY, nodeScaleX, nodeScaleY);
+                nodeSet.start();
+                activeAnimators.add(nodeSet);
+            }
         }
     }
 
@@ -188,12 +309,6 @@ public class SendingAlarmActivity extends AppCompatActivity {
         final String rawName = UserPrefs.getName(this);
         final String name = (rawName == null || rawName.trim().isEmpty()) ? "User" : rawName.trim();
 
-        if (lastKnownLat != 0.0 && lastKnownLng != 0.0) {
-            if (tvGpsCoords != null) {
-                tvGpsCoords.setText(String.format(Locale.getDefault(), "GPS: %.5f, %.5f", lastKnownLat, lastKnownLng));
-            }
-        }
-
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         if (PermissionUtils.hasAnyLocation(this)) {
             try {
@@ -201,9 +316,6 @@ public class SendingAlarmActivity extends AppCompatActivity {
                     if (loc != null) {
                         lastKnownLat = loc.getLatitude();
                         lastKnownLng = loc.getLongitude();
-                        if (tvGpsCoords != null) {
-                            tvGpsCoords.setText(String.format(Locale.getDefault(), "GPS: %.5f, %.5f", lastKnownLat, lastKnownLng));
-                        }
                     }
                     dispatchAlertToFirebase(uid, deviceId, name, lastKnownLat, lastKnownLng);
                 }).addOnFailureListener(e -> {
@@ -223,9 +335,6 @@ public class SendingAlarmActivity extends AppCompatActivity {
         if (targetRoomCode != null && !targetRoomCode.trim().isEmpty()) {
             final String code = targetRoomCode.trim().toUpperCase(Locale.ROOT);
             sendSosToRoom(code, uid, dev, name, lat, lng);
-            if (tvDestinations != null) {
-                tvDestinations.setText(getString(R.string.sos_room_badge_format, code, "Admin"));
-            }
             return;
         }
 
@@ -252,14 +361,6 @@ public class SendingAlarmActivity extends AppCompatActivity {
                         roomCodes.add("DIRECT");
                     }
 
-                    if (tvDestinations != null) {
-                        if (roomCodes.contains("DIRECT")) {
-                            tvDestinations.setText("Saluran Kecemasan Langsung (DIRECT) & Admin");
-                        } else {
-                            tvDestinations.setText(roomCodes.size() + " Bilik Keselamatan & Admin Diberitahu");
-                        }
-                    }
-
                     for (String code : roomCodes) {
                         if (isSosCancelled) return;
                         sendSosToRoom(code, uid, dev, name, lat, lng);
@@ -268,9 +369,6 @@ public class SendingAlarmActivity extends AppCompatActivity {
                 .addOnFailureListener(e -> {
                     if (isSosCancelled) return;
                     sendSosToRoom("DIRECT", uid, dev, name, lat, lng);
-                    if (tvDestinations != null) {
-                        tvDestinations.setText("Saluran Langsung (DIRECT) & Admin");
-                    }
                 });
     }
 
@@ -283,9 +381,7 @@ public class SendingAlarmActivity extends AppCompatActivity {
                 FirebaseRoomClient.cancelRoomSosQueued(code, sosId, dev);
             } else {
                 activeSosIds.put(code, sosId);
-                // Simpan rekod aktif dalam UserPrefs
                 UserPrefs.setActiveSosProgress(SendingAlarmActivity.this, code, sosId);
-                // Pantau reservation status dari Admin
                 watchSosCaseReservation(code, sosId);
             }
         });
@@ -305,21 +401,12 @@ public class SendingAlarmActivity extends AppCompatActivity {
                 if (snapshot == null || !snapshot.exists() || isSosCancelled) return;
                 Boolean served = snapshot.child("served").getValue(Boolean.class);
                 String servedBy = snapshot.child("servedBy").getValue(String.class);
-                String servedByName = snapshot.child("servedByName").getValue(String.class);
 
                 if ((served != null && served) || (servedBy != null && !servedBy.trim().isEmpty())) {
                     stopWatchingReservations();
-                    String responder = (servedByName != null && !servedByName.trim().isEmpty()) ? servedByName : "Admin Responder";
-                    if (tvAdminState != null) {
-                        tvAdminState.setText(getString(R.string.sending_alarm_admin_served, responder));
-                        tvAdminState.setTextColor(0xFF10B981);
-                    }
 
-                    // Hentikan siren audio seketika responder mengambil kes
-                    try {
-                        SosAudioManager.stopAll();
-                        VibrateManager.stopAll(SendingAlarmActivity.this);
-                    } catch (Exception ignored) {}
+                    // Hentikan siren tempatan
+                    silenceLocalDevice();
 
                     // Buka SosProgressActivity secara automatik
                     handler.postDelayed(() -> {
@@ -353,28 +440,35 @@ public class SendingAlarmActivity extends AppCompatActivity {
         }
     }
 
-    private void setupCancelSlider() {
-        if (seekCancel == null) return;
-        seekCancel.setProgress(0);
-        seekCancel.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (!fromUser) return;
-                if (progress >= 95) {
-                    cancelSosAndExit();
-                }
-            }
+    /** Memaparkan dialog pengesahan sebelum membatalkan SOS dengan reka bentuk kad moden & ilustrasi kartun */
+    private void showSafeConfirmationDialog() {
+        if (isFinishing() || isDestroyed()) return;
 
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_confirm_stop_sos, null);
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setView(dialogView)
+                .setCancelable(true)
+                .create();
 
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                if (seekBar.getProgress() < 95) {
-                    seekBar.setProgress(0);
-                }
-            }
-        });
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        View btnCancel = dialogView.findViewById(R.id.btn_confirm_safe_cancel);
+        View btnStop = dialogView.findViewById(R.id.btn_confirm_safe_stop);
+
+        if (btnCancel != null) {
+            btnCancel.setOnClickListener(v -> dialog.dismiss());
+        }
+
+        if (btnStop != null) {
+            btnStop.setOnClickListener(v -> {
+                dialog.dismiss();
+                cancelSosAndExit();
+            });
+        }
+
+        dialog.show();
     }
 
     private void cancelSosAndExit() {
@@ -383,14 +477,9 @@ public class SendingAlarmActivity extends AppCompatActivity {
         isSendingAlarm = false;
 
         stopWatchingReservations();
+        silenceLocalDevice();
 
-        // 1. Matikan siren & getaran serta-merta
-        try {
-            SosAudioManager.stopAll();
-            VibrateManager.stopAll(this);
-        } catch (Exception ignored) {}
-
-        // 2. Batalkan kes di Firebase untuk semua room
+        // Batalkan kes di Firebase untuk semua bilik
         final String dev = UserPrefs.getOrCreateDeviceId(this);
         for (Map.Entry<String, String> entry : new HashMap<>(activeSosIds).entrySet()) {
             if (!entry.getKey().isEmpty() && !entry.getValue().isEmpty()) {
@@ -399,7 +488,7 @@ public class SendingAlarmActivity extends AppCompatActivity {
         }
         activeSosIds.clear();
 
-        // 3. Batalkan apa-apa alert aktif pengguna
+        // Batalkan apa-apa alert aktif pengguna
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
             final String uid = user.getUid();
@@ -411,41 +500,27 @@ public class SendingAlarmActivity extends AppCompatActivity {
             }, 1000);
         }
 
-        // 4. Bersihkan UserPrefs
         UserPrefs.clearActiveSosProgress(this);
 
         Toast.makeText(this, R.string.sending_alarm_cancelled_success, Toast.LENGTH_SHORT).show();
         finish();
     }
 
-    private void openEmergencyChat() {
-        String activeRoom = "";
-        String activeAlert = "";
-        if (!activeSosIds.isEmpty()) {
-            Map.Entry<String, String> first = activeSosIds.entrySet().iterator().next();
-            activeRoom = first.getKey();
-            activeAlert = first.getValue();
-        } else {
-            activeRoom = UserPrefs.getActiveSosProgressRoom(this);
-            activeAlert = UserPrefs.getActiveSosProgressAlert(this);
-        }
-
-        SosLivechatActivity.launch(this, activeRoom, activeAlert, "Admin Responder", "");
-    }
-
     @Override
     protected void onDestroy() {
         isSendingAlarm = false;
         stopWatchingReservations();
-        if (pulseAnimator != null) {
-            pulseAnimator.cancel();
-            pulseAnimator = null;
+        handler.removeCallbacks(dotsRunnable);
+
+        for (AnimatorSet anim : activeAnimators) {
+            if (anim != null) {
+                anim.cancel();
+            }
         }
+        activeAnimators.clear();
+
         if (isFinishing() || isSosCancelled) {
-            try {
-                SosAudioManager.stopAll();
-                VibrateManager.stopAll(this);
-            } catch (Exception ignored) {}
+            silenceLocalDevice();
         }
         super.onDestroy();
     }
