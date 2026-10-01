@@ -199,9 +199,9 @@
     <string name="nav_settings">Tetapan</string>
     <string name="profile_photo">Gambar profil</string>
     <string name="edit_profile">Edit Profil</string>
-    <string name="logout">Log Keluar</string>
-    <string name="logout_confirm_title">Sahkan log keluar</string>
-    <string name="logout_confirm_message">Anda pasti mahu log keluar?</string>
+    <string name="logout">Log keluar</string>
+    <string name="logout_confirm_title">Adakah Anda Ingin Log Keluar?</string>
+    <string name="logout_confirm_message">Anda boleh log masuk semula pada bila-bila masa. Sekiranya anda hanya mahu bertukar akaun, anda boleh tambah akaun lain.</string>
     <string name="profile_name_default">Nama belum ditetapkan</string>
     <string name="profile_uid_placeholder">UID: -</string>
 
@@ -210,6 +210,8 @@
     <string name="delete">Padam</string>
     <string name="clear_profile_photo">Kosongkan Gambar Profil</string>
     <string name="delete_account">Padam Akaun</string>
+    <string name="delete_account_dialog_title">Padam akaun anda?</string>
+    <string name="delete_account_dialog_message">Akaun anda dan semua data berkaitan akan dipadam secara kekal. Tindakan ini tidak boleh dibuat asal.</string>
     <string name="delete_account_confirm">Padam akaun ini? Semua data akan dipadam dan tindakan ini tidak boleh dibuat asal.</string>
     <string name="delete_account_failed">Gagal memadam akaun.</string>
     <string name="delete_account_requires_relogin">Sila log masuk semula untuk memadam akaun.</string>
@@ -388,14 +390,24 @@
     <string name="security_section_account">Akaun &amp; Akses</string>
     <string name="security_change_password_title">Tukar Kata Laluan</string>
     <string name="security_change_password_desc">Kemas kini kata laluan log masuk akaun anda.</string>
-    <string name="security_change_password_modal_desc">Masukkan kata laluan semasa dan tetapkan kata laluan baharu.</string>
+    <string name="security_change_password_step1_desc">Masukkan kata laluan semasa anda</string>
+    <string name="security_change_password_step2_title">Kata Laluan Baharu</string>
+    <string name="security_change_password_step2_desc">Cipta kata laluan baharu yang kukuh</string>
+    <string name="security_change_password_step3_title">Sahkan Kata Laluan</string>
+    <string name="security_change_password_step3_desc">Masukkan semula kata laluan baharu untuk pengesahan</string>
+    <string name="security_next">Seterusnya</string>
     <string name="security_current_password_hint">Kata Laluan Semasa</string>
-    <string name="security_new_password_hint">Kata Laluan Baharu (min. 6 aksara)</string>
-    <string name="security_confirm_password_hint">Sahkan Kata Laluan Baharu</string>
+    <string name="security_new_password_hint">Kata Laluan Baharu</string>
+    <string name="security_confirm_password_hint">Sahkan Kata Laluan</string>
     <string name="security_password_updated">Kata laluan berjaya dikemas kini!</string>
     <string name="security_password_incorrect">Kata laluan semasa tidak tepat.</string>
     <string name="security_password_mismatch">Kata laluan baharu dan pengesahan tidak sepadan.</string>
-    <string name="security_password_too_short">Kata laluan baharu mestilah sekurang-kurangnya 6 aksara.</string>
+    <string name="security_password_same_as_current">Kata laluan baharu tidak boleh sama dengan kata laluan semasa.</string>
+    <string name="security_pwd_rule_length">Mestilah sekurang-kurangnya 8 aksara</string>
+    <string name="security_pwd_rule_casing">Satu huruf besar dan satu huruf kecil</string>
+    <string name="security_pwd_rule_number">Satu nombor</string>
+    <string name="security_pwd_rule_special">Mesti mengandungi aksara khas</string>
+    <string name="security_pwd_rule_common">Bukan kata laluan biasa</string>
     <string name="security_device_status_title">Status Keselamatan Peranti</string>
 
     <string name="security_device_status_secure">Dilindungi • Kunci skrin peranti aktif</string>

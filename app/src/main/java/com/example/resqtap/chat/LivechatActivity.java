@@ -119,8 +119,9 @@ public class LivechatActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Intent chatIntent = new Intent(this, ChatActivity.class);
-        startActivity(chatIntent);
+        String room = UserPrefs.getActiveSosProgressRoom(this);
+        String alertId = UserPrefs.getActiveSosProgressAlert(this);
+        com.example.resqtap.sos.SosLivechatActivity.launch(this, room, alertId, "", "");
         finish();
     }
 

@@ -37,11 +37,37 @@ public final class AccountDeletionUtils {
     /** Dialog pengesahan awal sebelum padam akaun. */
     public static void confirmAndDelete(Activity activity, ExecutorService executor) {
         if (activity == null || executor == null) return;
-        new MaterialAlertDialogBuilder(activity)
-                .setMessage(R.string.delete_account_confirm)
-                .setNegativeButton(android.R.string.cancel, (d, w) -> d.dismiss())
-                .setPositiveButton(android.R.string.ok, (d, w) -> showReauthDialog(activity, executor))
-                .show();
+        try {
+            android.view.View content = android.view.LayoutInflater.from(activity)
+                    .inflate(R.layout.dialog_delete_account_confirm, null, false);
+
+            androidx.appcompat.app.AlertDialog d = new MaterialAlertDialogBuilder(activity)
+                    .setView(content)
+                    .create();
+
+            if (d.getWindow() != null) {
+                d.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            }
+
+            android.view.View cancel = content.findViewById(R.id.btn_cancel);
+            if (cancel != null) cancel.setOnClickListener(v -> d.dismiss());
+
+            android.view.View delete = content.findViewById(R.id.btn_delete);
+            if (delete != null) {
+                delete.setOnClickListener(v -> {
+                    d.dismiss();
+                    showReauthDialog(activity, executor);
+                });
+            }
+
+            d.show();
+        } catch (Exception e) {
+            new MaterialAlertDialogBuilder(activity)
+                    .setMessage(R.string.delete_account_confirm)
+                    .setNegativeButton(android.R.string.cancel, (d, w) -> d.dismiss())
+                    .setPositiveButton(android.R.string.ok, (d, w) -> showReauthDialog(activity, executor))
+                    .show();
+        }
     }
 
     /** Dialog minta password untuk re-authenticate sebelum padam. */
@@ -52,37 +78,71 @@ public final class AccountDeletionUtils {
             return;
         }
 
-        TextInputLayout passwordLayout = new TextInputLayout(activity);
-        passwordLayout.setHint(activity.getString(R.string.delete_account_password_hint));
-        passwordLayout.setEndIconMode(TextInputLayout.END_ICON_PASSWORD_TOGGLE);
-        passwordLayout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE);
+        try {
+            android.view.View content = android.view.LayoutInflater.from(activity)
+                    .inflate(R.layout.dialog_delete_account_reauth, null, false);
 
-        TextInputEditText passwordInput = new TextInputEditText(passwordLayout.getContext());
-        passwordInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        passwordLayout.addView(passwordInput);
+            androidx.appcompat.app.AlertDialog d = new MaterialAlertDialogBuilder(activity)
+                    .setView(content)
+                    .create();
 
-        FrameLayout container = new FrameLayout(activity);
-        int pad = (int) (20 * activity.getResources().getDisplayMetrics().density);
-        container.setPadding(pad, pad, pad, 0);
-        container.addView(passwordLayout, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            if (d.getWindow() != null) {
+                d.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            }
 
-        new MaterialAlertDialogBuilder(activity)
-                .setTitle(R.string.delete_account_reauth_title)
-                .setMessage(R.string.delete_account_reauth_desc)
-                .setView(container)
-                .setNegativeButton(android.R.string.cancel, (d, w) -> d.dismiss())
-                .setPositiveButton(R.string.delete_account_reauth_action, (d, w) -> {
-                    String password = passwordInput.getText() != null
+            android.widget.EditText passwordInput = content.findViewById(R.id.et_password);
+            android.view.View cancel = content.findViewById(R.id.btn_cancel);
+            if (cancel != null) cancel.setOnClickListener(v -> d.dismiss());
+
+            android.view.View confirm = content.findViewById(R.id.btn_confirm_delete);
+            if (confirm != null) {
+                confirm.setOnClickListener(v -> {
+                    String password = (passwordInput != null && passwordInput.getText() != null)
                             ? passwordInput.getText().toString().trim() : "";
                     if (password.isEmpty()) {
                         Toast.makeText(activity, R.string.delete_account_password_hint, Toast.LENGTH_SHORT).show();
                         return;
                     }
+                    d.dismiss();
                     Toast.makeText(activity, R.string.toast_processing, Toast.LENGTH_SHORT).show();
                     executor.execute(() -> reauthAndDelete(activity, executor, user, password));
-                })
-                .show();
+                });
+            }
+
+            d.show();
+        } catch (Exception e) {
+            TextInputLayout passwordLayout = new TextInputLayout(activity);
+            passwordLayout.setHint(activity.getString(R.string.delete_account_password_hint));
+            passwordLayout.setEndIconMode(TextInputLayout.END_ICON_PASSWORD_TOGGLE);
+            passwordLayout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE);
+
+            TextInputEditText passwordInput = new TextInputEditText(passwordLayout.getContext());
+            passwordInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            passwordLayout.addView(passwordInput);
+
+            FrameLayout container = new FrameLayout(activity);
+            int pad = (int) (20 * activity.getResources().getDisplayMetrics().density);
+            container.setPadding(pad, pad, pad, 0);
+            container.addView(passwordLayout, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            new MaterialAlertDialogBuilder(activity)
+                    .setTitle(R.string.delete_account_reauth_title)
+                    .setMessage(R.string.delete_account_reauth_desc)
+                    .setView(container)
+                    .setNegativeButton(android.R.string.cancel, (d, w) -> d.dismiss())
+                    .setPositiveButton(R.string.delete_account_reauth_action, (d, w) -> {
+                        String password = passwordInput.getText() != null
+                                ? passwordInput.getText().toString().trim() : "";
+                        if (password.isEmpty()) {
+                            Toast.makeText(activity, R.string.delete_account_password_hint, Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        Toast.makeText(activity, R.string.toast_processing, Toast.LENGTH_SHORT).show();
+                        executor.execute(() -> reauthAndDelete(activity, executor, user, password));
+                    })
+                    .show();
+        }
     }
 
     /** Re-authenticate -> RTDB wipe -> Auth delete -> stop services + redirect. */

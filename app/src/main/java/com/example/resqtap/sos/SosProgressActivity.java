@@ -203,7 +203,9 @@ public class SosProgressActivity extends BaseActivity {
 
         if (btnMessagePlaceholder != null) {
             btnMessagePlaceholder.setOnClickListener(v -> {
-                SosLivechatActivity.launch(SosProgressActivity.this, roomCode, alertId, currentResponderName, currentResponderUid);
+                String targetRoom = (roomCode != null && !roomCode.isEmpty()) ? roomCode : UserPrefs.getActiveSosProgressRoom(SosProgressActivity.this);
+                String targetAlert = (alertId != null && !alertId.isEmpty()) ? alertId : UserPrefs.getActiveSosProgressAlert(SosProgressActivity.this);
+                SosLivechatActivity.launch(SosProgressActivity.this, targetRoom, targetAlert, currentResponderName, currentResponderUid);
             });
         }
 

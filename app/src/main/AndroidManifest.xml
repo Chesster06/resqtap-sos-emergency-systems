@@ -244,12 +244,12 @@
 
         <activity
             android:name=".sos.SosProgressActivity"
-            android:exported="false"
+            android:exported="true"
             android:launchMode="singleTop" />
 
         <activity
             android:name=".sos.SosLivechatActivity"
-            android:exported="false"
+            android:exported="true"
             android:windowSoftInputMode="adjustResize"
             android:launchMode="singleTop" />
 

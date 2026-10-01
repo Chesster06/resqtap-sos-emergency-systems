@@ -141,15 +141,54 @@ public class CallSignalingClient {
         });
     }
 
+    /** Fungsi untuk tolak panggilan dan tukar ke sembang teks (Can't talk? Chat instead). */
+    public void declineWithChat(String myUid, String callId) {
+        if (myUid == null || myUid.isEmpty()) return;
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("status", "chat_instead");
+        updates.put("chatInstead", true);
+        updates.put("rejectedAt", com.google.firebase.database.ServerValue.TIMESTAMP);
+
+        rootRef.child("userCalls").child(myUid).child("currentCall").updateChildren(updates);
+
+        if (callId != null && !callId.isEmpty()) {
+            rootRef.child("calls").child(callId).updateChildren(updates);
+        }
+    }
+
     /** Fungsi untuk endCall. */
     public void endCall(String myUid, String callId) {
-        if (myUid == null || myUid.isEmpty() || callId == null || callId.isEmpty()) return;
+        if (myUid == null || myUid.isEmpty()) return;
 
         Map<String, Object> updates = new HashMap<>();
         updates.put("status", "ended");
         updates.put("endedAt", com.google.firebase.database.ServerValue.TIMESTAMP);
 
         rootRef.child("userCalls").child(myUid).child("currentCall").updateChildren(updates);
+
+        if (callId != null && !callId.isEmpty()) {
+            rootRef.child("calls").child(callId).updateChildren(updates);
+        }
+
+        // Semak dan kemas kini adminCalls/incoming sekiranya berkaitan panggilan SOS
+        rootRef.child("adminCalls").child("incoming").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    String callerUid = snapshot.child("callerUid").getValue(String.class);
+                    if (myUid.equals(callerUid)) {
+                        Map<String, Object> adminUpdates = new HashMap<>();
+                        adminUpdates.put("status", "ended");
+                        adminUpdates.put("endedAt", com.google.firebase.database.ServerValue.TIMESTAMP);
+                        rootRef.child("adminCalls").child("incoming").updateChildren(adminUpdates);
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {}
+        });
     }
 
     /** Simpan atau hantar data Answer. */

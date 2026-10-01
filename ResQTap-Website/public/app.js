@@ -5052,12 +5052,14 @@ function openCaseCallOptions(uid, name) {
   if (vidBtn) {
     vidBtn.onclick = () => {
       cleanup();
+      closeCaseModal();
       startAdminCall(uid, name || "Sender", "video");
     };
   }
   if (voiceBtn) {
     voiceBtn.onclick = () => {
       cleanup();
+      closeCaseModal();
       startAdminCall(uid, name || "Sender", "voice");
     };
   }
@@ -6421,6 +6423,16 @@ let isVcCamEnabled = true;
 async function startAdminCall(uid, name, callType = "video", existingCallLogId = null) {
   if (vcPeerConnection) endAdminCall();
 
+  // Pastikan modal kemas kini kes SOS dan pilihan panggilan ditutup serta-merta
+  closeCaseModal();
+  closeCaseCallOptions();
+  const caseModalEl = document.getElementById("sosCaseUpdateModal");
+  if (caseModalEl) caseModalEl.classList.add("hidden");
+  const caseOptionsEl = document.getElementById("caseCallOptionsModal");
+  if (caseOptionsEl) caseOptionsEl.classList.add("hidden");
+  const incomingAlertEl = document.getElementById("adminIncomingCallAlert");
+  if (incomingAlertEl) incomingAlertEl.classList.add("hidden");
+
   const isVoiceCall = callType === "voice";
   const displayName = name || "User";
   vcTargetUid = uid;
@@ -6612,16 +6624,87 @@ async function startAdminCall(uid, name, callType = "video", existingCallLogId =
     });
     vcUnsubscribers.push(iceUnsub);
 
+    vcPeerConnection.onconnectionstatechange = () => {
+      if (!vcPeerConnection) return;
+      const state = vcPeerConnection.connectionState;
+      if (state === "closed") {
+        endAdminCall();
+      } else if (state === "disconnected" || state === "failed") {
+        setTimeout(() => {
+          if (vcPeerConnection && (vcPeerConnection.connectionState === "disconnected" || vcPeerConnection.connectionState === "failed")) {
+            showToast("Panggilan telah ditamatkan");
+            endAdminCall();
+          }
+        }, 1500);
+      }
+    };
+
+    vcPeerConnection.oniceconnectionstatechange = () => {
+      if (!vcPeerConnection) return;
+      const state = vcPeerConnection.iceConnectionState;
+      if (state === "closed") {
+        endAdminCall();
+      } else if (state === "disconnected" || state === "failed") {
+        setTimeout(() => {
+          if (vcPeerConnection && (vcPeerConnection.iceConnectionState === "disconnected" || vcPeerConnection.iceConnectionState === "failed")) {
+            showToast("Panggilan telah ditamatkan");
+            endAdminCall();
+          }
+        }, 1500);
+      }
+    };
+
     const statusUnsub = onValue(ref(db, "userCalls/" + uid + "/currentCall/status"), (snapshot) => {
       const status = snapshot.val();
+      if (status === "chat_instead") {
+        showToast("Pengguna memilih untuk bersembang (Chat instead)");
+        const targetUid = uid;
+        endAdminCall(true);
+        switchToChatForUser(targetUid);
+        return;
+      }
       if (status === "rejected" || status === "ended" || status === null) {
-        showToast(status === null ? "Call declined" : "Call " + status);
+        showToast(status === null ? "Call ended" : "Call " + status);
         endAdminCall();
       } else if (status === "accepted") {
         elsVc.status.textContent = "Connecting...";
       }
     });
     vcUnsubscribers.push(statusUnsub);
+
+    const callStatusUnsub = onValue(ref(db, "calls/" + vcCurrentCallId + "/status"), (snapshot) => {
+      const status = snapshot.val();
+      if (status === "chat_instead") {
+        showToast("Pengguna memilih untuk bersembang (Chat instead)");
+        const targetUid = uid;
+        endAdminCall(true);
+        switchToChatForUser(targetUid);
+        return;
+      }
+      if (status === "rejected" || status === "ended") {
+        showToast("Panggilan telah ditamatkan");
+        endAdminCall();
+      }
+    });
+    vcUnsubscribers.push(callStatusUnsub);
+
+    const callNodeUnsub = onValue(ref(db, "calls/" + vcCurrentCallId), (snapshot) => {
+      if (!snapshot.exists()) {
+        endAdminCall();
+      }
+    });
+    vcUnsubscribers.push(callNodeUnsub);
+
+    const adminCallIncomingUnsub = onValue(ref(db, "adminCalls/incoming"), (snapshot) => {
+      if (snapshot.exists()) {
+        const val = snapshot.val();
+        if (val && val.callerUid === uid && (val.status === "ended" || val.status === "cancelled")) {
+          showToast("Panggilan telah ditamatkan oleh pengguna");
+          endAdminCall();
+        }
+      }
+    });
+    vcUnsubscribers.push(adminCallIncomingUnsub);
 
   } catch (error) {
     console.error("Call error:", error);
@@ -6630,14 +6713,40 @@ async function startAdminCall(uid, name, callType = "video", existingCallLogId =
   }
 }
 
-function endAdminCall() {
+function switchToChatForUser(uid) {
+  if (!uid) return;
+
+  // 1. Semak sesi SOS Livechat aktif untuk pengguna ini
+  const sosSessions = getSosLivechatSessions();
+  const activeSos = sosSessions.find((s) => s.senderUid === uid && s.active) || sosSessions.find((s) => s.senderUid === uid);
+  if (activeSos) {
+    state.selectedSosSessionId = activeSos.sessionId;
+    setActiveView("soslivechat");
+    return;
+  }
+
+  // 2. Semak jika ada alert SOS aktif secara langsung melalui getActiveSosForUser
+  const directSos = getActiveSosForUser(uid);
+  if (directSos) {
+    const alertKey = directSos.key || directSos.id;
+    state.selectedSosSessionId = `${directSos.roomId}__${alertKey}`;
+    setActiveView("soslivechat");
+    return;
+  }
+
+  // 3. Fallback ke Livechat sokongan biasa
+  state.selectedChatUid = uid;
+  setActiveView("livechat");
+}
+
+function endAdminCall(preserveStatus = false) {
   vcUnsubscribers.forEach(unsub => unsub());
   vcUnsubscribers = [];
 
   if (vcActiveCallLogId) {
     const durationSec = vcActiveCallStartTime ? Math.max(0, Math.round((Date.now() - vcActiveCallStartTime) / 1000)) : 0;
     update(ref(db, `call_logs/${vcActiveCallLogId}`), {
-      status: "ended",
+      status: preserveStatus ? "chat_instead" : "ended",
       endedAt: Date.now(),
       duration: durationSec
     }).catch(() => {});
@@ -6646,9 +6755,21 @@ function endAdminCall() {
   }
 
   if (vcTargetUid && vcCurrentCallId) {
-    update(ref(db, "userCalls/" + vcTargetUid + "/currentCall"), { status: "ended" });
-    remove(ref(db, "calls/" + vcCurrentCallId));
+    const targetUidToClean = vcTargetUid;
+    if (!preserveStatus) {
+      update(ref(db, "userCalls/" + targetUidToClean + "/currentCall"), { status: "ended" }).catch(() => {});
+    } else {
+      setTimeout(() => {
+        update(ref(db, "userCalls/" + targetUidToClean + "/currentCall"), { status: "ended" }).catch(() => {});
+      }, 2500);
+    }
+    remove(ref(db, "calls/" + vcCurrentCallId)).catch(() => {});
   }
+
+  update(ref(db, "adminCalls/incoming"), {
+    status: "ended",
+    endedAt: serverTimestamp()
+  }).catch(() => {});
 
   if (vcPeerConnection) {
     vcPeerConnection.close();

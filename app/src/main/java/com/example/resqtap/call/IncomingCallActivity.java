@@ -137,15 +137,78 @@ public class IncomingCallActivity extends BaseActivity {
         CallNotificationHelper.dismissIncomingCallNotification(this);
 
         String uid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
-        CallSignalingClient.getInstance().rejectCall(uid, callId);
+        CallSignalingClient.getInstance().declineWithChat(uid, callId);
 
         // Hantar mesej automatik atau buka perbualan terus
         try {
+            String activeSosRoom = com.example.resqtap.utils.UserPrefs.getActiveSosProgressRoom(this);
+            String activeSosAlert = com.example.resqtap.utils.UserPrefs.getActiveSosProgressAlert(this);
             String activeRoomCode = com.example.resqtap.utils.UserPrefs.getActiveRoomCode(this);
-            if (activeRoomCode != null && !activeRoomCode.trim().isEmpty()) {
-                com.example.resqtap.room.RoomChatActivity.start(this, activeRoomCode, "");
+            String myName = com.example.resqtap.utils.UserPrefs.getName(this);
+            if (myName == null || myName.isEmpty()) myName = "User";
+
+            String chatReason = "🔇 " + getString(R.string.call_declined_silent_reason);
+
+            if (activeSosAlert != null && !activeSosAlert.trim().isEmpty()) {
+                String cleanRoom = (activeSosRoom != null && !activeSosRoom.trim().isEmpty()) ? activeSosRoom.trim().toUpperCase(java.util.Locale.ROOT) : "";
+                com.google.firebase.database.DatabaseReference chatRef;
+                if (!cleanRoom.isEmpty()) {
+                    chatRef = com.google.firebase.database.FirebaseDatabase.getInstance(com.example.resqtap.room.FirebaseRoomClient.DATABASE_URL)
+                            .getReference("rooms").child(cleanRoom).child("sosAlerts").child(activeSosAlert.trim()).child("chat");
+                } else {
+                    chatRef = com.google.firebase.database.FirebaseDatabase.getInstance(com.example.resqtap.room.FirebaseRoomClient.DATABASE_URL)
+                            .getReference("sosChats").child(activeSosAlert.trim());
+                }
+
+                com.google.firebase.database.DatabaseReference newMsgRef = chatRef.child("messages").push();
+                String msgId = newMsgRef.getKey();
+                java.util.Map<String, Object> msg = new java.util.HashMap<>();
+                msg.put("id", msgId);
+                msg.put("text", chatReason);
+                msg.put("sender", "user");
+                msg.put("senderUid", uid);
+                msg.put("senderName", myName);
+                msg.put("createdAt", com.google.firebase.database.ServerValue.TIMESTAMP);
+                newMsgRef.setValue(msg);
+
+                java.util.Map<String, Object> metaUpdates = new java.util.HashMap<>();
+                metaUpdates.put("lastMessage", chatReason);
+                metaUpdates.put("lastSender", "user");
+                metaUpdates.put("lastSenderUid", uid);
+                metaUpdates.put("status", "open");
+                metaUpdates.put("updatedAt", com.google.firebase.database.ServerValue.TIMESTAMP);
+                chatRef.child("meta").updateChildren(metaUpdates);
+
+                com.example.resqtap.sos.SosLivechatActivity.launch(this, activeSosRoom, activeSosAlert, callerName, "");
             } else {
-                startActivity(new Intent(this, com.example.resqtap.chat.LivechatActivity.class));
+                // Post silent notice to standard support chat
+                if (uid != null && !uid.isEmpty()) {
+                    com.google.firebase.database.DatabaseReference chatRef = com.google.firebase.database.FirebaseDatabase.getInstance(com.example.resqtap.room.FirebaseRoomClient.DATABASE_URL)
+                            .getReference("supportChats").child(uid);
+                    com.google.firebase.database.DatabaseReference newMsgRef = chatRef.child("messages").push();
+                    String msgId = newMsgRef.getKey();
+                    java.util.Map<String, Object> msg = new java.util.HashMap<>();
+                    msg.put("id", msgId);
+                    msg.put("text", chatReason);
+                    msg.put("sender", "user");
+                    msg.put("senderUid", uid);
+                    msg.put("senderName", myName);
+                    msg.put("createdAt", com.google.firebase.database.ServerValue.TIMESTAMP);
+                    newMsgRef.setValue(msg);
+
+                    java.util.Map<String, Object> metaUpdates = new java.util.HashMap<>();
+                    metaUpdates.put("lastMessage", chatReason);
+                    metaUpdates.put("lastSender", "user");
+                    metaUpdates.put("status", "open");
+                    metaUpdates.put("updatedAt", com.google.firebase.database.ServerValue.TIMESTAMP);
+                    chatRef.child("meta").updateChildren(metaUpdates);
+                }
+
+                if (activeRoomCode != null && !activeRoomCode.trim().isEmpty()) {
+                    com.example.resqtap.room.RoomChatActivity.start(this, activeRoomCode, "");
+                } else {
+                    startActivity(new Intent(this, com.example.resqtap.chat.LivechatActivity.class));
+                }
             }
         } catch (Exception ignored) {
         }

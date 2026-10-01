@@ -113,6 +113,9 @@ public class ProfileActivity extends BaseActivity {
                     android.view.View cancel = content.findViewById(R.id.btn_cancel);
                     if (cancel != null) cancel.setOnClickListener(v2 -> d.dismiss());
 
+                    android.view.View closeBtn = content.findViewById(R.id.btn_close);
+                    if (closeBtn != null) closeBtn.setOnClickListener(v2 -> d.dismiss());
+
                     android.view.View logout = content.findViewById(R.id.btn_logout);
                     if (logout != null) {
                         logout.setOnClickListener(v2 -> {

@@ -49,6 +49,7 @@ public class VideoCallActivity extends BaseActivity implements WebRTCClient.WebR
     private boolean isMicEnabled = true;
     private boolean isCamEnabled = true;
     private boolean isSpeakerEnabled = false;
+    private boolean remoteEnded = false;
 
     private AudioManager audioManager;
 
@@ -159,7 +160,19 @@ public class VideoCallActivity extends BaseActivity implements WebRTCClient.WebR
             btnSpeaker.setImageResource(isSpeakerEnabled ? R.drawable.ic_volume_24 : R.drawable.ic_phone);
         });
 
-        btnEnd.setOnClickListener(v -> finish());
+        btnEnd.setOnClickListener(v -> {
+            remoteEnded = false;
+            endCallAndFinish();
+        });
+    }
+
+    /** Tamatkan panggilan di pangkalan data dan tutup aktiviti. */
+    private void endCallAndFinish() {
+        if (!remoteEnded && com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null) {
+            String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid();
+            CallSignalingClient.getInstance().endCall(uid, callId);
+        }
+        finish();
     }
 
     // =========================================================================
@@ -189,6 +202,7 @@ public class VideoCallActivity extends BaseActivity implements WebRTCClient.WebR
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 String status = snapshot.getValue(String.class);
                 if ("ended".equals(status)) {
+                    remoteEnded = true;
                     runOnUiThread(() -> finish());
                 }
             }
@@ -290,7 +304,8 @@ public class VideoCallActivity extends BaseActivity implements WebRTCClient.WebR
     /** Tamatkan paparan bila pihak lawan putuskan penstriman video. */
     @Override
     public void onRemoveRemoteStream() {
-        runOnUiThread(() -> finish());
+        remoteEnded = true;
+        runOnUiThread(this::finish);
     }
 
     /** Hantar calon ICE tempatan ke Firebase RTDB untuk bina laluan P2P. */
@@ -306,6 +321,7 @@ public class VideoCallActivity extends BaseActivity implements WebRTCClient.WebR
         if (state == PeerConnection.PeerConnectionState.DISCONNECTED ||
             state == PeerConnection.PeerConnectionState.FAILED ||
             state == PeerConnection.PeerConnectionState.CLOSED) {
+            remoteEnded = true;
             runOnUiThread(this::finish);
         }
     }
@@ -353,7 +369,10 @@ public class VideoCallActivity extends BaseActivity implements WebRTCClient.WebR
             audioManager.setSpeakerphoneOn(false);
         }
 
-        CallSignalingClient.getInstance().rejectCall(com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null ? com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : "", callId);
+        if (!remoteEnded && com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null) {
+            String uid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid();
+            CallSignalingClient.getInstance().endCall(uid, callId);
+        }
     }
 }
 

@@ -132,7 +132,13 @@ public class VoiceCallActivity extends BaseActivity implements WebRTCClient.WebR
             speakerButton.setImageResource(isSpeakerEnabled ? R.drawable.ic_volume_24 : R.drawable.ic_phone);
         });
 
-        endButton.setOnClickListener(v -> finish());
+        endButton.setOnClickListener(v -> {
+            remoteEnded = false;
+            if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+                CallSignalingClient.getInstance().endCall(FirebaseAuth.getInstance().getCurrentUser().getUid(), callId);
+            }
+            finish();
+        });
     }
 
     /** Semak kebenaran audio mikrofon. */

@@ -6509,7 +6509,7 @@ body.admin-site-active:not(.dark-mode) .livechat-selected-attachment button:hove
 }
 
 /* --- VIDEO / VOICE CALL MODAL --- */
-.video-call-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.video-call-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 100050; display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 .video-call-container { position: relative; width: 100%; height: 100%; background: #111; overflow: hidden; display: flex; flex-direction: column; transition: border-radius 0.3s; }
 .vc-minimize-btn { position: absolute; top: 24px; left: 24px; background: rgba(0,0,0,0.5); border: none; border-radius: 50%; width: 48px; height: 48px; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; backdrop-filter: blur(4px); transition: background 0.2s; }
 .vc-minimize-btn:hover { background: rgba(0,0,0,0.8); }
@@ -6550,7 +6550,7 @@ body.admin-site-active:not(.dark-mode) .livechat-selected-attachment button:hove
 .vc-menu-btn { display: flex; align-items: center; gap: 16px; padding: 16px; width: 100%; background: transparent; border: none; color: var(--text-main); font-size: 1rem; font-weight: 500; cursor: pointer; border-radius: 12px; transition: background 0.2s; }
 .vc-menu-btn:hover { background: var(--hover); }
 
-.video-call-modal.floating { top: auto; left: auto; bottom: 24px; right: 24px; width: 320px; height: 180px; border-radius: 16px; box-shadow: 0 12px 48px rgba(0,0,0,0.6); cursor: pointer; }
+.video-call-modal.floating { top: auto; left: auto; bottom: 24px; right: 24px; width: 320px; height: 180px; border-radius: 16px; box-shadow: 0 12px 48px rgba(0,0,0,0.6); cursor: pointer; z-index: 100060; }
 .video-call-modal.floating .video-call-container { border-radius: 16px; pointer-events: none; }
 .video-call-modal.floating .vc-minimize-btn,
 .video-call-modal.floating .video-call-controls,

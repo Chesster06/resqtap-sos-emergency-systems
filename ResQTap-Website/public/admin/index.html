@@ -9,6 +9,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css?v=admin-call-buttons-112">
+  <!-- Leaflet.js — open-source map library for Live Map view -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+  <!-- Capture Leaflet IMMEDIATELY before anything else can overwrite window.L -->
+  <script>window._LeafletMap = window.L;</script>
   <script>
     (function() {
       try {
@@ -1010,6 +1015,16 @@
           <div id="adminsList" class="compact-list"></div>
         </div>
       </section>
+
+      <!-- ============================================================
+           LIVE MAP VIEW
+           Real-time satellite map monitoring all room member locations,
+           active SOS alerts, and incident reports.
+      ============================================================ -->
+      <section id="livemapView" class="view-section hidden">
+        <!-- Leaflet Map Container -->
+        <div id="livemapContainer" class="livemap-container" role="application" aria-label="Live user location map" style="flex:1;min-height:0;position:relative;"></div>
+      </section>
     </main>
 
     <aside id="detailPanel" class="detail-panel hidden" aria-live="polite">
@@ -1335,7 +1350,7 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js?v=admin-call-logs-115"></script>
+  <script type="module" src="/app.js?v=admin-call-logs-118"></script>
 </body>
 </html>
 

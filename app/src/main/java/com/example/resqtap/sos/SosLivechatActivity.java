@@ -98,12 +98,33 @@ public class SosLivechatActivity extends BaseActivity {
     public static void launch(Context context, String roomCode, String alertId, String responderName, String responderUid) {
         if (context == null) return;
         Intent intent = new Intent(context, SosLivechatActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.putExtra(EXTRA_ROOM_CODE, roomCode);
-        intent.putExtra(EXTRA_ALERT_ID, alertId);
-        intent.putExtra(EXTRA_RESPONDER_NAME, responderName);
-        intent.putExtra(EXTRA_RESPONDER_UID, responderUid);
+        if (!(context instanceof android.app.Activity)) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
+        intent.putExtra(EXTRA_ROOM_CODE, roomCode != null ? roomCode : "");
+        intent.putExtra(EXTRA_ALERT_ID, alertId != null ? alertId : "");
+        intent.putExtra(EXTRA_RESPONDER_NAME, responderName != null ? responderName : "");
+        intent.putExtra(EXTRA_RESPONDER_UID, responderUid != null ? responderUid : "");
         context.startActivity(intent);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent != null) {
+            String r = intent.getStringExtra(EXTRA_ROOM_CODE);
+            String a = intent.getStringExtra(EXTRA_ALERT_ID);
+            String n = intent.getStringExtra(EXTRA_RESPONDER_NAME);
+            String u = intent.getStringExtra(EXTRA_RESPONDER_UID);
+            if (r != null && !r.isEmpty()) roomCode = r;
+            if (a != null && !a.isEmpty()) alertId = a;
+            if (roomCode.isEmpty()) roomCode = UserPrefs.getActiveSosProgressRoom(this);
+            if (alertId.isEmpty()) alertId = UserPrefs.getActiveSosProgressAlert(this);
+            if (n != null && !n.trim().isEmpty()) responderName = n.trim();
+            if (u != null) responderUid = u;
+            setupFirebaseChat();
+        }
     }
 
     @Override
@@ -129,6 +150,12 @@ public class SosLivechatActivity extends BaseActivity {
 
         if (roomCode == null) roomCode = "";
         if (alertId == null) alertId = "";
+        if (roomCode.isEmpty()) {
+            roomCode = UserPrefs.getActiveSosProgressRoom(this);
+        }
+        if (alertId.isEmpty()) {
+            alertId = UserPrefs.getActiveSosProgressAlert(this);
+        }
         if (rName != null && !rName.trim().isEmpty()) responderName = rName.trim();
         if (rUid != null) responderUid = rUid;
 
