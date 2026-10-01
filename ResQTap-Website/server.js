@@ -23,6 +23,69 @@ const MIME_TYPES = {
   '.ttf': 'font/ttf'
 };
 
+const cleanupScriptPath = path.join(__dirname, '..', 'cleanup_rtdb.js');
+const { resetDatabaseAccounts, deleteSingleUser, getAdmin } = require(cleanupScriptPath);
+
+// Start RTDB Cloud Task Watcher so admin actions taken on hosted web app (Firebase Hosting)
+// automatically trigger Firebase Auth user deletions
+async function startRtdbTaskWatcher() {
+  try {
+    const adminInstance = await getAdmin();
+    const db = adminInstance.database();
+    console.log('[WATCHER] RTDB Task Watcher active: listening for admin tasks & user deletions...');
+
+    // 1. Listen for Clear Database requests
+    db.ref('admin_tasks/clear_database').on('value', async (snapshot) => {
+      const task = snapshot.val();
+      if (task && task.status === 'pending') {
+        console.log('[WATCHER] Detected pending clear_database task. Executing full reset...');
+        try {
+          await db.ref('admin_tasks/clear_database/status').set('processing');
+          const result = await resetDatabaseAccounts();
+          await db.ref('admin_tasks/clear_database').update({
+            status: 'completed',
+            completedAt: Date.now(),
+            summary: result.message
+          });
+          console.log('[WATCHER] Clear database task completed successfully.');
+        } catch (err) {
+          console.error('[WATCHER] Failed clear_database task:', err);
+          await db.ref('admin_tasks/clear_database').update({
+            status: 'failed',
+            error: err.message || String(err)
+          });
+        }
+      }
+    });
+
+    // 2. Listen for individual user deletion requests
+    db.ref('admin_user_deletions').on('child_added', async (snapshot) => {
+      const uid = snapshot.key;
+      const data = snapshot.val();
+      if (data && data.status === 'pending') {
+        console.log(`[WATCHER] Detected pending user deletion for ${uid}...`);
+        try {
+          await snapshot.ref.update({ status: 'processing' });
+          await deleteSingleUser(uid, data.email || '');
+          await snapshot.ref.update({
+            status: 'completed',
+            completedAt: Date.now()
+          });
+          console.log(`[WATCHER] Successfully deleted user ${uid} from Auth & RTDB.`);
+        } catch (err) {
+          console.error(`[WATCHER] Failed user deletion for ${uid}:`, err);
+          await snapshot.ref.update({
+            status: 'failed',
+            error: err.message || String(err)
+          });
+        }
+      }
+    });
+  } catch (err) {
+    console.error('[WATCHER] Could not start RTDB task watcher:', err.message);
+  }
+}
+
 const server = http.createServer((req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   let pathname = decodeURIComponent(urlObj.pathname);
@@ -49,10 +112,9 @@ const server = http.createServer((req, res) => {
     (async () => {
       try {
         console.log('[SERVER API] Received request to clear database for non-@resqtap accounts...');
-        const cleanupScriptPath = path.join(__dirname, '..', 'cleanup_rtdb.js');
         delete require.cache[require.resolve(cleanupScriptPath)];
-        const { resetDatabaseAccounts } = require(cleanupScriptPath);
-        const result = await resetDatabaseAccounts();
+        const { resetDatabaseAccounts: runReset } = require(cleanupScriptPath);
+        const result = await runReset();
         res.writeHead(200, {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': '*'
@@ -67,6 +129,48 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ success: false, error: err.message || 'Internal server error' }));
       }
     })();
+    return;
+  }
+
+  // Admin API: Delete Single User
+  if (pathname === '/api/admin/delete-user') {
+    if (req.method !== 'POST') {
+      res.writeHead(405, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ error: 'Method Not Allowed' }));
+      return;
+    }
+
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body || '{}');
+        const uid = payload.uid;
+        const email = payload.email || '';
+        if (!uid) {
+          res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ success: false, error: 'UID is required' }));
+          return;
+        }
+
+        console.log(`[SERVER API] Received request to delete user ${uid}...`);
+        delete require.cache[require.resolve(cleanupScriptPath)];
+        const { deleteSingleUser: runDelete } = require(cleanupScriptPath);
+        const result = await runDelete(uid, email);
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        console.error('[SERVER API] Delete user error:', err);
+        res.writeHead(500, {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({ success: false, error: err.message || 'Internal server error' }));
+      }
+    });
     return;
   }
 
@@ -116,4 +220,5 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`ResQTap Website running at http://localhost:${PORT}`);
   console.log(`Admin Dashboard: http://localhost:${PORT}/admin`);
+  startRtdbTaskWatcher();
 });

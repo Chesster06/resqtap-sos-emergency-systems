@@ -5315,14 +5315,33 @@ async function deleteUser(uid) {
     : `Delete user ${name}? This will remove their profile and unlink them from rooms.`;
   if (!window.confirm(message)) return;
 
+  const userObj = state.users && state.users[uid];
+  const userEmail = (userObj && userObj.email) ? String(userObj.email).trim() : "";
+
   const updates = {};
   updates[`users/${uid}`] = null;
   updates[`userRooms/${uid}`] = null;
   updates[`admins/${uid}`] = null;
   updates[`admin_user_deletions/${uid}`] = {
     deletedBy: state.currentUser.uid,
-    deletedAt: serverTimestamp()
+    deletedAt: serverTimestamp(),
+    email: userEmail,
+    status: "pending"
   };
+
+  if (userEmail) {
+    const sanitizedEmail = userEmail.toLowerCase().replace(/\./g, "_").replace(/@/g, "_at_");
+    updates[`registeredEmails/${sanitizedEmail}`] = null;
+  }
+
+  // Panggil API backend jika tersedia untuk padam Auth serta-merta
+  try {
+    fetch("/api/admin/delete-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid, email: userEmail })
+    }).catch(() => {});
+  } catch (ignored) {}
 
   entries(state.rooms).forEach(([roomId, room]) => {
     if (!validPathSegment(roomId)) return;
@@ -5621,7 +5640,20 @@ async function executeClearDatabase() {
     let apiSuccess = false;
     let apiData = null;
 
-    // 1. Cuba panggil endpoint backend server.js terlebih dahulu (untuk padam RTDB & Auth sekali gus)
+    // 1. Tulis tugasan pembersihan ke RTDB (untuk ditangkap oleh RTDB Watcher & Cloud Functions)
+    try {
+      await update(ref(db), {
+        "admin_tasks/clear_database": {
+          requestedBy: state.currentUser.uid,
+          requestedAt: Date.now(),
+          status: "pending"
+        }
+      });
+    } catch (taskErr) {
+      console.warn("Could not write admin_tasks/clear_database:", taskErr);
+    }
+
+    // 2. Cuba panggil endpoint backend server.js terlebih dahulu (untuk padam RTDB & Auth sekali gus)
     try {
       const res = await fetch("/api/admin/clear-database", {
         method: "POST",
@@ -5641,7 +5673,7 @@ async function executeClearDatabase() {
       return;
     }
 
-    // 2. Client-side Fallback (jika diakses terus via Firebase Hosting / static host)
+    // 3. Client-side Fallback (jika diakses terus via Firebase Hosting / static host)
     const users = state.users || {};
     const deleteUids = new Set();
     const resqtapUids = new Set();
@@ -5655,8 +5687,19 @@ async function executeClearDatabase() {
       }
     });
 
+    // Ambil registeredEmails secara langsung dari database secara tepat
+    let registeredEmailsMap = {};
+    try {
+      const emailsSnap = await get(ref(db, "registeredEmails"));
+      if (emailsSnap.exists()) {
+        registeredEmailsMap = emailsSnap.val() || {};
+      }
+    } catch (e) {
+      console.warn("Could not fetch registeredEmails:", e);
+    }
+
     let hasNonResqtapEmails = false;
-    entries(state.registeredEmails || {}).forEach(([key]) => {
+    entries(registeredEmailsMap).forEach(([key]) => {
       const decoded = key.replace(/_at_/g, "@").replace(/_/g, ".");
       if (!decoded.toLowerCase().includes("@resqtap")) {
         hasNonResqtapEmails = true;
@@ -5684,12 +5727,13 @@ async function executeClearDatabase() {
       });
       updates[`admin_user_deletions/${uid}`] = {
         deletedBy: state.currentUser.uid,
-        deletedAt: serverTimestamp()
+        deletedAt: serverTimestamp(),
+        status: "pending"
       };
     });
 
-    // registeredEmails
-    entries(state.registeredEmails || {}).forEach(([key]) => {
+    // Padam registeredEmails bukan @resqtap
+    entries(registeredEmailsMap).forEach(([key]) => {
       const decoded = key.replace(/_at_/g, "@").replace(/_/g, ".");
       if (!decoded.toLowerCase().includes("@resqtap")) {
         updates[`registeredEmails/${key}`] = null;
