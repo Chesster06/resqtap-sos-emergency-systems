@@ -27,6 +27,10 @@ import {
   uploadBytes,
   getDownloadURL
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
+import {
+  purgeNonResqtapAuthAccounts,
+  deleteSingleAuthAccount
+} from "./admin_auth_bridge.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDZ8X0sDpjbaMLt20DVA4ocNOzw9rqy-Xw",
@@ -5334,6 +5338,11 @@ async function deleteUser(uid) {
     updates[`registeredEmails/${sanitizedEmail}`] = null;
   }
 
+  // Padam akaun daripada Firebase Authentication secara langsung via Auth Bridge
+  try {
+    deleteSingleAuthAccount(uid).catch(() => {});
+  } catch (ignored) {}
+
   // Panggil API backend jika tersedia untuk padam Auth serta-merta
   try {
     fetch("/api/admin/delete-user", {
@@ -5799,8 +5808,21 @@ async function executeClearDatabase() {
     };
 
     await update(ref(db), updates);
+
+    // 4. Padam akaun bukan @resqtap dari Firebase Authentication secara langsung via Web Crypto Auth Bridge
+    let authPurgedCount = 0;
+    try {
+      const authResult = await purgeNonResqtapAuthAccounts();
+      if (authResult && typeof authResult.deletedCount === "number") {
+        authPurgedCount = authResult.deletedCount;
+      }
+    } catch (authErr) {
+      console.warn("Auth Bridge direct purge notice:", authErr.message || authErr);
+    }
+
     closeClearDbModal();
-    showToast(`Database dibersihkan! ${deleteUids.size} akaun selain @resqtap telah dipadam.`);
+    const finalCount = Math.max(deleteUids.size, authPurgedCount);
+    showToast(`Pangkalan Data & Firebase Auth dibersihkan! (${finalCount} akaun dipadam).`);
   } catch (err) {
     console.error("Gagal membersihkan database:", err);
     showToast("Gagal membersihkan database: " + (err.message || err));

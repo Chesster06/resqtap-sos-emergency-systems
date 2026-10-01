@@ -88,18 +88,27 @@ async function getValidAccessToken() {
 let appInitialized = false;
 async function getAdmin() {
   if (!appInitialized) {
-    const token = await getValidAccessToken();
+    const saPath = path.join(__dirname, "resqtap-b9ff5-firebase-adminsdk-fbsvc-ea81d54f3d.json");
     if (!admin.apps || admin.apps.length === 0) {
-      admin.initializeApp({
-        credential: {
-          getAccessToken: async () => ({
-            access_token: await getValidAccessToken(),
-            expires_in: 3600
-          })
-        },
-        projectId: "resqtap-b9ff5",
-        databaseURL: "https://resqtap-b9ff5-default-rtdb.firebaseio.com"
-      });
+      if (fs.existsSync(saPath)) {
+        console.log(`[ADMIN-INIT] Using service account JSON: ${saPath}`);
+        admin.initializeApp({
+          credential: admin.credential.cert(require(saPath)),
+          databaseURL: "https://resqtap-b9ff5-default-rtdb.firebaseio.com"
+        });
+      } else {
+        const token = await getValidAccessToken();
+        admin.initializeApp({
+          credential: {
+            getAccessToken: async () => ({
+              access_token: await getValidAccessToken(),
+              expires_in: 3600
+            })
+          },
+          projectId: "resqtap-b9ff5",
+          databaseURL: "https://resqtap-b9ff5-default-rtdb.firebaseio.com"
+        });
+      }
     }
     appInitialized = true;
   }

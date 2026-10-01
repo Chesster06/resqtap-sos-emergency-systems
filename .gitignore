@@ -18,3 +18,4 @@ __pycache__/
 *.pyc
 test_*.*
 verify_*.*
+*adminsdk*.json
