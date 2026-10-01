@@ -5237,6 +5237,7 @@ async function cancelSos(roomId, alertId) {
   updates[`rooms/${roomId}/sosAlerts/${alertId}/status`] = "cancelled";
   updates[`rooms/${roomId}/sosAlerts/${alertId}/cancelledAt`] = serverTimestamp();
   updates[`rooms/${roomId}/sosAlerts/${alertId}/cancelledByAdmin`] = state.currentUser.uid;
+  updates[`rooms/${roomId}/sosAlerts/${alertId}/active`] = false;
 
   // Also cancel any other active alerts from the same sender in any room so stray alerts don't hijack coordinates
   if (senderUid) {
@@ -5246,6 +5247,7 @@ async function cancelSos(roomId, alertId) {
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/status`] = "cancelled";
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/cancelledAt`] = serverTimestamp();
           updates[`rooms/${a.roomId}/sosAlerts/${a.key}/cancelledByAdmin`] = state.currentUser.uid;
+          updates[`rooms/${a.roomId}/sosAlerts/${a.key}/active`] = false;
         }
       }
     });

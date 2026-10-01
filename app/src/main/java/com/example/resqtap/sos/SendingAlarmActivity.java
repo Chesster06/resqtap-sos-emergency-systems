@@ -20,6 +20,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.resqtap.R;
+import com.example.resqtap.home.MainActivity;
 import com.example.resqtap.room.FirebaseRoomClient;
 import com.example.resqtap.utils.LocaleUtils;
 import com.example.resqtap.utils.PermissionUtils;
@@ -151,6 +152,17 @@ public class SendingAlarmActivity extends AppCompatActivity {
         bindViews();
         silenceLocalDevice();
         startRadarAnimations();
+
+        // Semak sekiranya terdapat sesi SOS aktif sedia ada untuk terus dipantau pembatalan/reservasinya
+        if (UserPrefs.isSosProgressActive(this)) {
+            String savedRoom = UserPrefs.getActiveSosProgressRoom(this);
+            String savedAlert = UserPrefs.getActiveSosProgressAlert(this);
+            if (!savedRoom.isEmpty() && !savedAlert.isEmpty()) {
+                activeSosIds.put(savedRoom, savedAlert);
+                watchSosCaseReservation(savedRoom, savedAlert);
+            }
+        }
+
         initGpsAndDispatchSos();
 
         // Tangani butang back sistem
@@ -398,7 +410,25 @@ public class SendingAlarmActivity extends AppCompatActivity {
         ValueEventListener listener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
-                if (snapshot == null || !snapshot.exists() || isSosCancelled) return;
+                if (isSosCancelled) return;
+
+                if (snapshot == null || !snapshot.exists()) {
+                    handleSosCancelledByRemote();
+                    return;
+                }
+
+                String status = snapshot.child("status").getValue(String.class);
+                boolean isCancelled = "cancelled".equalsIgnoreCase(status)
+                        || snapshot.child("cancelledAt").exists()
+                        || snapshot.child("cancelledByAdmin").exists()
+                        || snapshot.child("cancelledClientAt").exists()
+                        || (snapshot.child("active").exists() && Boolean.FALSE.equals(snapshot.child("active").getValue(Boolean.class)));
+
+                if (isCancelled) {
+                    handleSosCancelledByRemote();
+                    return;
+                }
+
                 Boolean served = snapshot.child("served").getValue(Boolean.class);
                 String servedBy = snapshot.child("servedBy").getValue(String.class);
 
@@ -427,6 +457,26 @@ public class SendingAlarmActivity extends AppCompatActivity {
             reservationListeners.put(ref, listener);
         }
         ref.addValueEventListener(listener);
+    }
+
+    private void handleSosCancelledByRemote() {
+        if (isSosCancelled) return;
+        isSosCancelled = true;
+        isSendingAlarm = false;
+
+        stopWatchingReservations();
+        silenceLocalDevice();
+        activeSosIds.clear();
+        UserPrefs.clearActiveSosProgress(this);
+
+        runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            Toast.makeText(SendingAlarmActivity.this, R.string.sos_progress_cancelled, Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(SendingAlarmActivity.this, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(intent);
+            finish();
+        });
     }
 
     private void stopWatchingReservations() {
@@ -503,6 +553,9 @@ public class SendingAlarmActivity extends AppCompatActivity {
         UserPrefs.clearActiveSosProgress(this);
 
         Toast.makeText(this, R.string.sending_alarm_cancelled_success, Toast.LENGTH_SHORT).show();
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
         finish();
     }
 

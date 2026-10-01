@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat;
 
 import com.example.resqtap.R;
 import com.example.resqtap.app.BaseActivity;
+import com.example.resqtap.home.MainActivity;
 import com.example.resqtap.room.FirebaseRoomClient;
 import com.example.resqtap.utils.ThemeUtils;
 import com.example.resqtap.utils.UserPrefs;
@@ -234,6 +235,9 @@ public class SosProgressActivity extends BaseActivity {
         }
 
         Toast.makeText(this, R.string.sos_progress_cancelled, Toast.LENGTH_SHORT).show();
+        Intent mainIntent = new Intent(this, MainActivity.class);
+        mainIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(mainIntent);
         finish();
     }
 
@@ -252,12 +256,19 @@ public class SosProgressActivity extends BaseActivity {
                 if (!snapshot.exists()) {
                     // Alert was removed
                     UserPrefs.clearActiveSosProgress(SosProgressActivity.this);
+                    Intent intent = new Intent(SosProgressActivity.this, MainActivity.class);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    startActivity(intent);
                     finish();
                     return;
                 }
 
                 String status = String.valueOf(snapshot.child("status").getValue() == null ? "active" : snapshot.child("status").getValue());
-                boolean isCancelled = "cancelled".equalsIgnoreCase(status) || snapshot.child("cancelledAt").exists();
+                boolean isCancelled = "cancelled".equalsIgnoreCase(status)
+                        || snapshot.child("cancelledAt").exists()
+                        || snapshot.child("cancelledByAdmin").exists()
+                        || snapshot.child("cancelledClientAt").exists()
+                        || (snapshot.child("active").exists() && Boolean.FALSE.equals(snapshot.child("active").getValue(Boolean.class)));
                 Long stepVal = snapshot.child("progressStep").getValue(Long.class);
                 int step = stepVal != null ? stepVal.intValue() : 1;
                 boolean resolved = "resolved".equalsIgnoreCase(status) || snapshot.child("resolvedAt").exists() || step >= 4;
@@ -265,6 +276,9 @@ public class SosProgressActivity extends BaseActivity {
                 if (isCancelled) {
                     UserPrefs.clearActiveSosProgress(SosProgressActivity.this);
                     Toast.makeText(SosProgressActivity.this, R.string.sos_progress_cancelled, Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(SosProgressActivity.this, MainActivity.class);
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    startActivity(intent);
                     finish();
                     return;
                 }
