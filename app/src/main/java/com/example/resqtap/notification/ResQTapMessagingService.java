@@ -57,11 +57,17 @@ public class ResQTapMessagingService extends FirebaseMessagingService {
         }
 
         if ("SOS_ALERT".equalsIgnoreCase(type)) {
+            String sUid = value(data, "senderUid");
+            com.google.firebase.auth.FirebaseUser cu = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+            String myUid = (cu != null && cu.getUid() != null) ? cu.getUid().trim() : com.example.resqtap.utils.UserPrefs.getUid(this);
+            if ((!myUid.isEmpty() && myUid.equals(sUid)) || com.example.resqtap.sos.SendingAlarmActivity.isSendingAlarm) {
+                return;
+            }
             NotificationHelper.showSosAlert(
                     this,
                     value(data, "roomId"),
                     value(data, "senderName"),
-                    value(data, "senderUid"),
+                    sUid,
                     value(data, "alertId")
             );
             return;

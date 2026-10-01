@@ -191,43 +191,20 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_room_map);
         sosSheet = new SosBottomSheetController(this, new SosBottomSheetController.SosCallbacks() {
-
-            /** Fungsi untuk onSosStarted. */
             @Override
-            public void onSosStarted() {
+            public void onCountdownFinished() {
                 if (roomPermissions != null && !roomPermissions.allowSosAlarm) {
                     runOnUiThread(() -> Toast.makeText(RoomMapActivity.this, R.string.sos_disabled_by_room_permission, Toast.LENGTH_LONG).show());
                     return;
                 }
-
-                setActiveSosBlink(uid, 20_000L);
-                try {
-                    android.util.Log.d("SOS_DEBUG", "Sending alert to roomId: " + roomCode);
-                } catch (Exception ignored) {
-                }
-                FirebaseRoomClient.sendRoomSosQueued(roomCode, uid, deviceId, displayName, id -> {
-                    myActiveSosId = String.valueOf(id == null ? "" : id).trim();
-                    if (cancelMySosWhenIdArrives && !myActiveSosId.isEmpty()) {
-                        FirebaseRoomClient.cancelRoomSosQueued(roomCode, myActiveSosId, deviceId);
-                        myActiveSosId = "";
-                        cancelMySosWhenIdArrives = false;
-                    }
-                });
+                Intent triggerIntent = new Intent(RoomMapActivity.this, com.example.resqtap.sos.SendingAlarmActivity.class);
+                triggerIntent.putExtra(com.example.resqtap.sos.SendingAlarmActivity.EXTRA_TARGET_ROOM, roomCode);
+                startActivity(triggerIntent);
             }
 
-            /** Fungsi untuk onSosCancelled. */
             @Override
             public void onSosCancelled() {
-                String id = String.valueOf(myActiveSosId == null ? "" : myActiveSosId).trim();
-                if (!id.isEmpty()) {
-                    FirebaseRoomClient.cancelRoomSosQueued(roomCode, id, deviceId);
-                } else {
-                    cancelMySosWhenIdArrives = true;
-                }
-                myActiveSosId = "";
-                if (uid != null && !uid.trim().isEmpty()) {
-                    FirebaseRoomClient.cancelAllActiveSosForUser(uid.trim(), deviceId);
-                }
+                // Dibatalkan semasa 10s countdown: Tiada sebarang isyarat dihantar ke bilik/admin
             }
         });
         try {

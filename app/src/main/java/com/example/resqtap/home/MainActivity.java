@@ -214,62 +214,20 @@ public class MainActivity extends BaseActivity {
         btnInbox = findViewById(R.id.btn_inbox);
         inboxUnreadDot = findViewById(R.id.inbox_unread_dot);
         sosSheet = new SosBottomSheetController(this, new SosBottomSheetController.SosCallbacks() {
-            /** Blast SOS to every room this user belongs to. */
-    @Override
-            public void onSosStarted() {
-                sosCancelledWhilePending = false;
-                activeSosIds.clear();
-                FirebaseUser u = FirebaseAuth.getInstance().getCurrentUser();
-                if (u == null) return;
-                final String uid = u.getUid();
-                final String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
-                final String rawName = UserPrefs.getName(MainActivity.this);
-                final String name = (rawName == null || rawName.trim().isEmpty()) ? "User" : rawName.trim();
-
-                // Dapatkan koordinat GPS terkini sebelum blast SOS
-                if (PermissionUtils.hasAnyLocation(MainActivity.this) && fusedLocationClient != null) {
-                    try {
-                        fusedLocationClient.getLastLocation().addOnSuccessListener(loc -> {
-                            if (loc != null) {
-                                lastKnownLat = loc.getLatitude();
-                                lastKnownLng = loc.getLongitude();
-                            }
-                            dispatchSosBlasting(uid, dev, name, lastKnownLat, lastKnownLng);
-                        }).addOnFailureListener(e -> {
-                            dispatchSosBlasting(uid, dev, name, lastKnownLat, lastKnownLng);
-                        });
-                        return;
-                    } catch (SecurityException ignored) {}
+            @Override
+            public void onCountdownFinished() {
+                // Countdown 10 saat selesai: Buka skrin baharu SendingAlarmActivity di mana penggera dihantar secara rasmi
+                Intent triggerIntent = new Intent(MainActivity.this, com.example.resqtap.sos.SendingAlarmActivity.class);
+                if (lastKnownLat != 0.0 && lastKnownLng != 0.0) {
+                    triggerIntent.putExtra(com.example.resqtap.sos.SendingAlarmActivity.EXTRA_LAT, lastKnownLat);
+                    triggerIntent.putExtra(com.example.resqtap.sos.SendingAlarmActivity.EXTRA_LNG, lastKnownLng);
                 }
-                dispatchSosBlasting(uid, dev, name, lastKnownLat, lastKnownLng);
+                startActivity(triggerIntent);
             }
 
-            /** Cancel SOS on every room we fired to. */
             @Override
             public void onSosCancelled() {
-                sosCancelledWhilePending = true;
-                stopWatchingSosCaseReservations();
-                UserPrefs.clearActiveSosProgress(MainActivity.this);
-                final String dev = UserPrefs.getOrCreateDeviceId(MainActivity.this);
-                // Cancel all rooms whose IDs have already arrived
-                for (java.util.Map.Entry<String, String> e : new java.util.HashMap<>(activeSosIds).entrySet()) {
-                    if (!e.getKey().isEmpty() && !e.getValue().isEmpty()) {
-                        FirebaseRoomClient.cancelRoomSosQueued(e.getKey(), e.getValue(), dev);
-                    }
-                }
-                activeSosIds.clear();
-
-                // Also cancel any active SOS alerts across all rooms for this user
-                FirebaseUser cu = FirebaseAuth.getInstance().getCurrentUser();
-                if (cu != null) {
-                    final String uid = cu.getUid();
-                    FirebaseRoomClient.cancelAllActiveSosForUser(uid, dev);
-                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                        try {
-                            FirebaseRoomClient.cancelAllActiveSosForUser(uid, dev);
-                        } catch (Exception ignored) {}
-                    }, 1200L);
-                }
+                // Dibatalkan semasa 10s countdown: Tiada sebarang isyarat pernah dihantar ke RTDB/admin
             }
         });
 

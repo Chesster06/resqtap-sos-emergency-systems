@@ -1246,6 +1246,13 @@ public final class FirebaseRoomClient {
                 if (id.trim().isEmpty()) id = snapshot.getKey() == null ? "" : snapshot.getKey();
                 String from = String.valueOf(snapshot.child("senderUid").getValue() == null ? "" : snapshot.child("senderUid").getValue());
                 if (from.trim().isEmpty()) from = String.valueOf(snapshot.child("fromUid").getValue() == null ? "" : snapshot.child("fromUid").getValue());
+                String fromDev = String.valueOf(snapshot.child("fromDeviceId").getValue() == null ? "" : snapshot.child("fromDeviceId").getValue()).trim();
+                String dev = String.valueOf(deviceId == null ? "" : deviceId).trim();
+                if (!dev.isEmpty() && !fromDev.isEmpty() && dev.equals(fromDev)) {
+                    // Abaikan isyarat penggera yang dihantar oleh peranti ini sendiri
+                    return;
+                }
+
                 String senderName = String.valueOf(snapshot.child("senderName").getValue() == null ? "" : snapshot.child("senderName").getValue());
                 if (senderName.trim().isEmpty()) senderName = String.valueOf(snapshot.child("fromName").getValue() == null ? "" : snapshot.child("fromName").getValue());
                 Long createdAt = snapshot.child("createdAt").getValue(Long.class);

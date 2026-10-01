@@ -1169,4 +1169,23 @@ Terms Version: 1.0</string>
     <string name="medical_summary_none_conditions">No recorded conditions</string>
     <string name="select_allergies_title">Select Allergies</string>
     <string name="select_conditions_title">Select Conditions / Medications</string>
+
+    <!-- Sending Alarm Page Strings -->
+    <string name="sending_alarm_title">Sending Alarm</string>
+    <string name="sending_alarm_subtitle">Broadcasting emergency alert to admin and connected rooms...</string>
+    <string name="sending_alarm_status_dispatching">DISPATCHING EMERGENCY SIGNAL</string>
+    <string name="sending_alarm_gps_locating">Locating live GPS coordinates...</string>
+    <string name="sending_alarm_destinations_loading">Broadcasting to rooms &amp; admin...</string>
+    <string name="sending_alarm_admin_waiting">Waiting for admin responder...</string>
+    <string name="sending_alarm_admin_served">Responder assigned: %1$s</string>
+    <string name="sending_alarm_siren_on">Siren Sounding</string>
+    <string name="sending_alarm_siren_muted">Siren Muted</string>
+    <string name="sending_alarm_btn_mute">Mute Siren</string>
+    <string name="sending_alarm_btn_unmute">Unmute Siren</string>
+    <string name="sending_alarm_btn_chat">Emergency Chat</string>
+    <string name="sending_alarm_quiet_badge">SILENT SENDER MODE</string>
+    <string name="sending_alarm_cancelled_success">Emergency alarm cancelled.</string>
+
+    <string name="security_change_password_modal_desc">Enter current password and set a new password.</string>
+    <string name="security_password_too_short">New password must be at least 6 characters.</string>
 </resources>

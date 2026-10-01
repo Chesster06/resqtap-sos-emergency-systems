@@ -23,13 +23,14 @@ public final class SosBottomSheetController {
     private CountDownTimer timer;
 
     public interface SosCallbacks {
-        void onSosStarted();
+        default void onSosStarted() {}
+        void onCountdownFinished();
         void onSosCancelled();
     }
 
     public SosBottomSheetController(Activity activity, Runnable onSosTriggered) {
         this(activity, new SosCallbacks() {
-            @Override public void onSosStarted() {
+            @Override public void onCountdownFinished() {
                 try { if (onSosTriggered != null) onSosTriggered.run(); } catch (Exception ignored) {}
             }
             @Override public void onSosCancelled() {}
@@ -85,10 +86,7 @@ public final class SosBottomSheetController {
         dialog = d;
         d.show();
 
-        try {
-            if (callbacks != null) callbacks.onSosStarted();
-        } catch (Exception ignored) {
-        }
+        // JANGAN hantar sebarang isyarat SOS semasa kiraan 10 saat sedang berjalan
         startCountdown(tvCount);
     }
 
@@ -160,11 +158,15 @@ public final class SosBottomSheetController {
             }
 
             /** Fungsi untuk onFinish. */
-    @Override
+            @Override
             public void onFinish() {
                 if (tvCount != null) tvCount.setText("0");
                 try {
                     if (dialog != null) dialog.dismiss();
+                } catch (Exception ignored) {
+                }
+                try {
+                    if (callbacks != null) callbacks.onCountdownFinished();
                 } catch (Exception ignored) {
                 }
             }

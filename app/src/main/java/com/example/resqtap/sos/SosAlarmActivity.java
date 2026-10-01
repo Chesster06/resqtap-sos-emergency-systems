@@ -145,6 +145,15 @@ public class SosAlarmActivity extends AppCompatActivity {
             alertId = String.valueOf(intent.getStringExtra(EXTRA_ALERT_ID) == null ? "" : intent.getStringExtra(EXTRA_ALERT_ID)).trim();
         }
 
+        // KESELAMATAN: Jangan sekali-kali paparkan skrin penerima SosAlarmActivity kepada penghantar penggera sendiri!
+        com.google.firebase.auth.FirebaseUser cu = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        String myUid = (cu != null && cu.getUid() != null) ? cu.getUid().trim() : com.example.resqtap.utils.UserPrefs.getUid(this);
+        if (SendingAlarmActivity.isSendingAlarm || (!senderUid.isEmpty() && senderUid.equals(myUid))) {
+            Log.d("SOS_DEBUG", "SosAlarmActivity: Sender is self or SOS broadcast in progress. Refusing to open receiver alarm screen.");
+            finish();
+            return;
+        }
+
         bindViews();
         setupData();
         setupSlider();

@@ -961,5 +961,24 @@
     <string name="medical_summary_none_conditions">Tiada rekod penyakit atau ubat</string>
     <string name="select_allergies_title">Pilih Alahan</string>
     <string name="select_conditions_title">Pilih Penyakit / Ubat-ubatan</string>
+
+    <!-- Sending Alarm Page Strings -->
+    <string name="sending_alarm_title">Menghantar Penggera</string>
+    <string name="sending_alarm_subtitle">Menyiarkan amaran kecemasan kepada admin dan bilik keselamatan...</string>
+    <string name="sending_alarm_status_dispatching">MENYIARKAN ISYARAT KECEMASAN</string>
+    <string name="sending_alarm_gps_locating">Mendapatkan koordinat GPS langsung...</string>
+    <string name="sending_alarm_destinations_loading">Menyiarkan ke bilik &amp; pentadbir...</string>
+    <string name="sending_alarm_admin_waiting">Menunggu responder admin mengambil tindakan...</string>
+    <string name="sending_alarm_admin_served">Responder ditugaskan: %1$s</string>
+    <string name="sending_alarm_siren_on">Siren Berbunyi</string>
+    <string name="sending_alarm_siren_muted">Siren Dibisukan</string>
+    <string name="sending_alarm_btn_mute">Bisukan Siren</string>
+    <string name="sending_alarm_btn_unmute">Bunyikan Siren</string>
+    <string name="sending_alarm_btn_chat">Sembang SOS</string>
+    <string name="sending_alarm_quiet_badge">MOD PENGHANTAR SENYAP</string>
+    <string name="sending_alarm_cancelled_success">Penggera kecemasan telah dibatalkan.</string>
+
+    <string name="security_change_password_modal_desc">Masukkan kata laluan semasa dan tetapkan kata laluan baharu.</string>
+    <string name="security_password_too_short">Kata laluan baharu mestilah sekurang-kurangnya 6 aksara.</string>
 </resources>
 

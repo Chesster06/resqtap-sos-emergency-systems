@@ -558,8 +558,16 @@ public class LiveRoomTrackingService extends Service {
                         String sosId = String.valueOf(alertId == null ? "" : alertId).trim();
                         long createdAt = Math.max(0L, createdAtMs);
 
-                        if (uid != null && !uid.trim().isEmpty() && uid.trim().equals(from)) {
-                            try { android.util.Log.d("SOS_DEBUG", "onSos dropped: sender is self"); } catch (Exception ignored) {}
+                        com.google.firebase.auth.FirebaseUser cu = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+                        String currentUid = (cu != null && cu.getUid() != null) ? cu.getUid().trim() : (uid != null ? uid.trim() : com.example.resqtap.utils.UserPrefs.getUid(LiveRoomTrackingService.this));
+
+                        if (!currentUid.isEmpty() && currentUid.equals(from)) {
+                            try { android.util.Log.d("SOS_DEBUG", "onSos dropped: sender is self (currentUid=" + currentUid + ")"); } catch (Exception ignored) {}
+                            return;
+                        }
+
+                        if (com.example.resqtap.sos.SendingAlarmActivity.isSendingAlarm) {
+                            try { android.util.Log.d("SOS_DEBUG", "onSos dropped: device is active SOS sender"); } catch (Exception ignored) {}
                             return;
                         }
 

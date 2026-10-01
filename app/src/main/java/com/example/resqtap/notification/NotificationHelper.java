@@ -148,6 +148,15 @@ public final class NotificationHelper {
     /** Paparkan SosAlert. */
     public static void showSosAlert(Context context, String roomId, String senderName, String senderUid, String alertId) {
         if (context == null) return;
+        String focusUid = String.valueOf(senderUid == null ? "" : senderUid).trim();
+
+        com.google.firebase.auth.FirebaseUser cu = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        String myUid = (cu != null && cu.getUid() != null) ? cu.getUid().trim() : com.example.resqtap.utils.UserPrefs.getUid(context);
+        if ((!myUid.isEmpty() && myUid.equals(focusUid)) || com.example.resqtap.sos.SendingAlarmActivity.isSendingAlarm) {
+            // Jangan bunyikan atau tunjukkan notifikasi penggera bilik kepada penghantar sendiri
+            return;
+        }
+
         ensureSosChannel(context);
 
         String safeRoom = String.valueOf(roomId == null ? "" : roomId).trim();
@@ -162,7 +171,6 @@ public final class NotificationHelper {
         Intent open = new Intent(context, RoomMapActivity.class);
         open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         if (!safeRoom.isEmpty()) open.putExtra(RoomMapActivity.EXTRA_ROOM_CODE, safeRoom);
-        String focusUid = String.valueOf(senderUid == null ? "" : senderUid).trim();
         String aId = String.valueOf(alertId == null ? "" : alertId).trim();
         if (!focusUid.isEmpty()) open.putExtra(RoomMapActivity.EXTRA_FOCUS_UID, focusUid);
         if (!aId.isEmpty()) open.putExtra(RoomMapActivity.EXTRA_SOS_ALERT_ID, aId);
