@@ -328,8 +328,12 @@ public class MainActivity extends BaseActivity {
                             }
                         }
                     }
-                    // Sort by order
-                    java.util.Collections.sort(list, (a, b) -> Integer.compare(a.getOrder(), b.getOrder()));
+                    // Sort by order ascending, then newest createdAt descending
+                    java.util.Collections.sort(list, (a, b) -> {
+                        int cmp = Integer.compare(a.getOrder(), b.getOrder());
+                        if (cmp != 0) return cmp;
+                        return Long.compare(b.getCreatedAt(), a.getCreatedAt());
+                    });
                 }
 
                 // If empty in database, seed real initial banners to Firebase RTDB

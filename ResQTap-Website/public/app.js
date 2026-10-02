@@ -4085,6 +4085,10 @@ function renderHighlights() {
           ` : '<span class="highlight-card-nolink">No web link attached</span>'}
 
           <div class="highlight-card-actions">
+            <button class="action-pill-btn info" data-action="edit-highlight" data-highlight-id="${escapeHtml(item.id)}" type="button">
+              ${icon("edit-3")}
+              <span>Edit</span>
+            </button>
             <button class="action-pill-btn ${isActive ? "muted" : "success"}" data-action="toggle-highlight" data-highlight-id="${escapeHtml(item.id)}" data-active="${isActive ? 'true' : 'false'}" type="button">
               ${icon(isActive ? "eye-off" : "eye")}
               <span>${isActive ? "Hide" : "Show"}</span>
@@ -6016,6 +6020,51 @@ function handleAction(button) {
         showToast(curActive ? "Highlight hidden from mobile." : "Highlight active on mobile.");
       }
     }
+    if (action === "edit-highlight") {
+      const hlId = button.dataset.highlightId;
+      const item = state.highlights[hlId];
+      if (item) {
+        const titleInput = document.getElementById("hlTitleInput");
+        const actionUrlInput = document.getElementById("hlActionUrlInput");
+        const orderInput = document.getElementById("hlOrderInput");
+        const urlInput = document.getElementById("hlImageUrlInput");
+        const fileInput = document.getElementById("hlImageFileInput");
+        const previewImg = document.getElementById("hlImagePreview");
+        const noPreview = document.getElementById("hlNoPreviewBox");
+        const saveBtn = document.getElementById("saveHighlightBtn");
+
+        if (titleInput) titleInput.value = item.title || "";
+        if (actionUrlInput) actionUrlInput.value = item.actionUrl || "";
+        if (orderInput) orderInput.value = item.order || 1;
+        if (fileInput) fileInput.value = "";
+
+        if (urlInput) {
+          urlInput.value = (item.imageUrl && !item.imageUrl.startsWith("data:")) ? item.imageUrl : "";
+        }
+
+        if (previewImg && item.imageUrl) {
+          previewImg.src = item.imageUrl;
+          previewImg.style.display = "block";
+          if (noPreview) noPreview.style.display = "none";
+        }
+
+        const form = document.getElementById("highlightCreatorForm");
+        if (form) {
+          form.dataset.editingId = hlId;
+          form.dataset.currentImageUrl = item.imageUrl || "";
+        }
+
+        if (saveBtn) {
+          saveBtn.innerHTML = `${icon("check")}<span>Update Highlight Banner</span>`;
+        }
+
+        const view = document.getElementById("highlightsView");
+        if (view) {
+          view.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        showToast(`Editing banner: ${item.title || "Untitled"}`);
+      }
+    }
     if (action === "delete-highlight") {
       const hlId = button.dataset.highlightId;
       if (hlId && window.confirm("Delete this highlight banner permanently?")) {
@@ -6403,6 +6452,7 @@ function bindEvents() {
       const title = document.getElementById("hlTitleInput").value.trim();
       const actionUrl = document.getElementById("hlActionUrlInput").value.trim();
       const order = Number(document.getElementById("hlOrderInput").value) || 1;
+      const editingId = hlForm.dataset.editingId;
       let imageUrl = hlUrl ? hlUrl.value.trim() : "";
 
       if (hlFile && hlFile.files && hlFile.files[0]) {
@@ -6412,6 +6462,8 @@ function bindEvents() {
           showToast("Error processing image file.");
           return;
         }
+      } else if (!imageUrl && editingId && hlForm.dataset.currentImageUrl) {
+        imageUrl = hlForm.dataset.currentImageUrl;
       }
 
       if (!imageUrl) {
@@ -6420,20 +6472,35 @@ function bindEvents() {
       }
 
       try {
-        const newRef = push(ref(db, "highlights"));
-        await set(newRef, {
-          id: newRef.key,
-          title,
-          imageUrl,
-          actionUrl,
-          order,
-          active: true,
-          createdAt: serverTimestamp()
-        });
+        if (editingId) {
+          await update(ref(db, `highlights/${editingId}`), {
+            title,
+            imageUrl,
+            actionUrl,
+            order,
+            updatedAt: serverTimestamp()
+          });
+          delete hlForm.dataset.editingId;
+          delete hlForm.dataset.currentImageUrl;
+          const saveBtn = document.getElementById("saveHighlightBtn");
+          if (saveBtn) saveBtn.innerHTML = `${icon("plus")}<span>Add Highlight Banner</span>`;
+          showToast("Highlight banner updated successfully!");
+        } else {
+          const newRef = push(ref(db, "highlights"));
+          await set(newRef, {
+            id: newRef.key,
+            title,
+            imageUrl,
+            actionUrl,
+            order,
+            active: true,
+            createdAt: serverTimestamp()
+          });
+          showToast("Highlight banner added successfully!");
+        }
         hlForm.reset();
         if (hlPreview) hlPreview.style.display = "none";
         if (hlNoPreview) hlNoPreview.style.display = "block";
-        showToast("Highlight banner added successfully!");
       } catch (err) {
         console.error(err);
         showToast(err.message || "Failed to save highlight banner.");

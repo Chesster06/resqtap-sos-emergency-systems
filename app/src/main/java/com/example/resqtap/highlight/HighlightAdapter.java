@@ -56,6 +56,31 @@ public class HighlightAdapter extends RecyclerView.Adapter<HighlightAdapter.High
         return new HighlightViewHolder(v);
     }
 
+    private int bannerHeightPx = 0;
+
+    private int getBannerHeightPx() {
+        if (bannerHeightPx == 0) {
+            bannerHeightPx = (int) (180 * context.getResources().getDisplayMetrics().density + 0.5f);
+        }
+        return bannerHeightPx;
+    }
+
+    private void applyDynamicAspectRatio(View itemView, int width, int height) {
+        if (width <= 0 || height <= 0 || itemView == null) return;
+        int h = getBannerHeightPx();
+        float ratio = (float) width / (float) height;
+        // Keep ratio within a reasonable bound (0.4 portrait to 2.6 landscape)
+        ratio = Math.max(0.42f, Math.min(ratio, 2.6f));
+        int targetW = Math.round(h * ratio);
+
+        ViewGroup.LayoutParams lp = itemView.getLayoutParams();
+        if (lp != null && (lp.width != targetW || lp.height != h)) {
+            lp.width = targetW;
+            lp.height = h;
+            itemView.setLayoutParams(lp);
+        }
+    }
+
     @Override
     public void onBindViewHolder(@NonNull HighlightViewHolder holder, int position) {
         HighlightItem item = items.get(position);
@@ -72,31 +97,56 @@ public class HighlightAdapter extends RecyclerView.Adapter<HighlightAdapter.High
             defRes = R.drawable.img_highlight_4;
         }
         holder.imgBanner.setImageResource(defRes);
+        android.graphics.drawable.Drawable defDrawable = ContextCompat.getDrawable(context, defRes);
+        if (defDrawable != null && defDrawable.getIntrinsicWidth() > 0 && defDrawable.getIntrinsicHeight() > 0) {
+            applyDynamicAspectRatio(holder.itemView, defDrawable.getIntrinsicWidth(), defDrawable.getIntrinsicHeight());
+        }
 
         String imgUrl = item.getImageUrl();
-        if (imgUrl != null && !imgUrl.isEmpty()) {
-            String lower = imgUrl.toLowerCase();
-            if (lower.contains("highlight_1") || lower.contains("people_first") || lower.contains("abilities") || lower.contains("karnival") || lower.contains("oku")) {
-                holder.imgBanner.setImageResource(R.drawable.img_highlight_1);
-            } else if (lower.contains("highlight_2") || lower.contains("different") || lower.contains("not_less") || lower.contains("respect") || lower.contains("rehab")) {
-                holder.imgBanner.setImageResource(R.drawable.img_highlight_2);
-            } else if (lower.contains("highlight_3") || lower.contains("access_for_all") || lower.contains("future") || lower.contains("inclusion") || lower.contains("deria")) {
-                holder.imgBanner.setImageResource(R.drawable.img_highlight_3);
-            } else if (lower.contains("highlight_4") || lower.contains("sos") || lower.contains("talian") || lower.contains("kecemasan")) {
-                holder.imgBanner.setImageResource(R.drawable.img_highlight_4);
-            } else if (imgUrl.startsWith("data:image")) {
+        if (imgUrl != null && !imgUrl.trim().isEmpty()) {
+            imgUrl = imgUrl.trim();
+            String cacheKey = (item.getId() != null ? item.getId() : "") + "_" + imgUrl.hashCode();
+            Bitmap cached = imageCache.get(cacheKey);
+
+            if (cached != null) {
+                holder.imgBanner.setImageBitmap(cached);
+                applyDynamicAspectRatio(holder.itemView, cached.getWidth(), cached.getHeight());
+            } else if (imgUrl.startsWith("data:image") || imgUrl.contains(";base64,")) {
                 try {
                     int commaIdx = imgUrl.indexOf(",");
                     String b64 = commaIdx >= 0 ? imgUrl.substring(commaIdx + 1) : imgUrl;
                     byte[] bytes = Base64.decode(b64, Base64.DEFAULT);
                     Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
                     if (bmp != null) {
+                        imageCache.put(cacheKey, bmp);
                         holder.imgBanner.setImageBitmap(bmp);
+                        applyDynamicAspectRatio(holder.itemView, bmp.getWidth(), bmp.getHeight());
                     }
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    android.util.Log.e("HighlightAdapter", "Failed to decode base64 banner", e);
                 }
             } else if (imgUrl.startsWith("http://") || imgUrl.startsWith("https://")) {
-                loadImageAsync(imgUrl, holder.imgBanner);
+                loadImageAsync(imgUrl, holder.imgBanner, holder.itemView);
+            } else {
+                // Only check keywords if it's a local asset path reference
+                String lower = imgUrl.toLowerCase();
+                int matchedRes = 0;
+                if (lower.contains("highlight_1") || lower.contains("cpr") || lower.contains("people_first")) {
+                    matchedRes = R.drawable.img_highlight_1;
+                } else if (lower.contains("highlight_2") || lower.contains("darah") || lower.contains("different")) {
+                    matchedRes = R.drawable.img_highlight_2;
+                } else if (lower.contains("highlight_3") || lower.contains("peka") || lower.contains("access_for_all")) {
+                    matchedRes = R.drawable.img_highlight_3;
+                } else if (lower.contains("highlight_4") || lower.contains("sos")) {
+                    matchedRes = R.drawable.img_highlight_4;
+                }
+                if (matchedRes != 0) {
+                    holder.imgBanner.setImageResource(matchedRes);
+                    android.graphics.drawable.Drawable md = ContextCompat.getDrawable(context, matchedRes);
+                    if (md != null && md.getIntrinsicWidth() > 0 && md.getIntrinsicHeight() > 0) {
+                        applyDynamicAspectRatio(holder.itemView, md.getIntrinsicWidth(), md.getIntrinsicHeight());
+                    }
+                }
             }
         }
 
@@ -132,10 +182,11 @@ public class HighlightAdapter extends RecyclerView.Adapter<HighlightAdapter.High
         }
     }
 
-    private void loadImageAsync(String urlStr, ImageView targetView) {
+    private void loadImageAsync(String urlStr, ImageView targetView, View itemView) {
         Bitmap cached = imageCache.get(urlStr);
         if (cached != null) {
             targetView.setImageBitmap(cached);
+            applyDynamicAspectRatio(itemView, cached.getWidth(), cached.getHeight());
             return;
         }
 
@@ -153,7 +204,10 @@ public class HighlightAdapter extends RecyclerView.Adapter<HighlightAdapter.High
                     conn.disconnect();
                     if (bitmap != null) {
                         imageCache.put(urlStr, bitmap);
-                        mainHandler.post(() -> targetView.setImageBitmap(bitmap));
+                        mainHandler.post(() -> {
+                            targetView.setImageBitmap(bitmap);
+                            applyDynamicAspectRatio(itemView, bitmap.getWidth(), bitmap.getHeight());
+                        });
                     }
                 }
             } catch (Exception ignored) {
