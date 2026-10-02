@@ -110,9 +110,25 @@ public class AccountSessionWatcher implements Application.ActivityLifecycleCallb
                     return;
                 }
 
-                // Jika pengguna berada dalam mana-mana aktiviti utama dan akaun telah dipadam di cloud:
-                Log.w(TAG, "Akaun " + uid + " tiada dalam database (dipadam/dibersihkan). Mengembalikan pengguna ke LoginActivity on-the-spot...");
-                handleAccountPurged(currentActivity);
+                // Elakkan salah faham semasa app baru dibina semula / cold start / reconnect:
+                // Jangan tendang pengguna keluar secara terburu-buru melainkan akaun Firebase Auth
+                // benar-benar tidak sah (invalid user / dipadam daripada Authentication oleh admin).
+                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+                if (user == null) {
+                    return;
+                }
+
+                user.reload().addOnFailureListener(e -> {
+                    if (e instanceof FirebaseAuthInvalidUserException) {
+                        Log.w(TAG, "Akaun " + uid + " telah dipadam di Firebase Auth. Mengembalikan pengguna ke LoginActivity...");
+                        handleAccountPurged(currentActivity);
+                    }
+                }).addOnSuccessListener(aVoid -> {
+                    // Jika Auth masih sah tetapi node users/{uid} kosong (contohnya baru login atau reset profil),
+                    // periksa sama ada pengguna masih mempunyai sesi tempatan sebelum menendang.
+                    // Jika profil tempatan masih wujud, kembalikan ke pangkalan data atau abaikan pengusiran palsu.
+                    Log.i(TAG, "Firebase Auth pengguna masih sah. Mengabaikan penyingkiran palsu.");
+                });
             }
 
             @Override
@@ -139,6 +155,12 @@ public class AccountSessionWatcher implements Application.ActivityLifecycleCallb
      * Kendalikan pengusiran pengguna ke halaman LoginActivity serta-merta.
      */
     public void handleAccountPurged(@Nullable Activity activity) {
+        Activity current = (activity != null) ? activity : getCurrentActivity();
+        if (isAuthScreen(current)) {
+            // Jika pengguna sudah berada di skrin login/register/auth, abaikan terus.
+            return;
+        }
+
         if (isKicking.getAndSet(true)) {
             return; // Elakkan panggilan bertindih
         }
@@ -147,7 +169,13 @@ public class AccountSessionWatcher implements Application.ActivityLifecycleCallb
 
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
-                Context context = (activity != null && !activity.isFinishing()) ? activity : application;
+                Activity act = getCurrentActivity();
+                if (isAuthScreen(act)) {
+                    isKicking.set(false);
+                    return;
+                }
+
+                Context context = (act != null && !act.isFinishing()) ? act : application;
 
                 // 1. Hentikan sebarang background service
                 try {
@@ -162,7 +190,7 @@ public class AccountSessionWatcher implements Application.ActivityLifecycleCallb
                 // 3. Padam data akaun tempatan
                 UserPrefs.clearAccountData(context);
 
-                // 4. Paparkan notis kepada pengguna
+                // 4. Paparkan notis hanya jika pengguna ditendang dari skrin utama (bukan skrin log masuk)
                 try {
                     Toast.makeText(application, R.string.account_deleted_notice, Toast.LENGTH_LONG).show();
                 } catch (Exception ignored) {}
@@ -173,8 +201,8 @@ public class AccountSessionWatcher implements Application.ActivityLifecycleCallb
                 context.startActivity(loginIntent);
 
                 // 6. Tutup aktiviti semasa jika masih hidup
-                if (activity != null && !activity.isFinishing() && !activity.isDestroyed()) {
-                    activity.finish();
+                if (act != null && !act.isFinishing() && !act.isDestroyed()) {
+                    act.finish();
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Ralat semasa mengembalikan pengguna ke Login: ", e);
@@ -183,12 +211,17 @@ public class AccountSessionWatcher implements Application.ActivityLifecycleCallb
     }
 
     private boolean isAuthScreen(Activity activity) {
-        if (activity == null) return false;
+        if (activity == null) return true;
+        String name = activity.getClass().getName();
         return activity instanceof LoginActivity ||
                 activity instanceof RegisterActivity ||
                 activity instanceof SplashActivity ||
                 activity instanceof GetStartedActivity ||
-                activity instanceof ForgotPasswordActivity;
+                activity instanceof ForgotPasswordActivity ||
+                name.contains("google") ||
+                name.contains("SignInHubActivity") ||
+                name.contains("auth") ||
+                name.contains("Credential");
     }
 
     @Nullable
@@ -204,7 +237,8 @@ public class AccountSessionWatcher implements Application.ActivityLifecycleCallb
         if (!isAuthScreen(activity)) {
             FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
             if (currentUser == null) {
-                handleAccountPurged(activity);
+                // Jangan panggil handleAccountPurged terus jika tiada pengguna log masuk,
+                // elakkan toast sesi tamat palsu semasa pengguna belum log masuk
                 return;
             }
 

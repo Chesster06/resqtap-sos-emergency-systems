@@ -4,6 +4,7 @@ import com.example.resqtap.R;
 import com.example.resqtap.app.BaseActivity;
 import com.example.resqtap.home.MainActivity;
 import com.example.resqtap.room.FirebaseRoomClient;
+import com.example.resqtap.utils.AvatarUtils;
 import com.example.resqtap.utils.ThemeUtils;
 import com.example.resqtap.utils.UserPrefs;
 
@@ -32,6 +33,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -42,6 +45,14 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.resqtap.contacts.EmergencyContact;
 import com.example.resqtap.sos.SosServiceStarter;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.GoogleAuthProvider;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputLayout;
@@ -70,6 +81,12 @@ import java.util.Map;
 public class LoginActivity extends BaseActivity {
     private static final String TAG = "LoginActivity";
 
+    private GoogleSignInClient googleSignInClient;
+    private ActivityResultLauncher<Intent> googleSignInLauncher;
+    private View btnSocialGoogle;
+    private View layoutGoogleBtnContent;
+    private View layoutGoogleLoading;
+
     /** Fungsi untuk shouldAnimateContentIn. */
     protected boolean shouldAnimateContentIn() {
         return false;
@@ -81,6 +98,30 @@ public class LoginActivity extends BaseActivity {
         ThemeUtils.applySavedNightMode(this);
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
+
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build();
+        googleSignInClient = GoogleSignIn.getClient(this, gso);
+
+        googleSignInLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                        setGoogleLoading(true);
+                        Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(result.getData());
+                        handleGoogleSignInResult(task);
+                    } else if (result.getResultCode() == RESULT_CANCELED) {
+                        setGoogleLoading(false);
+                        Toast.makeText(LoginActivity.this, R.string.toast_google_sign_in_cancelled, Toast.LENGTH_SHORT).show();
+                    } else {
+                        setGoogleLoading(false);
+                        Toast.makeText(LoginActivity.this, R.string.toast_google_sign_in_failed, Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
+
         setContentView(R.layout.activity_login);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -114,28 +155,14 @@ public class LoginActivity extends BaseActivity {
                     .addOnSuccessListener(snapshot -> {
                         if (snapshot != null && snapshot.exists()) {
                             applyUserSnapshot(snapshot);
-                            if (!UserPrefs.isPersonalInfoComplete(this)) {
-                                Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-                                intent.putExtra("complete_profile", true);
-                                intent.putExtra("uid", current.getUid());
-                                intent.putExtra("email", current.getEmail());
-                                startActivity(intent);
+                            if (UserPrefs.isPersonalInfoComplete(this)) {
+                                startActivity(new Intent(this, MainActivity.class));
                                 finish();
-                                return;
                             }
-                            startActivity(new Intent(this, MainActivity.class));
-                            finish();
-                        } else {
-                            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-                            intent.putExtra("complete_profile", true);
-                            intent.putExtra("uid", current.getUid());
-                            intent.putExtra("email", current.getEmail());
-                            startActivity(intent);
-                            finish();
                         }
                     })
                     .addOnFailureListener(e -> {
-
+                        // Jika semakan gagal, jangan terus ke RegisterActivity
                     });
         }
 
@@ -162,10 +189,28 @@ public class LoginActivity extends BaseActivity {
             });
         }
 
-        View btnSocialGoogle = findViewById(R.id.btn_social_google);
+        btnSocialGoogle = findViewById(R.id.btn_social_google);
+        layoutGoogleBtnContent = findViewById(R.id.layout_google_btn_content);
+        layoutGoogleLoading = findViewById(R.id.layout_google_loading);
         if (btnSocialGoogle != null) {
-            btnSocialGoogle.setOnClickListener(v -> Toast.makeText(this, "Google Sign-In is coming soon", Toast.LENGTH_SHORT).show());
+            btnSocialGoogle.setOnClickListener(v -> {
+                if (googleSignInClient != null && googleSignInLauncher != null) {
+                    setGoogleLoading(true);
+                    googleSignInClient.signOut().addOnCompleteListener(t -> {
+                        if (isFinishing() || isDestroyed()) return;
+                        try {
+                            Intent signInIntent = googleSignInClient.getSignInIntent();
+                            googleSignInLauncher.launch(signInIntent);
+                        } catch (Exception ex) {
+                            setGoogleLoading(false);
+                            Log.e(TAG, "Failed to launch Google Sign-In intent", ex);
+                            Toast.makeText(LoginActivity.this, R.string.toast_google_sign_in_failed, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            });
         }
+
 
         playLoginEntranceAnimations();
 
@@ -406,52 +451,29 @@ public class LoginActivity extends BaseActivity {
 
     /** Kendalikan animasi LoginEntranceAnimations. */
     private void playLoginEntranceAnimations() {
-
-        View header = null;
-        View formCard = null;
-        try {
-            android.widget.LinearLayout root = (android.widget.LinearLayout) findViewById(R.id.main);
-            if (root != null && root.getChildCount() > 0) {
-                header = root.getChildAt(0);
-            }
-            if (root != null && root.getChildCount() > 1) {
-
-                View scrollView = root.getChildAt(1);
-                if (scrollView instanceof androidx.core.widget.NestedScrollView) {
-                    androidx.core.widget.NestedScrollView nsv = (androidx.core.widget.NestedScrollView) scrollView;
-                    if (nsv.getChildCount() > 0) {
-                        View inner = nsv.getChildAt(0);
-                        if (inner instanceof android.widget.LinearLayout) {
-                            android.widget.LinearLayout innerLayout = (android.widget.LinearLayout) inner;
-                            if (innerLayout.getChildCount() > 0) {
-                                formCard = innerLayout.getChildAt(0);
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
+        View header = findViewById(R.id.header_area);
+        View authPanel = findViewById(R.id.auth_panel);
 
         if (header != null) {
             header.setAlpha(0f);
-            header.setTranslationY(-50f);
+            header.setTranslationY(-45f);
             header.animate()
                     .alpha(1f)
                     .translationY(0f)
-                    .setDuration(550)
-                    .setStartDelay(80)
+                    .setDuration(480)
+                    .setStartDelay(60)
                     .setInterpolator(new android.view.animation.DecelerateInterpolator())
                     .start();
         }
 
-        if (formCard != null) {
-            formCard.setAlpha(0f);
-            formCard.setTranslationY(80f);
-            formCard.animate()
+        if (authPanel != null) {
+            authPanel.setAlpha(0f);
+            authPanel.setTranslationY(90f);
+            authPanel.animate()
                     .alpha(1f)
                     .translationY(0f)
-                    .setDuration(600)
-                    .setStartDelay(250)
+                    .setDuration(520)
+                    .setStartDelay(140)
                     .setInterpolator(new android.view.animation.DecelerateInterpolator())
                     .start();
         }
@@ -598,6 +620,175 @@ public class LoginActivity extends BaseActivity {
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "signInWithEmailAndPassword failed. email=" + emailValue, e);
                     showAuthError(e, btnLogin, emailValue);
+                });
+    }
+
+    /** Kawal paparan progress loading pada butang Sign in with Google semasa proses pengesahan berjalan. */
+    private void setGoogleLoading(boolean loading) {
+        if (isFinishing() || isDestroyed()) return;
+        if (layoutGoogleBtnContent != null) {
+            layoutGoogleBtnContent.setVisibility(loading ? View.GONE : View.VISIBLE);
+        }
+        if (layoutGoogleLoading != null) {
+            layoutGoogleLoading.setVisibility(loading ? View.VISIBLE : View.GONE);
+            if (layoutGoogleLoading instanceof GoogleDotsLoadingView) {
+                if (loading) {
+                    ((GoogleDotsLoadingView) layoutGoogleLoading).start();
+                } else {
+                    ((GoogleDotsLoadingView) layoutGoogleLoading).stop();
+                }
+            }
+        }
+        if (btnSocialGoogle != null) {
+            btnSocialGoogle.setEnabled(!loading);
+            btnSocialGoogle.setAlpha(loading ? 0.75f : 1.0f);
+        }
+        MaterialButton btnLogin = findViewById(R.id.btn_login);
+        if (btnLogin != null) {
+            btnLogin.setEnabled(!loading);
+        }
+    }
+
+    /** Mengendalikan hasil daripada Google Sign-In Intent. */
+    private void handleGoogleSignInResult(Task<GoogleSignInAccount> completedTask) {
+        try {
+            GoogleSignInAccount account = completedTask.getResult(ApiException.class);
+            if (account != null && account.getIdToken() != null) {
+                firebaseAuthWithGoogle(account);
+            } else {
+                setGoogleLoading(false);
+                Toast.makeText(this, R.string.toast_google_sign_in_failed, Toast.LENGTH_SHORT).show();
+            }
+        } catch (ApiException e) {
+            setGoogleLoading(false);
+            Log.e(TAG, "Google sign in failed with code: " + e.getStatusCode(), e);
+            Toast.makeText(this, getString(R.string.toast_google_sign_in_failed) + " (" + e.getStatusCode() + ")", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** Sambungkan akaun Google dengan Firebase Auth. */
+    private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
+        AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
+        FirebaseAuth.getInstance().signInWithCredential(credential)
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        FirebaseUser user = task.getResult().getUser();
+                        if (user != null) {
+                            handlePostGoogleSignIn(user, acct);
+                        } else {
+                            setGoogleLoading(false);
+                            Toast.makeText(this, R.string.toast_login_failed, Toast.LENGTH_SHORT).show();
+                        }
+                    } else {
+                        setGoogleLoading(false);
+                        Exception e = task.getException();
+                        Log.e(TAG, "FirebaseAuthWithGoogle failed", e);
+                        String errMsg = e != null && e.getMessage() != null ? e.getMessage() : getString(R.string.toast_login_failed);
+                        Toast.makeText(this, errMsg, Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
+
+    /** Kendalikan semakan profil pengguna dan navigasi selepas berjaya log masuk Google. */
+    private void handlePostGoogleSignIn(FirebaseUser user, GoogleSignInAccount acct) {
+        String uid = user.getUid();
+        String email = user.getEmail() != null ? user.getEmail() : (acct.getEmail() != null ? acct.getEmail() : "");
+        UserPrefs.setUid(this, uid);
+        if (!email.isEmpty()) {
+            UserPrefs.setEmail(this, email);
+        }
+
+        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                .getReference("users")
+                .child(uid)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (snapshot != null && snapshot.exists()) {
+                        applyUserSnapshot(snapshot);
+                        final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
+                        if (!UserPrefs.isPersonalInfoComplete(this)) {
+                            final String googleToken = acct.getIdToken();
+                            user.delete().addOnCompleteListener(delTask -> {
+                                FirebaseAuth.getInstance().signOut();
+                                Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+                                intent.putExtra("complete_profile", true);
+                                intent.putExtra("from_google_sign_in", true);
+                                intent.putExtra("google_id_token", googleToken);
+                                intent.putExtra("google_photo_url", googlePhoto);
+                                intent.putExtra("uid", uid);
+                                intent.putExtra("email", email);
+                                startActivity(intent);
+                                finish();
+                            });
+                            return;
+                        }
+
+                        ensureNotificationsPermissionBestEffort();
+
+                        String sanitizedEmail = sanitizeEmailForDb(email);
+                        if (!sanitizedEmail.isEmpty()) {
+                            try {
+                                FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                                        .getReference("registeredEmails")
+                                        .child(sanitizedEmail)
+                                        .setValue(true);
+                            } catch (Exception ignored) {}
+                        }
+
+                        startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                        finish();
+                    } else {
+                        String displayName = acct.getDisplayName();
+                        if (displayName != null && !displayName.trim().isEmpty()) {
+                            String cleanName = displayName.trim();
+                            int spaceIdx = cleanName.indexOf(' ');
+                            if (spaceIdx > 0) {
+                                UserPrefs.setFirstName(LoginActivity.this, cleanName.substring(0, spaceIdx).trim());
+                                UserPrefs.setLastName(LoginActivity.this, cleanName.substring(spaceIdx + 1).trim());
+                            } else {
+                                UserPrefs.setFirstName(LoginActivity.this, cleanName);
+                                UserPrefs.setLastName(LoginActivity.this, "");
+                            }
+                            UserPrefs.setName(LoginActivity.this, cleanName);
+                        }
+
+                        // Padam nombor kad pengenalan dan telefon lama daripada sesi terdahulu
+                        UserPrefs.setIcNumber(LoginActivity.this, "");
+                        UserPrefs.setPhoneNumber(LoginActivity.this, "");
+
+                        // Pengguna baru: padam akaun Auth sementara supaya tidak wujud di Firebase Console selagi profil belum lengkap!
+                        final String googleToken = acct.getIdToken();
+                        final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
+                        user.delete().addOnCompleteListener(delTask -> {
+                            FirebaseAuth.getInstance().signOut();
+                            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+                            intent.putExtra("complete_profile", true);
+                            intent.putExtra("from_google_sign_in", true);
+                            intent.putExtra("google_id_token", googleToken);
+                            intent.putExtra("google_photo_url", googlePhoto);
+                            intent.putExtra("uid", uid);
+                            intent.putExtra("email", email);
+                            startActivity(intent);
+                            finish();
+                        });
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Failed to fetch user from DB after Google sign-in", e);
+                    final String googleToken = acct.getIdToken();
+                    final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
+                    user.delete().addOnCompleteListener(delTask -> {
+                        FirebaseAuth.getInstance().signOut();
+                        Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+                        intent.putExtra("complete_profile", true);
+                        intent.putExtra("from_google_sign_in", true);
+                        intent.putExtra("google_id_token", googleToken);
+                        intent.putExtra("google_photo_url", googlePhoto);
+                        intent.putExtra("uid", uid);
+                        intent.putExtra("email", email);
+                        startActivity(intent);
+                        finish();
+                    });
                 });
     }
 

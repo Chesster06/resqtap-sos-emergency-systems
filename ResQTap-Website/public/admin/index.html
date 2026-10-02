@@ -594,8 +594,18 @@
       <section id="usersView" class="view-section hidden">
         <div class="panel">
           <div class="panel-header">
-            <h3>Users</h3>
-            <span id="usersCount" class="muted"></span>
+            <div>
+              <h3>Users</h3>
+              <p class="muted" style="margin-top:2px; font-size:13px;">Semua akaun pengguna berdaftar dalam sistem (Online &amp; Luar Talian)</p>
+            </div>
+            <div class="table-actions-inline" style="display:flex; align-items:center; gap:12px;">
+              <div class="user-filter-pills" id="userFilterPills" style="display:inline-flex; gap:6px; background:var(--surface-muted, #f1f5f9); padding:4px; border-radius:8px;">
+                <button class="small-button is-active" data-user-filter="all" type="button" style="border:none; cursor:pointer;">All (<span id="userCountAll">0</span>)</button>
+                <button class="small-button" data-user-filter="online" type="button" style="border:none; cursor:pointer;">Online (<span id="userCountOnline">0</span>)</button>
+                <button class="small-button" data-user-filter="offline" type="button" style="border:none; cursor:pointer;">Offline (<span id="userCountOffline">0</span>)</button>
+              </div>
+              <span id="usersCount" class="muted"></span>
+            </div>
           </div>
           <div class="table-wrap">
             <table>
@@ -605,6 +615,7 @@
                   <th>Medical</th>
                   <th>Contacts</th>
                   <th>Rooms</th>
+                  <th>Status</th>
                   <th>Last Seen</th>
                   <th></th>
                 </tr>

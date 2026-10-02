@@ -29,7 +29,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
 import {
   purgeNonResqtapAuthAccounts,
-  deleteSingleAuthAccount
+  deleteSingleAuthAccount,
+  listAllAuthUsers
 } from "./admin_auth_bridge.js";
 
 const firebaseConfig = {
@@ -125,6 +126,10 @@ const els = {
   featureLegend: document.getElementById("featureLegend"),
   usersCount: document.getElementById("usersCount"),
   usersTableBody: document.getElementById("usersTableBody"),
+  userFilterPills: document.getElementById("userFilterPills"),
+  userCountAll: document.getElementById("userCountAll"),
+  userCountOnline: document.getElementById("userCountOnline"),
+  userCountOffline: document.getElementById("userCountOffline"),
   roomsCount: document.getElementById("roomsCount"),
   roomsTableBody: document.getElementById("roomsTableBody"),
   sosCount: document.getElementById("sosCount"),
@@ -828,6 +833,9 @@ const state = {
   activeView: "dashboard",
   search: "",
   dashboardRange: "today",
+  userFilter: "all",
+  authUsers: [],
+  authUsersPollTimer: null,
   users: {},
   rooms: {},
   roomTombstones: {},
@@ -1146,6 +1154,22 @@ function cleanupDataListeners() {
     window.clearInterval(state.aiChatCleanupTimer);
     state.aiChatCleanupTimer = null;
   }
+  if (state.authUsersPollTimer) {
+    window.clearInterval(state.authUsersPollTimer);
+    state.authUsersPollTimer = null;
+  }
+}
+
+async function loadAuthUsers() {
+  try {
+    const list = await listAllAuthUsers();
+    if (Array.isArray(list)) {
+      state.authUsers = list;
+      render();
+    }
+  } catch (err) {
+    console.warn("[ADMIN] Could not fetch Auth users via bridge:", err.message);
+  }
 }
 
 function subscribe(path, callback) {
@@ -1154,7 +1178,7 @@ function subscribe(path, callback) {
     (snapshot) => {
       callback(snapshot.val());
       state.lastSyncAt = Date.now();
-      setSyncStatus(`Online sync: ${new Date(state.lastSyncAt).toLocaleTimeString()}`);
+      setSyncStatus(`Live Sync: ${new Date(state.lastSyncAt).toLocaleTimeString()}`);
       render();
     },
     (error) => {
@@ -1168,6 +1192,8 @@ function subscribe(path, callback) {
 function startDataListeners() {
   cleanupDataListeners();
   setSyncStatus("Syncing");
+  loadAuthUsers();
+  state.authUsersPollTimer = window.setInterval(loadAuthUsers, 30000);
   subscribe("users", (value) => {
     state.users = asRecord(value);
   });
@@ -1246,13 +1272,47 @@ function getUserLastSeen(uid, user) {
 }
 
 function getUsers() {
-  return entries(state.users).map(([uid, user]) => ({
-    uid,
-    data: asRecord(user),
-    rooms: userRoomsFor(uid),
-    contacts: contactsFor(asRecord(user)),
-    lastSeen: getUserLastSeen(uid, asRecord(user))
-  }));
+  const map = new Map();
+
+  // 1. Masukkan semua akaun berdaftar daripada Firebase Authentication terlebih dahulu
+  (state.authUsers || []).forEach((authUser) => {
+    const uid = authUser.localId || authUser.uid;
+    if (!uid) return;
+    const email = authUser.email || "";
+    const name = authUser.displayName || (email ? email.split("@")[0] : "User");
+    const lastLogin = Number(authUser.lastLoginAt) || 0;
+    const createdAt = Number(authUser.createdAt) || 0;
+    map.set(uid, {
+      uid,
+      data: {
+        name,
+        email,
+        createdAt,
+        lastLoginAt: lastLogin
+      },
+      rooms: userRoomsFor(uid),
+      contacts: [],
+      lastSeen: lastLogin || createdAt || 0,
+      isAuthOnly: true
+    });
+  });
+
+  // 2. Gabungkan data profil lengkap daripada Realtime Database (RTDB)
+  entries(state.users).forEach(([uid, userVal]) => {
+    const rtdbData = asRecord(userVal);
+    const existing = map.get(uid);
+    const mergedData = existing ? { ...existing.data, ...rtdbData } : rtdbData;
+    map.set(uid, {
+      uid,
+      data: mergedData,
+      rooms: userRoomsFor(uid),
+      contacts: contactsFor(mergedData),
+      lastSeen: getUserLastSeen(uid, mergedData) || (existing ? existing.lastSeen : 0),
+      isAuthOnly: false
+    });
+  });
+
+  return Array.from(map.values());
 }
 
 function getRoomMembers(room) {
@@ -2081,7 +2141,7 @@ function getDashboardModel(range = state.dashboardRange) {
   return {
     rangeLabel: rangeLabel(range),
     totals: {
-      users: currentUsers,
+      users: users.length,
       communication: currentCommunication,
       emergency: currentEmergency
     },
@@ -3051,7 +3111,7 @@ function renderDashboard() {
 }
 
 function renderUsers() {
-  const rows = getUsers()
+  const allUsers = getUsers()
     .filter((user) => matchesSearch([
       user.uid,
       user.data.name,
@@ -3059,10 +3119,25 @@ function renderUsers() {
       user.data.publicId,
       user.data.phoneNumber,
       user.data.bloodType
-    ]))
+    ]));
+
+  const onlineCount = allUsers.filter((u) => Date.now() - u.lastSeen <= ONLINE_MS).length;
+  const offlineCount = allUsers.length - onlineCount;
+
+  if (els.userCountAll) els.userCountAll.textContent = allUsers.length;
+  if (els.userCountOnline) els.userCountOnline.textContent = onlineCount;
+  if (els.userCountOffline) els.userCountOffline.textContent = offlineCount;
+
+  const rows = allUsers
+    .filter((user) => {
+      const live = Date.now() - user.lastSeen <= ONLINE_MS;
+      if (state.userFilter === "online") return live;
+      if (state.userFilter === "offline") return !live;
+      return true;
+    })
     .sort((a, b) => b.lastSeen - a.lastSeen);
 
-  els.usersCount.textContent = `${rows.length} shown`;
+  els.usersCount.textContent = `${rows.length} shown (${allUsers.length} total)`;
   els.usersTableBody.innerHTML = rows.length ? rows.map((user) => {
     const roomCount = entries(user.rooms).length;
     const contactCount = user.contacts.length;
@@ -3085,7 +3160,8 @@ function renderUsers() {
         <td>${escapeHtml(medical)}</td>
         <td>${contactCount}</td>
         <td>${roomCount}</td>
-        <td>${pill(live ? "Online" : ageLabel(user.lastSeen), live ? "good" : "")}</td>
+        <td>${pill(live ? "Online" : "Offline", live ? "good" : "neutral")}</td>
+        <td>${user.lastSeen ? escapeHtml(ageLabel(user.lastSeen)) : '<span class="muted">Never</span>'}</td>
         <td>
           <div class="row-actions">
             <button class="small-button" data-action="view-user" data-uid="${escapeHtml(user.uid)}" data-force-profile="true" type="button">${icon("eye")}<span>View</span></button>
@@ -3094,7 +3170,7 @@ function renderUsers() {
         </td>
       </tr>
     `;
-  }).join("") : emptyRow(6, "No users match the current search.");
+  }).join("") : emptyRow(7, "No users match the current search or filter.");
 }
 
 function renderRooms() {
@@ -5339,10 +5415,13 @@ async function deleteUser(uid) {
   }
 
   // Padam akaun daripada Firebase Authentication secara langsung via Auth Bridge
+  // Selagi akaun Auth gagal dipadam, akaun tidak akan dibuang dari sistem
   try {
     await deleteSingleAuthAccount(uid);
   } catch (authErr) {
-    console.warn("[DELETE-USER] deleteSingleAuthAccount error:", authErr);
+    console.error("[DELETE-USER] Gagal memadam akaun daripada Firebase Auth:", authErr);
+    showToast("Gagal memadam akaun Authentication: " + (authErr.message || authErr));
+    return;
   }
 
   // Panggil API backend jika tersedia untuk padam Auth serta-merta
@@ -5398,6 +5477,7 @@ async function deleteUser(uid) {
   if (state.selected && state.selected.type === "user" && state.selected.id === uid) {
     state.selected = null;
   }
+  await loadAuthUsers();
   showToast("User deleted.");
 }
 
@@ -5652,23 +5732,33 @@ async function executeClearDatabase() {
     const authPurgedUids = new Set();
 
     // 1. Padam semua akaun bukan @resqtap daripada Firebase Authentication menggunakan Web Crypto Auth Bridge
-    try {
-      const authResult = await purgeNonResqtapAuthAccounts();
-      if (authResult && typeof authResult.deletedCount === "number") {
-        authPurgedCount = authResult.deletedCount;
-        if (Array.isArray(authResult.deletedUids)) {
-          authResult.deletedUids.forEach((id) => authPurgedUids.add(id));
-        }
+    // SYARAT MUTLAK: Selagi authentication tak berjaya dipadam, akaun tidak akan dibuang
+    const authResult = await purgeNonResqtapAuthAccounts();
+    if (authResult && typeof authResult.deletedCount === "number") {
+      authPurgedCount = authResult.deletedCount;
+      if (Array.isArray(authResult.deletedUids)) {
+        authResult.deletedUids.forEach((id) => authPurgedUids.add(id));
       }
-    } catch (authErr) {
-      console.warn("[CLEAR-DB] Auth Bridge direct purge notice:", authErr.message || authErr);
     }
 
-    // 2. Kumpul semua UID bukan @resqtap dari RTDB state & hasil Auth purge
+    // 2. Kumpul semua UID bukan @resqtap dari RTDB users, state.authUsers, & hasil Auth purge
     const users = state.users || {};
     const deleteUids = new Set(authPurgedUids);
     const resqtapUids = new Set();
 
+    // Periksa dari state.authUsers (termasuk akaun Google yang tiada profil RTDB)
+    (state.authUsers || []).forEach((u) => {
+      const email = text(u && u.email).trim().toLowerCase();
+      const uid = u.localId || u.uid;
+      if (!uid) return;
+      if (email.includes("@resqtap")) {
+        resqtapUids.add(uid);
+      } else {
+        deleteUids.add(uid);
+      }
+    });
+
+    // Periksa dari RTDB state.users
     entries(users).forEach(([uid, u]) => {
       const email = text(u && u.email).trim().toLowerCase();
       if (email.includes("@resqtap")) {
@@ -5800,6 +5890,9 @@ async function executeClearDatabase() {
     };
 
     await update(ref(db), updates);
+
+    // Muat semula senarai Auth Users serta-merta agar UI dikemaskini
+    await loadAuthUsers();
 
     closeClearDbModal();
     showToast(`Pangkalan Data & Firebase Auth dibersihkan! (${finalCount} akaun dipadam).`);
@@ -6153,6 +6246,20 @@ function bindEvents() {
     renderNotices();
     refreshIcons();
   });
+
+  if (els.userFilterPills) {
+    els.userFilterPills.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-user-filter]");
+      if (!btn) return;
+      state.userFilter = btn.dataset.userFilter || "all";
+      els.userFilterPills.querySelectorAll("button").forEach((b) => {
+        b.classList.toggle("is-active", b === btn);
+      });
+      renderUsers();
+      refreshIcons();
+    });
+  }
+
   els.livechatReplyInput.addEventListener("input", handleLivechatTypingInput);
   els.livechatReplyInput.addEventListener("blur", () => clearLivechatAdminTyping());
   els.livechatReplyForm.addEventListener("submit", sendAdminLivechatReply);

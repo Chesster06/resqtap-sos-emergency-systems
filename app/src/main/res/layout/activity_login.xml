@@ -239,11 +239,11 @@
                 app:backgroundTint="@color/brand_primary"
                 app:cornerRadius="26dp" />
 
-            <!-- Divider: Or Continue With -->
+            <!-- Divider: Or Continue With / or -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
+                android:layout_marginTop="20dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -259,9 +259,9 @@
                     android:layout_marginStart="14dp"
                     android:layout_marginEnd="14dp"
                     android:fontFamily="sans-serif"
-                    android:text="Or Continue With"
+                    android:text="@string/auth_divider_or"
                     android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
+                    android:textSize="12.5sp" />
 
                 <View
                     android:layout_width="0dp"
@@ -270,36 +270,52 @@
                     android:background="@color/divider" />
             </LinearLayout>
 
-            <!-- Social Login Button: Google (Light) -->
-            <LinearLayout
+            <!-- Sign in with Google Button with Progress Loading State -->
+            <FrameLayout
                 android:id="@+id/btn_social_google"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="52dp"
                 android:layout_marginTop="16dp"
                 android:background="@drawable/bg_social_login_btn"
                 android:clickable="true"
-                android:focusable="true"
-                android:gravity="center"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp">
+                android:focusable="true">
 
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:contentDescription="Google"
-                    android:src="@drawable/ic_logo_google" />
-
-                <TextView
+                <!-- Normal Content: Google Icon + Text -->
+                <LinearLayout
+                    android:id="@+id/layout_google_btn_content"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:fontFamily="sans-serif-bold"
-                    android:text="Google"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13.5sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="Google"
+                        android:src="@drawable/ic_logo_google" />
+
+                    <TextView
+                        android:id="@+id/tv_google_btn_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="@string/sign_in_with_google"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14.5sp" />
+                </LinearLayout>
+
+                <!-- Loading Content: Animated Google Colored Dots -->
+                <com.example.resqtap.auth.GoogleDotsLoadingView
+                    android:id="@+id/layout_google_loading"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="center"
+                    android:visibility="gone" />
+            </FrameLayout>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

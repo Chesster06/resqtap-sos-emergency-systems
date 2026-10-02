@@ -13,7 +13,20 @@
           "package_name": "com.example.resqtap"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "799083639090-3ono6n1f1aqhfcl7imqe4jkc35hk7fjc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.resqtap",
+            "certificate_hash": "0469ac1597ce1a431bd2db6e28af7e91ff3dd34f"
+          }
+        },
+        {
+          "client_id": "799083639090-cf764gbiqb99cl9m251s6lpd6e2j55hd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDZ8X0sDpjbaMLt20DVA4ocNOzw9rqy-Xw"
@@ -21,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "799083639090-cf764gbiqb99cl9m251s6lpd6e2j55hd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

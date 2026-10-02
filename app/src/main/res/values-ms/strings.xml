@@ -13,6 +13,11 @@
     <string name="login_go_register">Daftar Akaun</string>
     <string name="login_signup_prompt">Tiada akaun? Daftar</string>
     <string name="login_signup_action">Daftar</string>
+    <string name="auth_login_with">Atau Log Masuk Dengan</string>
+    <string name="auth_divider_or">atau</string>
+    <string name="sign_in_with_google">Log masuk dengan Google</string>
+    <string name="toast_google_sign_in_failed">Log masuk Google gagal</string>
+    <string name="toast_google_sign_in_cancelled">Log masuk Google dibatalkan</string>
     <string name="forgot_password">Lupa kata laluan?</string>
     <string name="forgot_password_title">Lupa Kata Laluan</string>
     <string name="forgot_password_desc">Masukkan emel anda untuk menerima pautan tetapan semula kata laluan.</string>
@@ -951,7 +956,7 @@
     <string name="friend_nickname_reset">Set Semula</string>
     <string name="friend_nickname_real_name_format">%1$s#%2$s • Rakan</string>
     <string name="friend_edit_nickname_desc">Ubah nama panggilan peribadi</string>
-    <string name="account_deleted_notice">Sesi anda telah tamat atau akaun telah dipadam oleh pentadbir.</string>
+    <string name="account_deleted_notice">Session Timeout</string>
     <!-- Medical Summary Dialog & Multi-Select -->
     <string name="medical_summary_title">Maklumat Perubatan</string>
     <string name="medical_summary_desc">Ringkasan kesihatan kecemasan anda</string>

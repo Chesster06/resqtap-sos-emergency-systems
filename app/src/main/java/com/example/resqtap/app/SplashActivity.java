@@ -88,27 +88,13 @@ public class SplashActivity extends BaseActivity {
                         return;
                     }
 
-                    // Semak juga jika node users/{uid} telah dibersihkan di RTDB
+                    // Semak juga jika profil pengguna wujud di RTDB
                     com.google.firebase.database.FirebaseDatabase.getInstance(com.example.resqtap.room.FirebaseRoomClient.DATABASE_URL)
                             .getReference("users")
                             .child(current.getUid())
                             .get()
                             .addOnCompleteListener(dbTask -> {
                                 if (isFinishing() || isDestroyed()) return;
-
-                                if (dbTask.isSuccessful() && dbTask.getResult() != null && !dbTask.getResult().exists()) {
-                                    // Akaun telah dipadam di cloud RTDB (contoh: Clear DB)
-                                    FirebaseAuth.getInstance().signOut();
-                                    UserPrefs.clearAccountData(SplashActivity.this);
-                                    Intent i = new Intent(SplashActivity.this, LoginActivity.class);
-                                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                                    startActivity(i);
-                                    try {
-                                        overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
-                                    } catch (Exception ignored) {}
-                                    finish();
-                                    return;
-                                }
 
                                 if (dbTask.isSuccessful() && dbTask.getResult() != null && dbTask.getResult().exists()) {
                                     UserPrefs.applyUserSnapshot(SplashActivity.this, dbTask.getResult());
@@ -117,7 +103,14 @@ public class SplashActivity extends BaseActivity {
                                 if (UserPrefs.isPersonalInfoComplete(SplashActivity.this)) {
                                     launchMain();
                                 } else {
-                                    launchMain();
+                                    // Jika pendaftaran belum selesai atau profil tidak lengkap
+                                    Intent i = new Intent(SplashActivity.this, LoginActivity.class);
+                                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                    startActivity(i);
+                                    try {
+                                        overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+                                    } catch (Exception ignored) {}
+                                    finish();
                                 }
                             });
                 });

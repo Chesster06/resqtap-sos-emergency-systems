@@ -16,6 +16,12 @@
     <string name="auth_login_headline">Login into your\naccount and setup</string>
     <string name="auth_signup_headline">Sign Up into your\naccount and setup</string>
     <string name="auth_login_with">Or Login With</string>
+    <string name="auth_divider_or">or</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="signing_in_with_google">Signing in with Google…</string>
+    <string name="default_web_client_id" translatable="false">799083639090-cf764gbiqb99cl9m251s6lpd6e2j55hd.apps.googleusercontent.com</string>
+    <string name="toast_google_sign_in_failed">Google sign in failed</string>
+    <string name="toast_google_sign_in_cancelled">Google sign in cancelled</string>
     <string name="forgot_password">Forgot password?</string>
     <string name="forgot_password_title">Forgot Password</string>
     <string name="forgot_password_desc">Enter your email to receive a password reset link.</string>
@@ -1159,7 +1165,7 @@ Terms Version: 1.0</string>
     <string name="friend_nickname_real_name_format">%1$s#%2$s • Friend</string>
     <string name="friend_nickname_updated">Nickname updated</string>
     <string name="friend_edit_nickname_desc">Edit private nickname</string>
-    <string name="account_deleted_notice">Your session has expired or your account was removed by administrator.</string>
+    <string name="account_deleted_notice">Session Timeout</string>
     <!-- Medical Summary Dialog & Multi-Select -->
     <string name="medical_summary_title">Medical Information</string>
     <string name="medical_summary_desc">Quick emergency health summary</string>
