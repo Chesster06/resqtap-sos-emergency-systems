@@ -323,14 +323,14 @@ public class SosProgressActivity extends BaseActivity {
 
         if (tvUpdatedTime != null && timeMs != null && timeMs > 0L) {
             SimpleDateFormat sdf = new SimpleDateFormat("h:mm a", Locale.getDefault());
-            tvUpdatedTime.setText("Updated " + sdf.format(new Date(timeMs)));
+            tvUpdatedTime.setText(getString(R.string.sos_progress_updated, sdf.format(new Date(timeMs))));
         }
 
         renderStepper(step);
     }
 
     private String formatResponderName(String raw) {
-        if (raw == null || raw.trim().isEmpty()) return "Admin Responder";
+        if (raw == null || raw.trim().isEmpty()) return getString(R.string.sos_responder_admin_label);
         String name = raw.trim();
         if (name.contains("@")) {
             String namePart = name.split("@")[0].replaceAll("[._-]", " ").trim();
@@ -508,10 +508,10 @@ public class SosProgressActivity extends BaseActivity {
         View btnClose = view.findViewById(R.id.btn_close_call_options);
 
         if (tvTitle != null) {
-            tvTitle.setText("Menghubungi Responder...");
+            tvTitle.setText(R.string.sos_call_connecting_title);
         }
         if (tvSub != null) {
-            tvSub.setText("Sila tunggu sebentar sementara responder admin menjawab " + ("voice".equals(callType) ? "Panggilan Suara" : "Panggilan Video") + " anda.");
+            tvSub.setText("voice".equals(callType) ? R.string.sos_call_connecting_wait_voice : R.string.sos_call_connecting_wait_video);
         }
         if (optVideo != null) optVideo.setVisibility(View.GONE);
         if (optVoice != null) optVoice.setVisibility(View.GONE);
@@ -544,7 +544,7 @@ public class SosProgressActivity extends BaseActivity {
                     if (callWaitDialog != null && callWaitDialog.isShowing()) {
                         callWaitDialog.dismiss();
                     }
-                    android.widget.Toast.makeText(SosProgressActivity.this, "Responder admin sedang sibuk atau tidak dapat menjawab panggilan buat masa ini.", android.widget.Toast.LENGTH_LONG).show();
+                    android.widget.Toast.makeText(SosProgressActivity.this, R.string.sos_call_admin_busy, android.widget.Toast.LENGTH_LONG).show();
                 }
             }
 

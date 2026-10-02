@@ -197,10 +197,10 @@ public class SosLivechatActivity extends BaseActivity {
         }
 
         // Quick chip shortcuts
-        bindQuickChip(R.id.chip_quick_1, "Responder di mana sekarang?");
-        bindQuickChip(R.id.chip_quick_2, "Berapa minit lagi sampai?");
-        bindQuickChip(R.id.chip_quick_3, "Saya berada di lokasi selamat.");
-        bindQuickChip(R.id.chip_quick_4, "Saya perlukan bantuan perubatan segera!");
+        bindQuickChip(R.id.chip_quick_1, getString(R.string.sos_livechat_chip_where));
+        bindQuickChip(R.id.chip_quick_2, getString(R.string.sos_livechat_chip_eta));
+        bindQuickChip(R.id.chip_quick_3, getString(R.string.sos_livechat_chip_safe_location));
+        bindQuickChip(R.id.chip_quick_4, getString(R.string.sos_livechat_chip_need_medical));
 
         // Typing listener
         etInput.addTextChangedListener(new TextWatcher() {
@@ -253,7 +253,8 @@ public class SosLivechatActivity extends BaseActivity {
 
         // Inisialisasi Meta sekiranya baru
         Map<String, Object> metaUpdates = new HashMap<>();
-        metaUpdates.put("topic", "🚨 Kes SOS (" + (cleanRoom.isEmpty() ? "Kecemasan" : cleanRoom) + ")");
+        String emergencyLabel = cleanRoom.isEmpty() ? getString(R.string.sos_topic_emergency) : cleanRoom;
+        metaUpdates.put("topic", getString(R.string.sos_topic_format, emergencyLabel));
         metaUpdates.put("status", "open");
         metaUpdates.put("userUid", myUid);
         metaUpdates.put("userName", myName);
@@ -319,7 +320,8 @@ public class SosLivechatActivity extends BaseActivity {
             if (text == null || text.trim().isEmpty()) {
                 // Check attachment
                 if (child.child("attachment").exists()) {
-                    text = "[Fail Lampiran: " + child.child("attachment").child("name").getValue(String.class) + "]";
+                    String attachName = child.child("attachment").child("name").getValue(String.class);
+                    text = getString(R.string.sos_attachment_file_format, attachName != null ? attachName : "");
                 } else {
                     continue;
                 }
@@ -386,7 +388,7 @@ public class SosLivechatActivity extends BaseActivity {
 
             // Sender Label
             TextView tvSender = new TextView(this);
-            tvSender.setText(senderName != null && !senderName.isEmpty() ? senderName : "Responder Admin");
+            tvSender.setText(senderName != null && !senderName.isEmpty() ? senderName : getString(R.string.sos_responder_admin_label));
             tvSender.setTextSize(11f);
             tvSender.setTextColor(Color.parseColor("#B80053"));
             tvSender.setTypeface(null, Typeface.BOLD);
@@ -525,7 +527,7 @@ public class SosLivechatActivity extends BaseActivity {
 
     private void initiateEmergencyCall(String callType) {
         if (roomCode.isEmpty() && alertId.isEmpty()) {
-            Toast.makeText(this, "Tiada kes SOS aktif dijumpai.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.sos_livechat_no_active_case, Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -573,10 +575,10 @@ public class SosLivechatActivity extends BaseActivity {
         View btnClose = view.findViewById(R.id.btn_close_call_options);
 
         if (tvTitle != null) {
-            tvTitle.setText("Menghubungi Responder...");
+            tvTitle.setText(R.string.sos_call_connecting_title);
         }
         if (tvSub != null) {
-            tvSub.setText("Sila tunggu sebentar sementara responder menjawab " + ("voice".equals(callType) ? "Panggilan Suara" : "Panggilan Video") + " anda.");
+            tvSub.setText("voice".equals(callType) ? R.string.sos_call_connecting_wait_voice : R.string.sos_call_connecting_wait_video);
         }
         if (optVideo != null) optVideo.setVisibility(View.GONE);
         if (optVoice != null) optVoice.setVisibility(View.GONE);
@@ -609,7 +611,7 @@ public class SosLivechatActivity extends BaseActivity {
                     if (callWaitDialog != null && callWaitDialog.isShowing()) {
                         callWaitDialog.dismiss();
                     }
-                    Toast.makeText(SosLivechatActivity.this, "Responder admin sedang sibuk atau tidak dapat menjawab panggilan buat masa ini.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(SosLivechatActivity.this, R.string.sos_call_admin_busy, Toast.LENGTH_LONG).show();
                 }
             }
 

@@ -532,5 +532,55 @@
     <string name="medical_summary_none_conditions">மருத்துவ நிலை எதுவும் பதிவு செய்யப்படவில்லை</string>
     <string name="select_allergies_title">ஒவ்வாமைகளைத் தேர்ந்தெடுக்கவும்</string>
     <string name="select_conditions_title">மருத்துவ நிலை / மருந்துகளைத் தேர்ந்தெடுக்கவும்</string>
+
+    <!-- Quick Emergency Preset Chips (Tamil) -->
+    <string name="chip_emergency_danger">🚨 காப்பாற்றுங்கள்! நான் ஆபத்தில் உள்ளேன்</string>
+    <string name="chip_emergency_medical">🚑 மருத்துவ உதவி தேவை</string>
+    <string name="chip_emergency_location">📍 எனது தற்போதைய இருப்பிடத்தை சரிபார்க்கவும்</string>
+    <string name="chip_emergency_safe">🟢 நான் இப்போது பாதுகாப்பாக இருக்கிறேன்</string>
+    <string name="chip_emergency_help_coming">🏃 கவலைப்பட வேண்டாம், நான் வந்து கொண்டிருக்கிறேன்</string>
+
+    <!-- SOS Call & Livechat Additional Resources (Tamil) -->
+    <string name="sos_call_options_title">அவசர அழைப்பு</string>
+    <string name="sos_call_options_subtitle">நிர்வாக பதிலளிப்பாளருடன் இணைக்க அழைப்பு முறையைத் தேர்ந்தெடுக்கவும்:</string>
+    <string name="sos_call_option_video">வீடியோ அழைப்பு</string>
+    <string name="sos_call_option_video_desc">நேரலை வீடியோ மற்றும் ஆடியோ மூலம் பதிலளிப்பாளரைத் தொடர்பு கொள்ளவும்</string>
+    <string name="sos_call_option_voice">குரல் அழைப்பு</string>
+    <string name="sos_call_option_voice_desc">கேமரா வீடியோ இல்லாமல் தெளிவான குரல் அழைப்பு</string>
+    <string name="sos_call_connecting_title">பதிலளிப்பாளரை இணைக்கிறது...</string>
+    <string name="sos_call_connecting_wait_voice">நிர்வாக பதிலளிப்பாளர் உங்கள் குரல் அழைப்பை ஏற்கும் வரை காத்திருக்கவும்.</string>
+    <string name="sos_call_connecting_wait_video">நிர்வாக பதிலளிப்பாளர் உங்கள் வீடியோ அழைப்பை ஏற்கும் வரை காத்திருக்கவும்.</string>
+    <string name="sos_call_admin_busy">நிர்வாக பதிலளிப்பாளர் தற்போது பிஸியாக உள்ளார் அல்லது பதிலளிக்க முடியவில்லை.</string>
+    <string name="sos_livechat_no_active_case">செயலில் உள்ள SOS வழக்கு எதுவும் காணப்படவில்லை.</string>
+    <string name="sos_livechat_input_hint">அவசர செய்தியைத் தட்டச்சு செய்க...</string>
+    <string name="sos_livechat_typing_status">பதிலளிப்பாளர் தட்டச்சு செய்கிறார்...</string>
+    <string name="sos_livechat_chip_where">பதிலளிப்பாளர் இப்போது எங்கே உள்ளார்?</string>
+    <string name="sos_livechat_chip_eta">வர இன்னும் எத்தனை நிமிடங்கள் ஆகும்?</string>
+    <string name="sos_livechat_chip_safe_location">நான் பாதுகாப்பான இடத்தில் இருக்கிறேன்.</string>
+    <string name="sos_livechat_chip_need_medical">எனக்கு உடனடியாக மருத்துவ உதவி தேவை!</string>
+    <string name="sos_login_required">SOS அனுப்ப உள்நுழையவும்</string>
+    <string name="sos_topic_emergency">அவசரம்</string>
+    <string name="sos_topic_format">🚨 SOS வழக்கு (%1$s)</string>
+    <string name="sos_attachment_file_format">[இணைக்கப்பட்ட கோப்பு: %1$s]</string>
+    <string name="sos_responder_admin_label">நிர்வாக பதிலளிப்பாளர்</string>
+    <string name="sos_progress_title">SOS அவசர நிலை முன்னேற்றம்</string>
+    <string name="sos_progress_subtitle">உங்கள் நேரலை SOS நிலவரம்</string>
+    <string name="sos_progress_active_badge">நிர்வாகியால் ஒதுக்கப்பட்டது</string>
+    <string name="sos_progress_action_status">நடவடிக்கை முன்னேற்ற நிலை</string>
+    <string name="sos_progress_updated">புதுப்பிக்கப்பட்டது %1$s</string>
+    <string name="sos_progress_step1_title">SOS எச்சரிக்கை ஒதுக்கப்பட்டது</string>
+    <string name="sos_progress_step1_desc">அவசரக் குழு எச்சரிக்கையைப் பெற்று பதிலளிப்பாளரை நியமித்தது</string>
+    <string name="sos_progress_step2_title">பதிலளிப்பாளர் வழியில் உள்ளார்</string>
+    <string name="sos_progress_step2_desc">அவசரப் பணியாளர் உங்கள் இருப்பிடத்தை நோக்கி வருகிறார்</string>
+    <string name="sos_progress_step3_title">சம்பவ இடத்திற்கு வந்தார்</string>
+    <string name="sos_progress_step3_desc">பதிலளிப்பாளர் சம்பவ இடத்திற்கு வந்து உதவி செய்கிறார்</string>
+    <string name="sos_progress_step4_title">வழக்கு தீர்க்கப்பட்டது</string>
+    <string name="sos_progress_step4_desc">அவசரநிலை பாதுகாப்பாக தீர்க்கப்பட்டு மூடப்பட்டது</string>
+    <string name="sos_progress_cancel_sos">அவசர SOS ஐ ரத்துசெய்</string>
+    <string name="sos_progress_cancelled">அவசர SOS ரத்துசெய்யப்பட்டது.</string>
+    <string name="sos_progress_responder_label">ஒதுக்கப்பட்ட பதிலளிப்பாளர்</string>
+    <string name="sos_progress_latest_note">சமீபத்திய நிலை குறிப்பு</string>
+    <string name="sos_progress_cannot_exit">SOS செயலில் உள்ளது. வெளியேற SOS எச்சரிக்கையை ரத்துசெய்யவும்.</string>
+    <string name="report_progress_stepper_title">முன்னேற்ற நிலை</string>
 </resources>
 

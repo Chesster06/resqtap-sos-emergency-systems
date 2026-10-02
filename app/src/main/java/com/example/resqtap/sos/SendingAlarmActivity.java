@@ -311,7 +311,7 @@ public class SendingAlarmActivity extends AppCompatActivity {
     private void initGpsAndDispatchSos() {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user == null) {
-            Toast.makeText(this, "Sila log masuk untuk menghantar SOS", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.sos_login_required, Toast.LENGTH_SHORT).show();
             finish();
             return;
         }

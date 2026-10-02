@@ -227,6 +227,8 @@
     <string name="sos_progress_title">SOS Emergency Progress</string>
     <string name="sos_progress_subtitle">Real-time status of your active SOS</string>
     <string name="sos_progress_active_badge">RESERVED BY ADMIN</string>
+    <string name="sos_progress_action_status">Action Progress Status</string>
+    <string name="sos_progress_updated">Updated %1$s</string>
     <string name="sos_progress_step1_title">SOS Alert Reserved</string>
     <string name="sos_progress_step1_desc">Emergency team received alert and assigned responder</string>
     <string name="sos_progress_step2_title">Responder En Route</string>
@@ -733,6 +735,7 @@ Terms Version: 1.0</string>
     <string name="report_location_permission_required">Location permission is required to submit a report.</string>
     <string name="report_progress_title">Report Progress</string>
     <string name="report_progress_desc">Real-time status of your incident report</string>
+    <string name="report_progress_stepper_title">Progress Status</string>
     <string name="report_id_label">Report ID</string>
     <string name="report_status_new">Submitted</string>
     <string name="report_status_reviewing">Under Review</string>
@@ -804,7 +807,7 @@ Terms Version: 1.0</string>
     <string name="support_livechat_ticket_claimed">Agent has been claimed your ticket</string>
     <string name="support_livechat_typing">typing</string>
     <string name="support_livechat_auto_reply">Hi! Thank you for contacting ResQTap Support. Your support request has been received successfully and is currently being reviewed by our support team. We are looking into the issue you reported so we can provide the right solution as soon as possible. Please wait for our response shortly.\n\nIf you have any additional information, such as screenshots, more details, or further clarification about this issue, you can reply to this ticket at any time to help us resolve your problem faster.\n\nIs there any additional information you would like to share about the issue you are facing? We appreciate your patience and cooperation throughout this process.</string>
-    <string name="support_livechat_waiting_agent_auto">Sementara menunggu Live Agent menyertai perbualan ini, anda boleh terus bertanyakan sebarang soalan atau berikan maklumat lanjut isu anda kepada saya. Pegawai sokongan kami akan segera membantu anda.</string>
+    <string name="support_livechat_waiting_agent_auto">While waiting for a Live Agent to join this chat, feel free to ask any questions or provide additional details about your issue. Our support team will assist you shortly.</string>
 
     <string name="ai_chat_title">ResQTap Assistant</string>
     <string name="ai_chat_subtitle">Ask about app features, settings, troubleshooting, and SOS tools.</string>
@@ -1141,11 +1144,35 @@ Terms Version: 1.0</string>
     <string name="room_chat_btn_desc">Room Messages</string>
 
     <!-- Quick Emergency Preset Chips -->
-    <string name="chip_emergency_danger">🚨 Tolong! Saya dalam bahaya</string>
-    <string name="chip_emergency_medical">🚑 Perlukan bantuan perubatan</string>
-    <string name="chip_emergency_location">📍 Sila semak lokasi semasa saya</string>
-    <string name="chip_emergency_safe">🟢 Saya sudah selamat sekarang</string>
-    <string name="chip_emergency_help_coming">🏃 Jangan risau, saya sedang menuju ke sana</string>
+    <string name="chip_emergency_danger">🚨 Help! I am in danger</string>
+    <string name="chip_emergency_medical">🚑 Need medical assistance</string>
+    <string name="chip_emergency_location">📍 Please check my current location</string>
+    <string name="chip_emergency_safe">🟢 I am safe now</string>
+    <string name="chip_emergency_help_coming">🏃 Don\'t worry, I am on my way</string>
+
+    <!-- SOS Call & Livechat Additional Resources -->
+    <string name="sos_call_options_title">Emergency Call</string>
+    <string name="sos_call_options_subtitle">Choose call mode to connect with the admin responder:</string>
+    <string name="sos_call_option_video">Video Call</string>
+    <string name="sos_call_option_video_desc">Connect with responder via live video and audio</string>
+    <string name="sos_call_option_voice">Voice Call</string>
+    <string name="sos_call_option_voice_desc">Clear voice call audio without camera video</string>
+    <string name="sos_call_connecting_title">Connecting to Responder...</string>
+    <string name="sos_call_connecting_wait_voice">Please wait while the admin responder answers your voice call.</string>
+    <string name="sos_call_connecting_wait_video">Please wait while the admin responder answers your video call.</string>
+    <string name="sos_call_admin_busy">Admin responder is currently busy or unable to answer calls at this moment.</string>
+    <string name="sos_livechat_no_active_case">No active SOS case found.</string>
+    <string name="sos_livechat_input_hint">Type emergency message...</string>
+    <string name="sos_livechat_typing_status">Responder is typing...</string>
+    <string name="sos_livechat_chip_where">Where is the responder now?</string>
+    <string name="sos_livechat_chip_eta">How many minutes until arrival?</string>
+    <string name="sos_livechat_chip_safe_location">I am in a safe location.</string>
+    <string name="sos_livechat_chip_need_medical">I need immediate medical assistance!</string>
+    <string name="sos_login_required">Please log in to send SOS</string>
+    <string name="sos_topic_emergency">Emergency</string>
+    <string name="sos_topic_format">🚨 SOS Case (%1$s)</string>
+    <string name="sos_attachment_file_format">[Attached File: %1$s]</string>
+    <string name="sos_responder_admin_label">Admin Responder</string>
 
     <!-- Introvert / Silent Emergency Response Features -->
     <string name="call_decline_with_chat">Can\'t talk? Chat instead</string>

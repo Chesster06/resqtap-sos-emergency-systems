@@ -533,5 +533,55 @@
     <string name="medical_summary_none_conditions">未记录疾病或用药</string>
     <string name="select_allergies_title">选择过敏项</string>
     <string name="select_conditions_title">选择健康状况 / 药物</string>
+
+    <!-- Quick Emergency Preset Chips (Chinese) -->
+    <string name="chip_emergency_danger">🚨 救命！我处于危险之中</string>
+    <string name="chip_emergency_medical">🚑 需要医疗救援</string>
+    <string name="chip_emergency_location">📍 请查看我的当前位置</string>
+    <string name="chip_emergency_safe">🟢 我现在已经安全了</string>
+    <string name="chip_emergency_help_coming">🏃 别担心，我正在赶过去</string>
+
+    <!-- SOS Call & Livechat Additional Resources (Chinese) -->
+    <string name="sos_call_options_title">紧急呼叫</string>
+    <string name="sos_call_options_subtitle">选择呼叫模式以联系管理员响应人员：</string>
+    <string name="sos_call_option_video">视频通话</string>
+    <string name="sos_call_option_video_desc">通过实时视频和音频联系响应人员</string>
+    <string name="sos_call_option_voice">语音通话</string>
+    <string name="sos_call_option_voice_desc">清晰语音通话，无需开启摄像头</string>
+    <string name="sos_call_connecting_title">正在连接响应人员...</string>
+    <string name="sos_call_connecting_wait_voice">管理员正在接听您的语音通话，请稍候。</string>
+    <string name="sos_call_connecting_wait_video">管理员正在接听您的视频通话，请稍候。</string>
+    <string name="sos_call_admin_busy">管理员当前忙碌或暂时无法接听电话。</string>
+    <string name="sos_livechat_no_active_case">未找到活跃的 SOS 紧急求助。</string>
+    <string name="sos_livechat_input_hint">输入紧急信息...</string>
+    <string name="sos_livechat_typing_status">响应人员正在输入...</string>
+    <string name="sos_livechat_chip_where">响应人员现在在哪里？</string>
+    <string name="sos_livechat_chip_eta">还需要几分钟到达？</string>
+    <string name="sos_livechat_chip_safe_location">我目前在安全位置。</string>
+    <string name="sos_livechat_chip_need_medical">我急需医疗援助！</string>
+    <string name="sos_login_required">请登录以发送 SOS 求救信号</string>
+    <string name="sos_topic_emergency">紧急</string>
+    <string name="sos_topic_format">🚨 SOS 案件 (%1$s)</string>
+    <string name="sos_attachment_file_format">[附件: %1$s]</string>
+    <string name="sos_responder_admin_label">管理员响应人员</string>
+    <string name="sos_progress_title">SOS 紧急救援进度</string>
+    <string name="sos_progress_subtitle">您的活跃 SOS 实时状态</string>
+    <string name="sos_progress_active_badge">管理员已接单</string>
+    <string name="sos_progress_action_status">行动进展状态</string>
+    <string name="sos_progress_updated">更新于 %1$s</string>
+    <string name="sos_progress_step1_title">SOS 警报已接单</string>
+    <string name="sos_progress_step1_desc">紧急团队已收到警报并指派救援人员</string>
+    <string name="sos_progress_step2_title">救援人员赶往中</string>
+    <string name="sos_progress_step2_desc">救援人员正赶往您的当前位置</string>
+    <string name="sos_progress_step3_title">已到达现场</string>
+    <string name="sos_progress_step3_desc">救援人员已到达现场并提供协助</string>
+    <string name="sos_progress_step4_title">案件已解决</string>
+    <string name="sos_progress_step4_desc">紧急情况已安全解决并结案</string>
+    <string name="sos_progress_cancel_sos">取消紧急 SOS</string>
+    <string name="sos_progress_cancelled">紧急 SOS 已被取消。</string>
+    <string name="sos_progress_responder_label">指定的救援人员</string>
+    <string name="sos_progress_latest_note">最新状态说明</string>
+    <string name="sos_progress_cannot_exit">SOS 当前处于活跃状态。请取消 SOS 警报以退出。</string>
+    <string name="report_progress_stepper_title">进展状态</string>
 </resources>
 

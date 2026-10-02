@@ -238,6 +238,8 @@
     <string name="sos_progress_title">Kemajuan Kecemasan SOS</string>
     <string name="sos_progress_subtitle">Status masa nyata kes SOS aktif anda</string>
     <string name="sos_progress_active_badge">DITEMPAH OLEH ADMIN</string>
+    <string name="sos_progress_action_status">Status Kemajuan Tindakan</string>
+    <string name="sos_progress_updated">Dikemas kini %1$s</string>
     <string name="sos_progress_step1_title">Amaran SOS Ditempah</string>
     <string name="sos_progress_step1_desc">Pasukan kecemasan menerima amaran dan menugaskan responder</string>
     <string name="sos_progress_step2_title">Responder Dalam Perjalanan</string>
@@ -535,6 +537,7 @@
     <string name="report_location_permission_required">Kebenaran lokasi diperlukan untuk menghantar laporan.</string>
     <string name="report_progress_title">Kemajuan Laporan</string>
     <string name="report_progress_desc">Status masa nyata bagi laporan insiden anda</string>
+    <string name="report_progress_stepper_title">Status Kemajuan</string>
     <string name="report_id_label">ID Laporan</string>
     <string name="report_status_new">Dihantar</string>
     <string name="report_status_reviewing">Sedang Disemak</string>
@@ -995,5 +998,84 @@
 
     <string name="security_change_password_modal_desc">Masukkan kata laluan semasa dan tetapkan kata laluan baharu.</string>
     <string name="security_password_too_short">Kata laluan baharu mestilah sekurang-kurangnya 6 aksara.</string>
+
+    <!-- SOS Call & Livechat Additional Resources (Bahasa Melayu) -->
+    <string name="sos_call_options_title">Panggilan Kecemasan</string>
+    <string name="sos_call_options_subtitle">Pilih mod panggilan untuk berhubung dengan responder admin:</string>
+    <string name="sos_call_option_video">Panggilan Video</string>
+    <string name="sos_call_option_video_desc">Hubungi responder dengan kamera video dan audio langsung</string>
+    <string name="sos_call_option_voice">Panggilan Suara</string>
+    <string name="sos_call_option_voice_desc">Panggilan suara audio jelas tanpa menggunakan video kamera</string>
+    <string name="sos_call_connecting_title">Menghubungi Responder...</string>
+    <string name="sos_call_connecting_wait_voice">Sila tunggu sebentar sementara responder admin menjawab panggilan suara anda.</string>
+    <string name="sos_call_connecting_wait_video">Sila tunggu sebentar sementara responder admin menjawab panggilan video anda.</string>
+    <string name="sos_call_admin_busy">Responder admin sedang sibuk atau tidak dapat menjawab panggilan buat masa ini.</string>
+    <string name="sos_livechat_no_active_case">Tiada kes SOS aktif dijumpai.</string>
+    <string name="sos_livechat_input_hint">Tulis mesej kecemasan...</string>
+    <string name="sos_livechat_typing_status">Responder sedang menaip...</string>
+    <string name="sos_livechat_chip_where">Responder di mana sekarang?</string>
+    <string name="sos_livechat_chip_eta">Berapa minit lagi sampai?</string>
+    <string name="sos_livechat_chip_safe_location">Saya berada di lokasi selamat.</string>
+    <string name="sos_livechat_chip_need_medical">Saya perlukan bantuan perubatan segera!</string>
+    <string name="sos_login_required">Sila log masuk untuk menghantar SOS</string>
+    <string name="sos_topic_emergency">Kecemasan</string>
+    <string name="sos_topic_format">🚨 Kes SOS (%1$s)</string>
+    <string name="sos_attachment_file_format">[Fail Lampiran: %1$s]</string>
+    <string name="sos_responder_admin_label">Responder Admin</string>
+
+    <!-- Aligned Missing Keys (Bahasa Melayu) -->
+    <string name="auth_login_headline">Log masuk ke akaun\ndan mulakan persediaan</string>
+    <string name="auth_signup_headline">Daftar akaun baharu\ndan mulakan persediaan</string>
+    <string name="signing_in_with_google">Mendaftar masuk dengan Google…</string>
+    <string name="toast_email_already_exists">Emel ini telah pun didaftarkan.</string>
+    <string name="toast_email_not_registered">Emel ini belum didaftarkan.</string>
+    <string name="speech_to_text_title">Pertuturan ke Teks</string>
+    <string name="speech_to_text_subtitle">Pilih bahasa, tekan rakam, dan perkataan anda akan dipaparkan di bawah.</string>
+    <string name="speech_to_text_ready">Sedia</string>
+    <string name="speech_to_text_recording">Merakam</string>
+    <string name="speech_to_text_processing">Memproses</string>
+    <string name="speech_to_text_captured">Berjaya Dirakam</string>
+    <string name="speech_to_text_hold">Tekan untuk merakam</string>
+    <string name="speech_to_text_listening">Berhenti</string>
+    <string name="speech_to_text_realtime">Pengesanan masa nyata</string>
+    <string name="speech_to_text_listening_placeholder">Mendengar...</string>
+    <string name="speech_to_text_transcript">Transkrip</string>
+    <string name="speech_to_text_placeholder">Teks pertuturan anda akan muncul di sini.</string>
+    <string name="speech_to_text_permission">Kebenaran mikrofon diperlukan untuk pertuturan ke teks.</string>
+    <string name="speech_to_text_unavailable">Pengecaman pertuturan tidak disokong pada peranti ini.</string>
+    <string name="map_traffic_title">Maklumat Trafik</string>
+    <string name="map_traffic_subtitle">Papar keadaan jalan raya langsung</string>
+    <string name="emergency_contacts_list_desc">Pastikan kenalan dipercayai bersiap sedia untuk panggilan dan amaran SOS.</string>
+    <string name="emergency_contacts_safe_badge">Sedia SOS</string>
+    <string name="emergency_contacts_primary_label">Kenalan Dipercayai</string>
+    <string name="settings_description">Sesuaikan paparan, suara pertuturan, dan amaran ResQTap anda.</string>
+    <string name="settings_light_mode_desc">Gunakan paparan lebih cerah pada waktu siang.</string>
+    <string name="settings_vibration_desc">Pilih tahap getaran kecemasan yang bersesuaian.</string>
+    <string name="settings_tts_desc">Aktifkan perkhidmatan kebolehcapaian Android TalkBack.</string>
+    <string name="settings_fullscreen_quick_message_desc">Papar mesej pantas dalam paparan skrin penuh.</string>
+    <string name="low_battery_alert_desc">Beri amaran awal sebelum bateri telefon kehabisan.</string>
+    <string name="battery_saver_mode_desc">Aktifkan Penjimat Bateri Sistem Android.</string>
+    <string name="room_password">Kata Laluan Bilik</string>
+    <string name="room_hub_info_title">Kongsi lokasi langsung dengan selamat</string>
+    <string name="room_hub_info_body">Cipta bilik peribadi untuk kenalan rapat anda atau sertai bilik dengan ID Bilik dan kata laluan.</string>
+    <string name="room_hub_form_title">Akses bilik</string>
+    <string name="room_hub_form_subtitle">Gunakan ID Bilik yang mudah diingati atau biarkan kosong untuk jana automatik.</string>
+    <string name="room_hub_chip_private">Peribadi</string>
+    <string name="room_hub_chip_live">Penjejakan langsung</string>
+    <string name="room_hub_visual_title">Kumpulan langsung</string>
+    <string name="room_hub_visual_subtitle">Ahli berkongsi lokasi hanya di dalam bilik ini.</string>
+    <string name="room_hub_secure_note">Kata laluan bilik mengehadkan akses hanya kepada orang yang anda percayai.</string>
+    <string name="toast_room_password_required">Sila masukkan kata laluan bilik.</string>
+    <string name="toast_incorrect_room_password">Kata laluan bilik tidak tepat.</string>
+    <string name="login_header_title">Log masuk untuk sentiasa dilindungi bersama keluarga dan jaringan keselamatan anda.</string>
+    <string name="login_header_subtitle">Akses hab keselamatan SOS 24/7 dan rangkaian kecemasan anda.</string>
+    <string name="edit_profile_title">Edit Profil</string>
+    <string name="edit_profile_display">Paparan</string>
+    <string name="edit_profile_explore_benefits">Terokai Kelebihan ›</string>
+    <string name="edit_profile_private_info">Maklumat Peribadi</string>
+    <string name="hint_weight">Berat (kg)</string>
+    <string name="hint_height">Tinggi (cm)</string>
+    <string name="hint_birthdate">Tarikh Lahir</string>
+    <string name="friend_nickname_updated">Nama panggilan berjaya dikemaskini</string>
 </resources>
 

@@ -531,13 +531,18 @@ function initKatupChatbot() {
 
     if (chatInput) {
       chatInput.placeholder = lang === "bm"
-        ? "Tanya apa-apa... / Ask anything..."
+        ? "Tanya apa-apa tentang ResQTap..."
         : "Ask anything about ResQTap...";
     }
     if (helperLabel) {
       helperLabel.textContent = lang === "bm"
-        ? "Cadangan Soalan / Quick Questions"
+        ? "Cadangan Soalan Pintar"
         : "Quick Suggestions";
+    }
+    if (welcomeMsg) {
+      welcomeMsg.innerHTML = lang === "bm"
+        ? 'Hai, saya <strong>Katup</strong>, pembantu pintar ResQTap. Tanya saya apa-apa tentang fungsi SOS, perkongsian lokasi, atau bilik kecemasan.'
+        : 'Hello, I am <strong>Katup</strong>, ResQTap AI assistant. Ask me anything about SOS features, live location sharing, or emergency rooms.';
     }
 
     if (suggestions) {
