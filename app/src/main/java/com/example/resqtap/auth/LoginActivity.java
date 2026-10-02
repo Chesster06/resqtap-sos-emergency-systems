@@ -162,11 +162,7 @@ public class LoginActivity extends BaseActivity {
             });
         }
 
-        View btnSocialApple = findViewById(R.id.btn_social_apple);
         View btnSocialGoogle = findViewById(R.id.btn_social_google);
-        if (btnSocialApple != null) {
-            btnSocialApple.setOnClickListener(v -> Toast.makeText(this, "Apple Sign-In is coming soon", Toast.LENGTH_SHORT).show());
-        }
         if (btnSocialGoogle != null) {
             btnSocialGoogle.setOnClickListener(v -> Toast.makeText(this, "Google Sign-In is coming soon", Toast.LENGTH_SHORT).show());
         }

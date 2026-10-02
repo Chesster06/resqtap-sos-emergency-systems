@@ -5340,8 +5340,10 @@ async function deleteUser(uid) {
 
   // Padam akaun daripada Firebase Authentication secara langsung via Auth Bridge
   try {
-    deleteSingleAuthAccount(uid).catch(() => {});
-  } catch (ignored) {}
+    await deleteSingleAuthAccount(uid);
+  } catch (authErr) {
+    console.warn("[DELETE-USER] deleteSingleAuthAccount error:", authErr);
+  }
 
   // Panggil API backend jika tersedia untuk padam Auth serta-merta
   try {
@@ -5639,52 +5641,32 @@ async function executeClearDatabase() {
 
   if (confirmBtn) {
     confirmBtn.disabled = true;
-    confirmBtn.innerHTML = `<i data-lucide="loader-2" class="spin" aria-hidden="true"></i><span>Membersihkan...</span>`;
+    confirmBtn.innerHTML = `<i data-lucide="loader-2" class="spin" aria-hidden="true"></i><span>Membersihkan DB & Auth...</span>`;
     if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();
   }
   if (cancelBtn) cancelBtn.disabled = true;
   if (closeBtn) closeBtn.disabled = true;
 
   try {
-    let apiSuccess = false;
-    let apiData = null;
+    let authPurgedCount = 0;
+    const authPurgedUids = new Set();
 
-    // 1. Tulis tugasan pembersihan ke RTDB (untuk ditangkap oleh RTDB Watcher & Cloud Functions)
+    // 1. Padam semua akaun bukan @resqtap daripada Firebase Authentication menggunakan Web Crypto Auth Bridge
     try {
-      await update(ref(db), {
-        "admin_tasks/clear_database": {
-          requestedBy: state.currentUser.uid,
-          requestedAt: Date.now(),
-          status: "pending"
+      const authResult = await purgeNonResqtapAuthAccounts();
+      if (authResult && typeof authResult.deletedCount === "number") {
+        authPurgedCount = authResult.deletedCount;
+        if (Array.isArray(authResult.deletedUids)) {
+          authResult.deletedUids.forEach((id) => authPurgedUids.add(id));
         }
-      });
-    } catch (taskErr) {
-      console.warn("Could not write admin_tasks/clear_database:", taskErr);
-    }
-
-    // 2. Cuba panggil endpoint backend server.js terlebih dahulu (untuk padam RTDB & Auth sekali gus)
-    try {
-      const res = await fetch("/api/admin/clear-database", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-      });
-      if (res.ok) {
-        apiData = await res.json();
-        apiSuccess = true;
       }
-    } catch (fetchErr) {
-      console.warn("Backend server API not reachable, falling back to client-side RTDB cleanup:", fetchErr);
+    } catch (authErr) {
+      console.warn("[CLEAR-DB] Auth Bridge direct purge notice:", authErr.message || authErr);
     }
 
-    if (apiSuccess && apiData) {
-      closeClearDbModal();
-      showToast(apiData.message || `Database dibersihkan (${apiData.deleteCount || 0} akaun dipadam).`);
-      return;
-    }
-
-    // 3. Client-side Fallback (jika diakses terus via Firebase Hosting / static host)
+    // 2. Kumpul semua UID bukan @resqtap dari RTDB state & hasil Auth purge
     const users = state.users || {};
-    const deleteUids = new Set();
+    const deleteUids = new Set(authPurgedUids);
     const resqtapUids = new Set();
 
     entries(users).forEach(([uid, u]) => {
@@ -5715,9 +5697,9 @@ async function executeClearDatabase() {
       }
     });
 
-    if (deleteUids.size === 0 && !hasNonResqtapEmails) {
+    if (deleteUids.size === 0 && !hasNonResqtapEmails && authPurgedCount === 0) {
       closeClearDbModal();
-      showToast("Tiada akaun selain @resqtap untuk dipadam. Pangkalan data sudah bersih.");
+      showToast("Tiada akaun selain @resqtap untuk dipadam. Pangkalan data dan Authentication sudah bersih.");
       return;
     }
 
@@ -5737,7 +5719,7 @@ async function executeClearDatabase() {
       updates[`admin_user_deletions/${uid}`] = {
         deletedBy: state.currentUser.uid,
         deletedAt: serverTimestamp(),
-        status: "pending"
+        status: "completed"
       };
     });
 
@@ -5789,43 +5771,41 @@ async function executeClearDatabase() {
       }
     });
 
+    // Tandakan admin_tasks/clear_database completed
+    updates["admin_tasks/clear_database"] = {
+      requestedBy: state.currentUser.uid,
+      requestedAt: Date.now(),
+      status: "completed",
+      completedAt: serverTimestamp(),
+      summary: `Pembersihan selesai: ${Math.max(deleteUids.size, authPurgedCount)} akaun dipadam.`
+    };
+
     // Log client-side audit record
     const auditLogId = `audit_${Date.now()}`;
     const auditTimestamp = serverTimestamp();
+    const finalCount = Math.max(deleteUids.size, authPurgedCount);
     updates[`admin_audit_logs/${auditLogId}`] = {
       id: auditLogId,
       type: "Database Reset",
       action: "clear_database",
       triggeredBy: (state.currentUser && (state.currentUser.email || state.currentUser.uid)) || "Admin Session",
-      accountsDeleted: deleteUids.size,
+      accountsDeleted: finalCount,
       roomsDeleted: 0,
       messagesRemoved: 0,
       sosAlertsRemoved: 0,
       callsRemoved: 0,
-      details: `Sesi pembersihan database (client): ${deleteUids.size} akaun selain @resqtap telah dipadam.`,
+      details: `Sesi pembersihan database & auth: ${finalCount} akaun selain @resqtap telah dipadam sepenuhnya.`,
       timestamp: Date.now(),
       createdAt: auditTimestamp
     };
 
     await update(ref(db), updates);
 
-    // 4. Padam akaun bukan @resqtap dari Firebase Authentication secara langsung via Web Crypto Auth Bridge
-    let authPurgedCount = 0;
-    try {
-      const authResult = await purgeNonResqtapAuthAccounts();
-      if (authResult && typeof authResult.deletedCount === "number") {
-        authPurgedCount = authResult.deletedCount;
-      }
-    } catch (authErr) {
-      console.warn("Auth Bridge direct purge notice:", authErr.message || authErr);
-    }
-
     closeClearDbModal();
-    const finalCount = Math.max(deleteUids.size, authPurgedCount);
     showToast(`Pangkalan Data & Firebase Auth dibersihkan! (${finalCount} akaun dipadam).`);
   } catch (err) {
-    console.error("Gagal membersihkan database:", err);
-    showToast("Gagal membersihkan database: " + (err.message || err));
+    console.error("Gagal membersihkan database & auth:", err);
+    showToast("Gagal membersihkan: " + (err.message || err));
   } finally {
     if (confirmBtn) {
       confirmBtn.disabled = false;

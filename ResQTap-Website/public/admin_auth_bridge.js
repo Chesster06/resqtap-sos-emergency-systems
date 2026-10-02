@@ -63,7 +63,7 @@ function base64Url(strOrBuf) {
     for (let i = 0; i < bytes.byteLength; i++) {
       binary += String.fromCharCode(bytes[i]);
     }
-    base64 = btoa(binary);
+    b64 = btoa(binary);
   }
   return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
@@ -77,7 +77,8 @@ export async function getAdminAccessToken() {
     return cachedAccessToken;
   }
 
-  const cryptoSubtle = window.crypto && window.crypto.subtle;
+  const cryptoSubtle = (typeof window !== "undefined" && window.crypto && window.crypto.subtle) ||
+                       (typeof globalThis !== "undefined" && globalThis.crypto && globalThis.crypto.subtle);
   if (!cryptoSubtle) {
     throw new Error("Pelayar tidak menyokong Web Crypto API.");
   }

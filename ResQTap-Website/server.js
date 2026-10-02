@@ -34,6 +34,31 @@ async function startRtdbTaskWatcher() {
     const db = adminInstance.database();
     console.log('[WATCHER] RTDB Task Watcher active: listening for admin tasks & user deletions...');
 
+    // Heartbeat reporting for admin dashboard
+    const heartbeatRef = db.ref('system_status/auth_service');
+    try {
+      heartbeatRef.onDisconnect().update({
+        status: 'offline',
+        lastSeen: adminInstance.database.ServerValue.TIMESTAMP
+      });
+      const sendHeartbeat = async () => {
+        try {
+          await heartbeatRef.update({
+            status: 'online',
+            lastPing: Date.now(),
+            pid: process.pid,
+            version: '1.1.0'
+          });
+        } catch (hbErr) {
+          // ignore transient errors
+        }
+      };
+      await sendHeartbeat();
+      setInterval(sendHeartbeat, 25000);
+    } catch (e) {
+      console.warn('[WATCHER] Heartbeat init warning:', e.message);
+    }
+
     // 1. Listen for Clear Database requests
     db.ref('admin_tasks/clear_database').on('value', async (snapshot) => {
       const task = snapshot.val();
@@ -58,8 +83,8 @@ async function startRtdbTaskWatcher() {
       }
     });
 
-    // 2. Listen for individual user deletion requests
-    db.ref('admin_user_deletions').on('child_added', async (snapshot) => {
+    // 2. Handler for individual user deletion requests
+    const handleUserDeletion = async (snapshot) => {
       const uid = snapshot.key;
       const data = snapshot.val();
       if (data && data.status === 'pending') {
@@ -80,7 +105,10 @@ async function startRtdbTaskWatcher() {
           });
         }
       }
-    });
+    };
+
+    db.ref('admin_user_deletions').on('child_added', handleUserDeletion);
+    db.ref('admin_user_deletions').on('child_changed', handleUserDeletion);
   } catch (err) {
     console.error('[WATCHER] Could not start RTDB task watcher:', err.message);
   }
