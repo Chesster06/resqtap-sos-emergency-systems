@@ -70,10 +70,10 @@ public final class AccountDeletionUtils {
         }
     }
 
-    /** Dialog minta password untuk re-authenticate sebelum padam. */
+    /** Dialog minta pengesahan dengan menaip 'DELETE' sebelum padam. */
     private static void showReauthDialog(Activity activity, ExecutorService executor) {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        if (user == null || user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+        if (user == null) {
             Toast.makeText(activity, R.string.delete_account_requires_relogin, Toast.LENGTH_LONG).show();
             return;
         }
@@ -90,40 +90,61 @@ public final class AccountDeletionUtils {
                 d.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
             }
 
-            android.widget.EditText passwordInput = content.findViewById(R.id.et_password);
+            android.widget.EditText confirmInput = content.findViewById(R.id.et_password);
             android.view.View cancel = content.findViewById(R.id.btn_cancel);
             if (cancel != null) cancel.setOnClickListener(v -> d.dismiss());
 
             android.view.View confirm = content.findViewById(R.id.btn_confirm_delete);
             if (confirm != null) {
+                // Disable button initially until 'DELETE' is typed
+                confirm.setEnabled(false);
+                confirm.setAlpha(0.5f);
+
+                if (confirmInput != null) {
+                    confirmInput.addTextChangedListener(new android.text.TextWatcher() {
+                        @Override
+                        public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+                        @Override
+                        public void onTextChanged(CharSequence s, int start, int before, int count) {
+                            String txt = s != null ? s.toString().trim() : "";
+                            boolean matches = "DELETE".equalsIgnoreCase(txt);
+                            confirm.setEnabled(matches);
+                            confirm.setAlpha(matches ? 1.0f : 0.5f);
+                        }
+
+                        @Override
+                        public void afterTextChanged(android.text.Editable s) {}
+                    });
+                }
+
                 confirm.setOnClickListener(v -> {
-                    String password = (passwordInput != null && passwordInput.getText() != null)
-                            ? passwordInput.getText().toString().trim() : "";
-                    if (password.isEmpty()) {
-                        Toast.makeText(activity, R.string.delete_account_password_hint, Toast.LENGTH_SHORT).show();
+                    String typed = (confirmInput != null && confirmInput.getText() != null)
+                            ? confirmInput.getText().toString().trim() : "";
+                    if (!"DELETE".equalsIgnoreCase(typed)) {
+                        Toast.makeText(activity, R.string.delete_account_match_error, Toast.LENGTH_SHORT).show();
                         return;
                     }
                     d.dismiss();
                     Toast.makeText(activity, R.string.toast_processing, Toast.LENGTH_SHORT).show();
-                    executor.execute(() -> reauthAndDelete(activity, executor, user, password));
+                    executor.execute(() -> executeAccountDeletion(activity, user));
                 });
             }
 
             d.show();
         } catch (Exception e) {
-            TextInputLayout passwordLayout = new TextInputLayout(activity);
-            passwordLayout.setHint(activity.getString(R.string.delete_account_password_hint));
-            passwordLayout.setEndIconMode(TextInputLayout.END_ICON_PASSWORD_TOGGLE);
-            passwordLayout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE);
+            TextInputLayout confirmLayout = new TextInputLayout(activity);
+            confirmLayout.setHint(activity.getString(R.string.delete_account_password_hint));
+            confirmLayout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE);
 
-            TextInputEditText passwordInput = new TextInputEditText(passwordLayout.getContext());
-            passwordInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-            passwordLayout.addView(passwordInput);
+            TextInputEditText confirmInput = new TextInputEditText(confirmLayout.getContext());
+            confirmInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+            confirmLayout.addView(confirmInput);
 
             FrameLayout container = new FrameLayout(activity);
             int pad = (int) (20 * activity.getResources().getDisplayMetrics().density);
             container.setPadding(pad, pad, pad, 0);
-            container.addView(passwordLayout, new FrameLayout.LayoutParams(
+            container.addView(confirmLayout, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
             new MaterialAlertDialogBuilder(activity)
@@ -132,40 +153,33 @@ public final class AccountDeletionUtils {
                     .setView(container)
                     .setNegativeButton(android.R.string.cancel, (d, w) -> d.dismiss())
                     .setPositiveButton(R.string.delete_account_reauth_action, (d, w) -> {
-                        String password = passwordInput.getText() != null
-                                ? passwordInput.getText().toString().trim() : "";
-                        if (password.isEmpty()) {
-                            Toast.makeText(activity, R.string.delete_account_password_hint, Toast.LENGTH_SHORT).show();
+                        String typed = confirmInput.getText() != null
+                                ? confirmInput.getText().toString().trim() : "";
+                        if (!"DELETE".equalsIgnoreCase(typed)) {
+                            Toast.makeText(activity, R.string.delete_account_match_error, Toast.LENGTH_SHORT).show();
                             return;
                         }
                         Toast.makeText(activity, R.string.toast_processing, Toast.LENGTH_SHORT).show();
-                        executor.execute(() -> reauthAndDelete(activity, executor, user, password));
+                        executor.execute(() -> executeAccountDeletion(activity, user));
                     })
                     .show();
         }
     }
 
-    /** Re-authenticate -> RTDB wipe -> Auth delete -> stop services + redirect. */
-    private static void reauthAndDelete(Activity activity, ExecutorService executor,
-                                         FirebaseUser user, String password) {
+    /** RTDB wipe -> Auth delete -> Google signout -> stop services + redirect. */
+    private static void executeAccountDeletion(Activity activity, FirebaseUser user) {
         try {
-            // 1. Re-authenticate pengguna
-            Tasks.await(user.reauthenticate(
-                    EmailAuthProvider.getCredential(user.getEmail(), password)),
-                    15, TimeUnit.SECONDS);
-            Log.i(TAG, "Re-authentication successful");
-
             String uid = user.getUid() != null ? user.getUid().trim() : "";
             if (uid.isEmpty()) uid = UserPrefs.getUid(activity);
             final String finalUid = uid;
 
-            // 2. Hentikan tracking bilik segera supaya service tidak hantar presence/lokasi lagi
+            // 1. Hentikan tracking bilik segera supaya service tidak hantar presence/lokasi lagi
             try {
                 com.example.resqtap.sos.SosServiceStarter.stop(activity);
             } catch (Exception ignored) {}
             UserPrefs.setActiveRoomCode(activity, "");
 
-            // 3. RTDB wipe dahulu (auth token masih valid, belum signOut)
+            // 2. RTDB wipe dahulu (auth token masih sah sebelum user dipadam)
             if (finalUid != null && !finalUid.isEmpty()) {
                 try {
                     FirebaseRoomClient.deleteAccountData(finalUid);
@@ -175,15 +189,23 @@ public final class AccountDeletionUtils {
                 }
             }
 
-            // 4. Auth delete (token masih sah selepas re-auth)
+            // 3. Auth delete (jika sesi token Firebase perlukan re-auth di pelayan, jangan sekat proses padam data RTDB dan logout)
             try {
                 Tasks.await(user.delete(), 15, TimeUnit.SECONDS);
-                Log.i(TAG, "Firebase Auth account deleted");
+                Log.i(TAG, "Firebase Auth account deleted successfully");
             } catch (Exception e) {
-                Log.e(TAG, "Auth user.delete() failed", e);
+                Log.w(TAG, "Auth user.delete() encountered (proceeding anyway): " + e.getMessage());
             }
 
-            // 5. Baru stop services + clear local + redirect ke login
+            // 4. Sign-out Google Client jika ada
+            try {
+                com.google.android.gms.auth.api.signin.GoogleSignInOptions gso =
+                        new com.google.android.gms.auth.api.signin.GoogleSignInOptions.Builder(
+                                com.google.android.gms.auth.api.signin.GoogleSignInOptions.DEFAULT_SIGN_IN).build();
+                com.google.android.gms.auth.api.signin.GoogleSignIn.getClient(activity, gso).signOut();
+            } catch (Exception ignored) {}
+
+            // 5. Bersihkan simpanan tempatan & kembali ke skrin login
             try {
                 com.example.resqtap.sos.SosServiceStarter.stop(activity);
             } catch (Exception ignored) {}
@@ -191,12 +213,7 @@ public final class AccountDeletionUtils {
             activity.runOnUiThread(() -> goToLogin(activity));
 
         } catch (Exception e) {
-            Throwable cause = e.getCause();
-            if (cause instanceof com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
-                Log.e(TAG, "Wrong password for re-auth", e);
-            } else {
-                Log.e(TAG, "reauthAndDelete failed", e);
-            }
+            Log.e(TAG, "executeAccountDeletion failed", e);
             activity.runOnUiThread(() ->
                     Toast.makeText(activity, R.string.delete_account_failed, Toast.LENGTH_LONG).show());
         }

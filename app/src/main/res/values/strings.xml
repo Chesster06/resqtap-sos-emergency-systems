@@ -266,9 +266,10 @@
     <string name="delete_account_requires_relogin">Please log in again to delete your account.</string>
     <string name="delete_account_success">Account deleted.</string>
     <string name="delete_account_reauth_title">Confirm Account Deletion</string>
-    <string name="delete_account_reauth_desc">Enter your password to delete your account (authentication) and all database data.</string>
-    <string name="delete_account_password_hint">Password</string>
-    <string name="delete_account_reauth_action">Confirm</string>
+    <string name="delete_account_reauth_desc">Type the word &quot;DELETE&quot; below to confirm the permanent deletion of your account and all data.</string>
+    <string name="delete_account_password_hint">Type DELETE here</string>
+    <string name="delete_account_reauth_action">Delete Account</string>
+    <string name="delete_account_match_error">Please type DELETE exactly to proceed.</string>
     <string name="profile_uid_value">UID: %1$s</string>
     <string name="save">Save</string>
     <string name="toast_profile_saved">Profile saved.</string>

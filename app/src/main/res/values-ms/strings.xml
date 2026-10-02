@@ -222,9 +222,10 @@
     <string name="delete_account_requires_relogin">Sila log masuk semula untuk memadam akaun.</string>
     <string name="delete_account_success">Akaun berjaya dipadam.</string>
     <string name="delete_account_reauth_title">Sahkan Padam Akaun</string>
-    <string name="delete_account_reauth_desc">Masukkan kata laluan untuk memadam akaun (pengesahan) dan semua data dalam pangkalan data.</string>
-    <string name="delete_account_password_hint">Kata laluan</string>
-    <string name="delete_account_reauth_action">Sahkan</string>
+    <string name="delete_account_reauth_desc">Taip perkataan &quot;DELETE&quot; di bawah untuk mengesahkan pemadaman kekal akaun anda dan semua data.</string>
+    <string name="delete_account_password_hint">Taip DELETE di sini</string>
+    <string name="delete_account_reauth_action">Padam Akaun</string>
+    <string name="delete_account_match_error">Sila taip DELETE dengan tepat untuk meneruskan.</string>
     <string name="profile_uid_value">UID: %1$s</string>
     <string name="save">Simpan</string>
     <string name="toast_profile_saved">Profil disimpan.</string>

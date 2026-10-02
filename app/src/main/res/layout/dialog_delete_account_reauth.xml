@@ -47,7 +47,7 @@
         android:textColor="@color/text_secondary"
         android:textSize="14sp" />
 
-    <!-- Modern Outline Password Field with Toggle -->
+    <!-- Modern Outline Confirmation Field for typing 'DELETE' -->
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/til_password"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
@@ -58,24 +58,25 @@
         app:boxCornerRadiusBottomStart="16dp"
         app:boxCornerRadiusTopEnd="16dp"
         app:boxCornerRadiusTopStart="16dp"
-        app:boxStrokeColor="@color/brand_primary"
+        app:boxStrokeColor="#EF230C"
         app:boxStrokeWidth="1.5dp"
         app:boxStrokeWidthFocused="2dp"
-        app:endIconMode="password_toggle"
-        app:endIconTint="@color/text_secondary"
         app:hintEnabled="false">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_password"
             android:layout_width="match_parent"
             android:layout_height="52dp"
+            android:gravity="center"
             android:hint="@string/delete_account_password_hint"
-            android:inputType="textPassword"
+            android:inputType="textCapCharacters|textNoSuggestions"
+            android:maxLength="10"
             android:paddingStart="18dp"
             android:paddingEnd="18dp"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
-            android:textSize="15sp" />
+            android:textSize="16sp"
+            android:textStyle="bold" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Actions Row: Confirm (Red) & Cancel (Soft Grey) -->
