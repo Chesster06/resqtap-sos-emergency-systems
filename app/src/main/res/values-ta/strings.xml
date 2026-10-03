@@ -144,6 +144,10 @@
     <string name="filter_hospital">மருத்துவமனை</string>
     <string name="filter_police">காவல் நிலையம்</string>
     <string name="filter_fire">தீயணைப்பு நிலையம்</string>
+    <string name="section_fire_services">தீயணைப்பு &amp; மீட்பு</string>
+    <string name="section_hospital_services">மருத்துவமனை &amp; மருத்துவம்</string>
+    <string name="section_police_services">காவல் நிலையம்</string>
+    <string name="emergency_location_count">%d இடங்கள்</string>
     <string name="cancel">ரத்து</string>
     <string name="direction">வழிகள்</string>
     <string name="emergency_contacts_title">அவசர தொடர்புகள்</string>

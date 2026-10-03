@@ -144,6 +144,10 @@
     <string name="filter_hospital">医院</string>
     <string name="filter_police">警察局</string>
     <string name="filter_fire">消防局</string>
+    <string name="section_fire_services">消防与救援</string>
+    <string name="section_hospital_services">医院与医疗</string>
+    <string name="section_police_services">警察局</string>
+    <string name="emergency_location_count">%d 处地点</string>
     <string name="cancel">取消</string>
     <string name="direction">路线</string>
     <string name="emergency_contacts_title">紧急联系人</string>

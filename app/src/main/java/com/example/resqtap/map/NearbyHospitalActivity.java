@@ -23,10 +23,12 @@ import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
@@ -103,7 +105,9 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final ArrayList<HospitalItem> hospitals = new ArrayList<>();
+    private final ArrayList<DisplayItem> displayItems = new ArrayList<>();
     private HospitalAdapter listAdapter;
+    private RecyclerView recyclerView;
     private TextView status;
     private String currentCategory = "all";
 
@@ -127,69 +131,183 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         }
     }
 
-    private final class HospitalAdapter extends android.widget.BaseAdapter {
-        /** Ambil atau muat data Count. */
-        @Override
-        public int getCount() {
-            return hospitals.size();
+    private static final class DisplayItem {
+        static final int TYPE_HEADER = 0;
+        static final int TYPE_SERVICE = 1;
+
+        final int type;
+        final String category;
+        final String headerTitle;
+        final int count;
+        final HospitalItem hospital;
+
+        static DisplayItem createHeader(String category, String headerTitle, int count) {
+            return new DisplayItem(TYPE_HEADER, category, headerTitle, count, null);
         }
 
-        /** Ambil atau muat data Item. */
-        @Override
-        public Object getItem(int position) {
-            return hospitals.get(position);
+        static DisplayItem createService(HospitalItem hospital) {
+            return new DisplayItem(TYPE_SERVICE, hospital.category, null, 0, hospital);
         }
 
-        /** Ambil atau muat data ItemId. */
-        @Override
-        public long getItemId(int position) {
-            return position;
+        private DisplayItem(int type, String category, String headerTitle, int count, HospitalItem hospital) {
+            this.type = type;
+            this.category = category;
+            this.headerTitle = headerTitle;
+            this.count = count;
+            this.hospital = hospital;
         }
+    }
 
-        /** Ambil atau muat data View. */
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            View row = convertView;
-            if (row == null) {
-                row = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_hospital, parent, false);
+    /** Keutamaan susunan kategori: 1 = Bomba, 2 = Medic / Hospital, 3 = Polis, 4 = Lain-lain. */
+    private static int getCategoryPriority(String category) {
+        if ("fire".equalsIgnoreCase(category)) return 1;
+        if ("hospital".equalsIgnoreCase(category)) return 2;
+        if ("police".equalsIgnoreCase(category)) return 3;
+        return 4;
+    }
+
+    private String getCategoryHeaderTitle(String category) {
+        if ("fire".equalsIgnoreCase(category)) {
+            return getString(R.string.section_fire_services);
+        } else if ("police".equalsIgnoreCase(category)) {
+            return getString(R.string.section_police_services);
+        } else {
+            return getString(R.string.section_hospital_services);
+        }
+    }
+
+    private void rebuildDisplayItems() {
+        displayItems.clear();
+        if (hospitals.isEmpty()) return;
+
+        String currentCat = null;
+        for (HospitalItem h : hospitals) {
+            String cat = h.category == null ? "hospital" : h.category;
+            if (!cat.equalsIgnoreCase(currentCat)) {
+                currentCat = cat;
+                int count = 0;
+                for (HospitalItem item : hospitals) {
+                    if (cat.equalsIgnoreCase(item.category)) count++;
+                }
+                displayItems.add(DisplayItem.createHeader(cat, getCategoryHeaderTitle(cat), count));
             }
+            displayItems.add(DisplayItem.createService(h));
+        }
+    }
 
-            HospitalItem item = hospitals.get(position);
-            TextView name = row.findViewById(R.id.hospital_name);
-            TextView distance = row.findViewById(R.id.hospital_distance);
-            TextView address = row.findViewById(R.id.hospital_address);
-            MaterialButton direction = row.findViewById(R.id.btn_direction);
-            ImageView imgCategory = row.findViewById(R.id.img_category_icon);
-            View cardCategory = row.findViewById(R.id.card_category_icon);
+    private final class HospitalAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+        @Override
+        public int getItemViewType(int position) {
+            return displayItems.get(position).type;
+        }
 
-            if (name != null) name.setText(item.name);
-            if (distance != null) distance.setText(formatDistance(item.distanceMeters));
-            if (address != null) address.setText(item.address == null ? "" : item.address);
-            if (direction != null) direction.setOnClickListener(v -> openDirections(item));
+        @NonNull
+        @Override
+        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            if (viewType == DisplayItem.TYPE_HEADER) {
+                View row = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_hospital_header, parent, false);
+                return new HeaderViewHolder(row);
+            } else {
+                View row = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_hospital, parent, false);
+                return new ServiceViewHolder(row);
+            }
+        }
 
-            if (imgCategory != null) {
-                if ("police".equalsIgnoreCase(item.category)) {
-                    imgCategory.setImageResource(R.drawable.ic_category_police);
-                    imgCategory.setImageTintList(ColorStateList.valueOf(Color.parseColor("#1E88E5")));
-                    if (cardCategory instanceof MaterialCardView) {
-                        ((MaterialCardView) cardCategory).setCardBackgroundColor(Color.parseColor("#1A1E88E5"));
-                    }
-                } else if ("fire".equalsIgnoreCase(item.category)) {
-                    imgCategory.setImageResource(R.drawable.ic_category_fire);
-                    imgCategory.setImageTintList(ColorStateList.valueOf(Color.parseColor("#FB8C00")));
-                    if (cardCategory instanceof MaterialCardView) {
-                        ((MaterialCardView) cardCategory).setCardBackgroundColor(Color.parseColor("#1AFB8C00"));
-                    }
+        @Override
+        public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+            DisplayItem item = displayItems.get(position);
+            if (holder instanceof HeaderViewHolder) {
+                HeaderViewHolder vh = (HeaderViewHolder) holder;
+                vh.title.setText(item.headerTitle);
+                try {
+                    vh.count.setText(getString(R.string.emergency_location_count, item.count));
+                } catch (Exception e) {
+                    vh.count.setText(item.count + " lokasi");
+                }
+
+                if ("fire".equalsIgnoreCase(item.category)) {
+                    vh.icon.setImageResource(R.drawable.ic_category_fire);
+                    vh.icon.setImageTintList(ColorStateList.valueOf(Color.parseColor("#FB8C00")));
+                    vh.iconCard.setCardBackgroundColor(Color.parseColor("#1AFB8C00"));
+                } else if ("police".equalsIgnoreCase(item.category)) {
+                    vh.icon.setImageResource(R.drawable.ic_category_police);
+                    vh.icon.setImageTintList(ColorStateList.valueOf(Color.parseColor("#1E88E5")));
+                    vh.iconCard.setCardBackgroundColor(Color.parseColor("#1A1E88E5"));
                 } else {
-                    imgCategory.setImageResource(R.drawable.ic_category_hospital);
-                    imgCategory.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(NearbyHospitalActivity.this, R.color.brand_primary)));
-                    if (cardCategory instanceof MaterialCardView) {
-                        ((MaterialCardView) cardCategory).setCardBackgroundColor(Color.parseColor("#1AE91E63"));
+                    vh.icon.setImageResource(R.drawable.ic_category_hospital);
+                    vh.icon.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(NearbyHospitalActivity.this, R.color.brand_primary)));
+                    vh.iconCard.setCardBackgroundColor(Color.parseColor("#1AE91E63"));
+                }
+            } else if (holder instanceof ServiceViewHolder) {
+                ServiceViewHolder vh = (ServiceViewHolder) holder;
+                HospitalItem hospital = item.hospital;
+                if (vh.name != null) vh.name.setText(hospital.name);
+                if (vh.distance != null) vh.distance.setText(formatDistance(hospital.distanceMeters));
+                if (vh.address != null) vh.address.setText(hospital.address == null ? "" : hospital.address);
+                if (vh.direction != null) vh.direction.setOnClickListener(v -> openDirections(hospital));
+                vh.itemView.setOnClickListener(v -> openDirections(hospital));
+
+                if (vh.imgCategory != null) {
+                    if ("police".equalsIgnoreCase(hospital.category)) {
+                        vh.imgCategory.setImageResource(R.drawable.ic_category_police);
+                        vh.imgCategory.setImageTintList(ColorStateList.valueOf(Color.parseColor("#1E88E5")));
+                        if (vh.cardCategory != null) {
+                            vh.cardCategory.setCardBackgroundColor(Color.parseColor("#1A1E88E5"));
+                        }
+                    } else if ("fire".equalsIgnoreCase(hospital.category)) {
+                        vh.imgCategory.setImageResource(R.drawable.ic_category_fire);
+                        vh.imgCategory.setImageTintList(ColorStateList.valueOf(Color.parseColor("#FB8C00")));
+                        if (vh.cardCategory != null) {
+                            vh.cardCategory.setCardBackgroundColor(Color.parseColor("#1AFB8C00"));
+                        }
+                    } else {
+                        vh.imgCategory.setImageResource(R.drawable.ic_category_hospital);
+                        vh.imgCategory.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(NearbyHospitalActivity.this, R.color.brand_primary)));
+                        if (vh.cardCategory != null) {
+                            vh.cardCategory.setCardBackgroundColor(Color.parseColor("#1AE91E63"));
+                        }
                     }
                 }
             }
+        }
 
-            return row;
+        @Override
+        public int getItemCount() {
+            return displayItems.size();
+        }
+
+        final class ServiceViewHolder extends RecyclerView.ViewHolder {
+            final TextView name;
+            final TextView distance;
+            final TextView address;
+            final MaterialButton direction;
+            final ImageView imgCategory;
+            final MaterialCardView cardCategory;
+
+            ServiceViewHolder(@NonNull View row) {
+                super(row);
+                name = row.findViewById(R.id.hospital_name);
+                distance = row.findViewById(R.id.hospital_distance);
+                address = row.findViewById(R.id.hospital_address);
+                direction = row.findViewById(R.id.btn_direction);
+                imgCategory = row.findViewById(R.id.img_category_icon);
+                cardCategory = (MaterialCardView) row.findViewById(R.id.card_category_icon);
+            }
+        }
+
+        final class HeaderViewHolder extends RecyclerView.ViewHolder {
+            final MaterialCardView iconCard;
+            final ImageView icon;
+            final TextView title;
+            final TextView count;
+
+            HeaderViewHolder(@NonNull View row) {
+                super(row);
+                iconCard = (MaterialCardView) row.findViewById(R.id.header_icon_card);
+                icon = row.findViewById(R.id.header_icon);
+                title = row.findViewById(R.id.header_title);
+                count = row.findViewById(R.id.header_count);
+            }
         }
     }
 
@@ -286,14 +404,13 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         applyMapControlsBottomOffset();
 
         status = findViewById(R.id.status);
-        ListView list = findViewById(R.id.hospital_list);
+        recyclerView = findViewById(R.id.hospital_list);
         listAdapter = new HospitalAdapter();
-        if (list != null) {
-            list.setAdapter(listAdapter);
-            list.setOnItemClickListener((AdapterView<?> parent, View view, int position, long id) -> {
-                if (position < 0 || position >= hospitals.size()) return;
-                openDirections(hospitals.get(position));
-            });
+        if (recyclerView != null) {
+            recyclerView.setLayoutManager(new LinearLayoutManager(this));
+            recyclerView.setAdapter(listAdapter);
+            recyclerView.setHasFixedSize(false);
+            recyclerView.setNestedScrollingEnabled(true);
         }
 
         maybePromptEnableGps();
@@ -486,6 +603,7 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         }
 
         hospitals.clear();
+        displayItems.clear();
         if (listAdapter != null) listAdapter.notifyDataSetChanged();
         clearHospitalMarkers();
 
@@ -532,20 +650,20 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
                 PlacesResponse lastDenied = null;
 
                 if ("all".equalsIgnoreCase(category)) {
-                    // Hospital search
+                    // 1. Bomba / Fire station search (Keutamaan 1)
+                    PlacesResponse fResp = fetchPlacesNearby(center, apiKey, "fire_station", null, "fire");
+                    if (fResp.isDenied()) lastDenied = fResp;
+                    else combined.addAll(fResp.items);
+
+                    // 2. Hospital / Medic search (Keutamaan 2)
                     PlacesResponse hResp = fetchPlacesNearby(center, apiKey, "hospital", null, "hospital");
                     if (hResp.isDenied()) lastDenied = hResp;
                     else combined.addAll(hResp.items);
 
-                    // Police search - universal type=police
+                    // 3. Polis / Police search (Keutamaan 3)
                     PlacesResponse pResp = fetchPlacesNearby(center, apiKey, "police", null, "police");
                     if (pResp.isDenied()) lastDenied = pResp;
                     else combined.addAll(pResp.items);
-
-                    // Fire station search - universal type=fire_station
-                    PlacesResponse fResp = fetchPlacesNearby(center, apiKey, "fire_station", null, "fire");
-                    if (fResp.isDenied()) lastDenied = fResp;
-                    else combined.addAll(fResp.items);
 
                     if (combined.isEmpty() && lastDenied != null) {
                         PlacesResponse finalDenied = lastDenied;
@@ -679,6 +797,7 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         msg += "\n\nFix: Enable \"Places API\" in Google Cloud + use a Web Service key (not Android-restricted).";
         if (status != null) status.setText(msg);
         hospitals.clear();
+        displayItems.clear();
         if (listAdapter != null) listAdapter.notifyDataSetChanged();
         clearHospitalMarkers();
         pendingSearch = false;
@@ -687,6 +806,7 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
     /** Fungsi untuk applyHospitals dan paparkan pin berwarna mengikut kategori kecemasan. */
     private void applyHospitals(ArrayList<HospitalItem> found) {
         hospitals.clear();
+        displayItems.clear();
         ArrayList<HospitalItem> nearbyOnly = new ArrayList<>();
         if (currentLatLng != null && found != null) {
             for (HospitalItem h : found) {
@@ -696,11 +816,24 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
                     nearbyOnly.add(h);
                 }
             }
-            Collections.sort(nearbyOnly, Comparator.comparingDouble(a -> a.distanceMeters < 0 ? Double.MAX_VALUE : a.distanceMeters));
         } else if (found != null) {
             nearbyOnly.addAll(found);
         }
+
+        // Susun mengikut keutamaan: Bomba (1) -> Medic / Hospital (2) -> Polis (3), dan dalam setiap kategori susun mengikut jarak terdekat
+        Collections.sort(nearbyOnly, (a, b) -> {
+            int pA = getCategoryPriority(a.category);
+            int pB = getCategoryPriority(b.category);
+            if (pA != pB) {
+                return Integer.compare(pA, pB);
+            }
+            double distA = a.distanceMeters < 0 ? Double.MAX_VALUE : a.distanceMeters;
+            double distB = b.distanceMeters < 0 ? Double.MAX_VALUE : b.distanceMeters;
+            return Double.compare(distA, distB);
+        });
+
         hospitals.addAll(nearbyOnly);
+        rebuildDisplayItems();
         if (listAdapter != null) listAdapter.notifyDataSetChanged();
 
         if (hospitals.isEmpty()) {

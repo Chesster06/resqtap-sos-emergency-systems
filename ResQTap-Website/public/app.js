@@ -4075,6 +4075,7 @@ function renderHighlights() {
     return `
       <div class="highlight-item-card${isActive ? "" : " is-hidden"}">
         <div class="highlight-card-media">
+          <div class="hl-media-backdrop" style="background-image: url('${escapeHtml(imgSrc)}');"></div>
           <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(item.title || "Banner")}">
           <div class="highlight-badges-row">
             <span class="hl-badge-order">#${escapeHtml(String(item.order || 1))}</span>

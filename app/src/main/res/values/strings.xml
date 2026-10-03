@@ -163,6 +163,10 @@
     <string name="filter_hospital">Hospital</string>
     <string name="filter_police">Police</string>
     <string name="filter_fire">Fire Station</string>
+    <string name="section_fire_services">Fire &amp; Rescue</string>
+    <string name="section_hospital_services">Hospital &amp; Medical</string>
+    <string name="section_police_services">Police Department</string>
+    <string name="emergency_location_count">%d locations</string>
     <string name="cancel">Cancel</string>
     <string name="direction">Directions</string>
     <string name="map_type_title">Map type</string>

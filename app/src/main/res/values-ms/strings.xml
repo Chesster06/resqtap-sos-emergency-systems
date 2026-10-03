@@ -143,6 +143,10 @@
     <string name="filter_hospital">Hospital</string>
     <string name="filter_police">Polis</string>
     <string name="filter_fire">Bomba</string>
+    <string name="section_fire_services">Bomba &amp; Penyelamat</string>
+    <string name="section_hospital_services">Hospital &amp; Perubatan</string>
+    <string name="section_police_services">Balai Polis</string>
+    <string name="emergency_location_count">%d lokasi</string>
     <string name="cancel">Batal</string>
     <string name="direction">Arah</string>
     <string name="map_type_title">Jenis peta</string>
