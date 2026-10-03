@@ -353,7 +353,9 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
                             if (peek < min) peek = min;
                             if (peek > max) peek = max;
                             membersSheetBehavior.setPeekHeight(peek, false);
-                            membersSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+                            if (membersSheetBehavior.getState() != BottomSheetBehavior.STATE_EXPANDED) {
+                                membersSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+                            }
                         } catch (Exception ignored) {
                         }
                     }
@@ -374,6 +376,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
         }
         if (membersRecycler != null) {
             membersRecycler.setLayoutManager(new LinearLayoutManager(this));
+            membersRecycler.setItemAnimator(null);
             membersAdapter = new RoomMembersAdapter(uid);
             membersRecycler.setAdapter(membersAdapter);
             updateRoomFooterVisibility();
@@ -1695,36 +1698,17 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
     public boolean dispatchTouchEvent(MotionEvent ev) {
         try {
             if (removeMode && ev != null && ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                if (!isTouchOnRemoveControls(ev)) setRemoveMode(false);
+                if (membersRecycler != null) {
+                    android.graphics.Rect r = new android.graphics.Rect();
+                    if (membersRecycler.getGlobalVisibleRect(r) && r.contains((int) ev.getRawX(), (int) ev.getRawY())) {
+                        return super.dispatchTouchEvent(ev);
+                    }
+                }
+                setRemoveMode(false);
             }
         } catch (Exception ignored) {
         }
         return super.dispatchTouchEvent(ev);
-    }
-
-    /** Semak dan sahkan TouchOnRemoveControls. */
-    private boolean isTouchOnRemoveControls(MotionEvent ev) {
-        if (ev == null) return false;
-        float rawX = ev.getRawX();
-        float rawY = ev.getRawY();
-
-        try {
-            if (membersRecycler == null) return false;
-            int[] loc = new int[2];
-            membersRecycler.getLocationOnScreen(loc);
-            float x = rawX - loc[0];
-            float y = rawY - loc[1];
-            android.view.View child = membersRecycler.findChildViewUnder(x, y);
-            if (child == null) return false;
-            android.view.View removePill = child.findViewById(R.id.remove_pill);
-            if (removePill != null && removePill.getVisibility() == android.view.View.VISIBLE) {
-                android.graphics.Rect r = new android.graphics.Rect();
-                if (removePill.getGlobalVisibleRect(r) && r.contains((int) rawX, (int) rawY)) return true;
-            }
-            return false;
-        } catch (Exception ignored) {
-            return false;
-        }
     }
 
     /** Ambil atau muat data MarkerSnippet. */
@@ -2099,7 +2083,6 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
 
             h.itemView.setOnClickListener(v -> {
                 if (removeMode) {
-                    RoomMapActivity.this.setRemoveMode(false);
                     return;
                 }
                 focusMemberOnMap(m);
@@ -2108,7 +2091,12 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
             boolean showRemove = removeMode && !isSelf && RoomMapActivity.this.canUseRemoveMode();
             if (h.removePill != null) {
                 h.removePill.setVisibility(showRemove ? android.view.View.VISIBLE : android.view.View.GONE);
-                h.removePill.setOnClickListener(v -> confirmRemoveMember(m));
+                android.view.View.OnClickListener removeClick = v -> confirmRemoveMember(m);
+                h.removePill.setOnClickListener(removeClick);
+                android.view.View removeIcon = h.itemView.findViewById(R.id.remove_icon);
+                if (removeIcon != null) {
+                    removeIcon.setOnClickListener(removeClick);
+                }
             }
 
             bindAddressLine(h, m);
@@ -2133,7 +2121,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
         /** Ambil atau muat data ItemViewType. */
     @Override
         public int getItemViewType(int position) {
-            if (showRemoveFooter && position == items.size()) return VT_REMOVE_FOOTER;
+            if (showRemoveFooter && !items.isEmpty() && position == items.size()) return VT_REMOVE_FOOTER;
             return VT_MEMBER;
         }
 
@@ -2170,7 +2158,7 @@ public class RoomMapActivity extends BaseActivity implements OnMapReadyCallback 
         /** Ambil atau muat data ItemCount. */
     @Override
         public int getItemCount() {
-            return items.size() + (showRemoveFooter ? 1 : 0);
+            return items.size() + ((showRemoveFooter && !items.isEmpty()) ? 1 : 0);
         }
 
         final class VH extends RecyclerView.ViewHolder {
