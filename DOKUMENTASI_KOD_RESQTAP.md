@@ -49,6 +49,69 @@ graph TD
 
 ---
 
+## QUICK SEARCH CHEAT SHEET (CARIAN PANTAS MELALUI KOMEN KOD)
+
+**API DATABASE URL:** `https://resqtap-b9ff5-default-rtdb.firebaseio.com` *(Terletak di `FirebaseRoomClient.java` L33 & `google-services.json` L4)*
+
+Anda boleh terus tekan `Ctrl + Shift + F` (Find in Files) di Android Studio dan taip ayat komen di bawah untuk lompat terus ke logik berkenaan:
+
+### 1. ALIRAN LOGIN (EMAIL / PASSWORD CREDENTIAL)
+* **`LoginActivity.java`**
+  * `// Live validation and debounce pre-check for email input` *(L220: Watcher email & debounce 80ms)*
+  * `// Primary Login Button Click Listener: Validates form inputs and initiates authentication` *(L270: Butang Login & validasi form)*
+  * `/** Asynchronously verifies if the entered email is registered in Firebase Realtime Database.` *(L343: Pre-check status email)*
+  * `/** Authenticates the user with Firebase Authentication using email and password credentials.` *(L554: Mula proses log masuk)*
+  * `// Retrieve user profile snapshot from Realtime Database` *(L596: Tarik data user dari RTDB)*
+  * `// Fast-path navigation to MainActivity without blocking on non-critical background synchronization` *(L623: Terus buka skrin Home)*
+  * `private void applyUserSnapshot(DataSnapshot snapshot)` *(L1022: Parse & load semua data profil ke UserPrefs)*
+
+### 2. ALIRAN PENDAFTARAN & LOGIN GOOGLE (GOOGLE SIGN-IN FLOW)
+* **`LoginActivity.java`**
+  * `// Google Sign-In button trigger: signs out any existing Google client session before launching picker` *(L189: Butang tekan Google)*
+  * `private void handleGoogleSignInResult(Task<GoogleSignInAccount> completedTask)` *(L703: Tangkap hasil result Google)*
+  * `private void firebaseAuthWithGoogle(GoogleSignInAccount acct)` *(L720: Tukar Google Token ke Firebase Credential)*
+  * `private void handlePostGoogleSignIn(FirebaseUser user, GoogleSignInAccount acct)` *(L742: Semak status profil Google)*
+* **`RegisterActivity.java`**
+  * `/** Mengendalikan hasil daripada Google Sign-In Intent. */` *(L2605: Tangkap Google Intent di skrin daftar)*
+  * `/** Sambungkan akaun Google dengan Firebase Auth. */` *(L2622: Sambung akaun Google di pendaftaran)*
+  * `/** Kendalikan semakan profil pengguna dan navigasi selepas log masuk Google di skrin pendaftaran. */` *(L2645: Cipta profil Google)*
+  * `private void setupGoogleProfileStep2(GoogleSignInAccount acct, String googlePhoto)` *(L2722: Auto-populate nama & gambar dari Google)*
+  * `// Jika pendaftaran berasal daripada Google Sign-In, cipta sesi Firebase Auth di sini sahaja` *(L1367: Mula rasmi akaun Google)*
+  * `// Simpan UserPrefs segera (tanpa tunggu DB ops lain)` *(L1562: Simpan cache telefon sebaik data cloud siap)*
+
+### 3. ALIRAN PENDAFTARAN BIASA (EMAIL REGISTRATION FLOW)
+* **`RegisterActivity.java`**
+  * `// Semak ketersediaan e-mel dan sahkan sebelum maju ke Langkah 2 tanpa mencipta akaun Auth lagi` *(L1046: Semak email sedia ada)*
+  * `// Cipta akaun Firebase Auth dan simpan ke database sekaligus untuk pendaftaran e-mel` *(L1399: Cipta akaun Auth)*
+  * `/** Simpan profil penuh pengguna ke Firebase Realtime Database dan selesaikan pendaftaran. */` *(L1515: Fungsi bina payload profil)*
+  * `.child(uid).setValue(user)` *(L1560: Baris fizikal data profil ditulis ke RTDB)*
+  * `// Profil kini lengkap` *(L1588: Tandakan status pendaftaran selesai)*
+  * `// Fire-and-forget: registeredEmails, admin, publicId di background` *(L1594: 3 proses sampingan dijalankan di latar belakang)*
+
+### 4. ALIRAN KECEMASAN SOS (SOS COUNTDOWN & RADAR BROADCAST)
+* **`SosBottomSheetController.java`**
+  * `/** SosBottomSheetController: Controller popup SOS: countdown 3 saat` *(L14: Kiraan 3 saat sebelum SOS aktif)*
+  * `public void show()` *(L46: Paparkan dialog kecemasan)*
+* **`SendingAlarmActivity.java`**
+  * `// Radar bulatan berpusat dengan logo rasmi ResQTap dan animasi kelip-kelip` *(L49: Radar visual pink)*
+  * `// Pemancaran automatik ke Firebase RTDB (Admin & Room) dengan koordinat GPS terkini` *(L53: Hantar isyarat SOS ke cloud)*
+  * `btnSafeNow` *(L75: Butang "I'm Safe Now" untuk batalkan SOS)*
+
+### 5. ALIRAN BILIK KESELAMATAN & GPS TRACKING (ROOM & LIVE GPS)
+* **`RoomHubActivity.java`**
+  * `// Cipta bilik baru dengan kod 6 digit rawak` *(L130: Jana kod bilik kecemasan)*
+  * `// Masuk bilik sedia ada guna kod` *(L210: Logik semakan kod bilik)*
+* **`LiveRoomTrackingService.java`**
+  * `/** LiveRoomTrackingService: Foreground Service untuk live location: stream GPS lat/lng` *(L48: Stream GPS tanpa kena kill)*
+
+### 6. ALIRAN PANGGILAN KECEMASAN (WEBRTC VIDEO & VOICE CALL)
+* **`CallService.java`**
+  * `/** CallService: Foreground Service untuk call: pastikan audio/video call tak terputus` *(L17: Service call latar belakang)*
+* **`WebRTCClient.java`**
+  * `/** WebRTCClient: WebRTC Engine: urus PeerConnection, video/audio stream, STUN/TURN server` *(L31: Enjin P2P WebRTC)*
+
+---
+
 # SECTION 1: ANDROID MOBILE APPLICATION (ResQTap Client)
 
 ---
