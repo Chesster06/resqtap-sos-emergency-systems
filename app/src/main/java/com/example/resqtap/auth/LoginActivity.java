@@ -76,7 +76,9 @@ import java.util.Map;
 
 /**
  * LoginActivity
- * Skrin Login: verify email & password guna Firebase Auth, ada check format Gmail dan auto-redirect.
+ * Handles user authentication through Firebase Email/Password and Google OAuth sign-in.
+ * Features live debounce email pre-checking against registered records, strict domain validation,
+ * automatic profile hydration into UserPrefs, and conditional navigation to MainActivity or RegisterActivity.
  */
 public class LoginActivity extends BaseActivity {
     private static final String TAG = "LoginActivity";
@@ -87,24 +89,32 @@ public class LoginActivity extends BaseActivity {
     private View layoutGoogleBtnContent;
     private View layoutGoogleLoading;
 
-    /** Fungsi untuk shouldAnimateContentIn. */
+    /**
+     * Disables default base activity entrance animations in favor of custom coordinator transitions.
+     */
+    @Override
     protected boolean shouldAnimateContentIn() {
         return false;
     }
 
-    /** Inisialisasi paparan dan komponen UI. */
+    /**
+     * Initializes activity views, sets up authentication providers, and restores user sessions.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         ThemeUtils.applySavedNightMode(this);
         super.onCreate(savedInstanceState);
+        // Configure Edge-to-Edge full display support
         EdgeToEdge.enable(this);
 
+        // Configure Google Sign-In options with Web Client ID for OAuth token verification
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
                 .build();
         googleSignInClient = GoogleSignIn.getClient(this, gso);
 
+        // ActivityResult launcher for modern Google Sign-In intent result handling
         googleSignInLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -123,6 +133,8 @@ public class LoginActivity extends BaseActivity {
         );
 
         setContentView(R.layout.activity_login);
+
+        // Apply system window insets to adapt to status bar, navigation bar, and keyboard
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
@@ -139,15 +151,16 @@ public class LoginActivity extends BaseActivity {
             return insets;
         });
 
+        // Check existing authenticated user session on launch
         FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
         if (current != null) {
-            // Fast path: kalau profile dah lengkap secara lokal, terus ke MainActivity tanpa DB read
+            // Fast-path: If profile is already complete locally in UserPrefs, directly navigate to MainActivity
             if (UserPrefs.isPersonalInfoComplete(this)) {
                 startActivity(new Intent(this, MainActivity.class));
                 finish();
                 return;
             }
-            // Slow path: perlu check DB untuk profile tak lengkap / baru
+            // Slow-path: Check Realtime Database for complete profile before routing
             FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
                     .getReference("users")
                     .child(current.getUid())
@@ -162,14 +175,16 @@ public class LoginActivity extends BaseActivity {
                         }
                     })
                     .addOnFailureListener(e -> {
-                        // Jika semakan gagal, jangan terus ke RegisterActivity
+                        // Suppress failure and allow user to authenticate manually
                     });
         }
 
+        // Show registration success banner if routed from RegisterActivity
         if (getIntent() != null && getIntent().getBooleanExtra("registered_success", false)) {
             Toast.makeText(this, R.string.toast_register_success_login, Toast.LENGTH_LONG).show();
         }
 
+        // Initialize UI view bindings
         androidx.core.widget.NestedScrollView authPanel = findViewById(R.id.auth_panel);
         TextInputLayout emailLayout = findViewById(R.id.layout_email);
         TextInputLayout passwordLayout = findViewById(R.id.layout_password);
@@ -192,6 +207,8 @@ public class LoginActivity extends BaseActivity {
         btnSocialGoogle = findViewById(R.id.btn_social_google);
         layoutGoogleBtnContent = findViewById(R.id.layout_google_btn_content);
         layoutGoogleLoading = findViewById(R.id.layout_google_loading);
+
+        // Google Sign-In button trigger: signs out any existing Google client session before launching picker
         if (btnSocialGoogle != null) {
             btnSocialGoogle.setOnClickListener(v -> {
                 if (googleSignInClient != null && googleSignInLauncher != null) {
@@ -211,21 +228,23 @@ public class LoginActivity extends BaseActivity {
             });
         }
 
-
         playLoginEntranceAnimations();
 
         emailLayout.setEndIconOnClickListener(v -> {});
         emailLayout.setEndIconCheckable(false);
 
+        // Live validation and debounce pre-check for email input
         email.addTextChangedListener(new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
             @Override public void afterTextChanged(android.text.Editable s) {
                 String value = s == null ? "" : s.toString().trim();
+                // Cancel pending debounce checks on every new keystroke
                 if (loginEmailDebounce != null) loginHandler.removeCallbacks(loginEmailDebounce);
                 loginEmailKnownRegistered = false;
                 btnLogin.setEnabled(true);
 
+                // Reset error and indicator if field is cleared
                 if (value.isEmpty()) {
                     emailLayout.setError(null); emailLayout.setErrorEnabled(false);
                     emailLayout.setEndIconDrawable(null);
@@ -233,6 +252,7 @@ public class LoginActivity extends BaseActivity {
                     return;
                 }
 
+                // Enforce allowed email domain restrictions (@gmail.com or official @resqtap.com)
                 if (!isGmail(value)) {
                     emailLayout.setErrorEnabled(true);
                     emailLayout.setError(getString(R.string.gmail_only_warning));
@@ -241,17 +261,20 @@ public class LoginActivity extends BaseActivity {
                     return;
                 }
 
+                // Clear previous formatting errors once domain is valid
                 if (emailLayout.getError() != null) {
                     emailLayout.setError(null); emailLayout.setErrorEnabled(false);
                 }
                 emailLayout.setEndIconDrawable(null);
                 emailLayout.setEndIconTintList(null);
 
+                // Schedule background verification against registered user records (80ms debounce)
                 loginEmailDebounce = () -> checkLoginEmailRegistered(value, emailLayout, btnLogin);
                 loginHandler.postDelayed(loginEmailDebounce, 80);
             }
         });
 
+        // Real-time password input listener: clears error indicator upon user interaction
         password.addTextChangedListener(new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -260,10 +283,12 @@ public class LoginActivity extends BaseActivity {
             }
         });
 
+        // Primary Login Button Click Listener: Validates form inputs and initiates authentication
         btnLogin.setOnClickListener(view -> {
             String emailValue = email.getText() == null ? "" : email.getText().toString().trim().toLowerCase(java.util.Locale.ROOT);
             String passwordValue = password.getText() == null ? "" : password.getText().toString();
 
+            // Validate non-empty email
             if (emailValue.isEmpty()) {
                 emailLayout.setError("Please enter your email address");
                 emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
@@ -272,6 +297,7 @@ public class LoginActivity extends BaseActivity {
                 return;
             }
 
+            // Verify email domain constraint
             if (!isGmail(emailValue)) {
                 emailLayout.setError(getString(R.string.gmail_only_warning));
                 emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
@@ -280,6 +306,7 @@ public class LoginActivity extends BaseActivity {
                 return;
             }
 
+            // Validate non-empty password
             if (passwordValue.isEmpty()) {
                 if (passwordLayout != null) {
                     passwordLayout.setError("Please enter your password");
@@ -288,10 +315,13 @@ public class LoginActivity extends BaseActivity {
                 return;
             }
 
+            // Disable button during network request to prevent duplicate submissions
             btnLogin.setEnabled(false);
+            // Execute Firebase email/password authentication and retrieve user profile
             signInAndLoadProfile(emailValue, passwordValue, btnLogin);
         });
 
+        // Forgot password navigation: passes current email input to ForgotPasswordActivity
         forgotPassword.setOnClickListener(view -> {
             Intent intent = new Intent(LoginActivity.this, ForgotPasswordActivity.class);
             String emailValue = email.getText() == null ? "" : email.getText().toString().trim().toLowerCase(java.util.Locale.ROOT);
@@ -301,6 +331,10 @@ public class LoginActivity extends BaseActivity {
 
     }
 
+    /**
+     * Smoothly scrolls the NestedScrollView to bring the invalid input field into user viewport.
+     * Focuses the target view and offsets scroll by 80px for visual breathing room.
+     */
     private void scrollToField(androidx.core.widget.NestedScrollView scroll, View targetView) {
         if (targetView == null) return;
         targetView.requestFocus();
@@ -320,6 +354,10 @@ public class LoginActivity extends BaseActivity {
     private final Handler loginHandler = new Handler(Looper.getMainLooper());
     private boolean loginEmailKnownRegistered = false;
 
+    /**
+     * Sanitizes email addresses to safely use as Firebase Realtime Database node keys.
+     * Replaces periods with underscores and '@' with '_at_'.
+     */
     public static String sanitizeEmailForDb(String email) {
         if (email == null) return "";
         return email.trim().toLowerCase(java.util.Locale.ROOT)
@@ -327,7 +365,11 @@ public class LoginActivity extends BaseActivity {
                 .replace("@", "_at_");
     }
 
-    /** Semak sama ada e-mel telah berdaftar untuk paparan tanda semak hijau atau amaran merah. */
+    /**
+     * Asynchronously verifies if the entered email is registered in Firebase Realtime Database.
+     * Updates TextInputLayout end-icon indicators (green checkmark for registered, red error for unregistered).
+     * Includes fallback check via FirebaseAuth fetchSignInMethodsForEmail and allows @resqtap.com admin accounts.
+     */
     private void checkLoginEmailRegistered(String emailStr, TextInputLayout emailLayout, MaterialButton btnLogin) {
         String query = emailStr.trim().toLowerCase(java.util.Locale.ROOT);
         if (query.isEmpty() || !isGmail(query)) {
@@ -349,7 +391,7 @@ public class LoginActivity extends BaseActivity {
                             emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(LoginActivity.this, R.color.success_green)));
                             btnLogin.setEnabled(true);
                         } else {
-                            // Fallback semak terus dengan Firebase Auth
+                            // Fallback direct verification against Firebase Authentication service
                             FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(task -> {
                                 if (task.isSuccessful() && task.getResult() != null) {
                                     java.util.List<String> methods = task.getResult().getSignInMethods();
@@ -359,7 +401,7 @@ public class LoginActivity extends BaseActivity {
                                         emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
                                         emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(LoginActivity.this, R.color.success_green)));
                                         btnLogin.setEnabled(true);
-                                        // Segerakkan registeredEmails di DB
+                                        // Synchronize registered state to Realtime Database cache
                                         try {
                                             FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
                                                     .getReference("registeredEmails")
@@ -372,7 +414,7 @@ public class LoginActivity extends BaseActivity {
                                 }
 
                                 if (query.endsWith("@resqtap.com")) {
-                                    // Domain rasmi admin ResQTap: benarkan input dan login tanpa blok pra-semakan
+                                    // Official ResQTap administrator domain: allow login without pre-registration block
                                     loginEmailKnownRegistered = true;
                                     emailLayout.setError(null); emailLayout.setErrorEnabled(false);
                                     emailLayout.setEndIconDrawable(null);
@@ -399,13 +441,17 @@ public class LoginActivity extends BaseActivity {
                 });
     }
 
-    /** Semak dan sahkan Gmail. */
+    /**
+     * Checks whether an email address belongs to the allowed domains.
+     */
     private boolean isGmail(String email) {
         String e = String.valueOf(email == null ? "" : email).trim().toLowerCase();
         return isAllowedEmailDomain(e);
     }
 
-    /** Semak dan sahkan AllowedEmailDomain. */
+    /**
+     * Validates email domain whitelist: accepts standard @gmail.com or official @resqtap.com admin emails.
+     */
     private boolean isAllowedEmailDomain(String email) {
         if (email == null) return false;
         String e = email.trim().toLowerCase();
@@ -413,7 +459,9 @@ public class LoginActivity extends BaseActivity {
                 && (e.length() > "@gmail.com".length() || e.length() > "@resqtap.com".length());
     }
 
-    /** Fungsi untuk forceHeavyText. */
+    /**
+     * Applies bold styling and paint flags to ensure prominent typography.
+     */
     private void forceHeavyText(TextView textView) {
         if (textView == null) return;
         textView.setTypeface(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD);
@@ -421,14 +469,18 @@ public class LoginActivity extends BaseActivity {
         textView.invalidate();
     }
 
-    /** Fungsi untuk openRegisterWithSwipe. */
+    /**
+     * Navigates to RegisterActivity with a smooth fade-in/fade-out activity transition.
+     */
     private void openRegisterWithSwipe() {
         Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
         startActivity(intent);
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }
 
-    /** Fungsi untuk fadeAuthFields. */
+    /**
+     * Sequentially animates alpha of all authentication input fields with a staggered delay.
+     */
     private void fadeAuthFields(float fromAlpha, float toAlpha, Runnable endAction) {
         android.widget.LinearLayout form = findViewById(R.id.auth_form);
         if (form == null) {
@@ -449,7 +501,10 @@ public class LoginActivity extends BaseActivity {
         form.postDelayed(endAction, delay);
     }
 
-    /** Kendalikan animasi LoginEntranceAnimations. */
+    /**
+     * Executes initial entrance animations for the top brand header and authentication form card.
+     * Uses DecelerateInterpolator with subtle vertical translation and opacity fade.
+     */
     private void playLoginEntranceAnimations() {
         View header = findViewById(R.id.header_area);
         View authPanel = findViewById(R.id.auth_panel);
@@ -479,7 +534,10 @@ public class LoginActivity extends BaseActivity {
         }
     }
 
-    /** Setup dan konfigurasi RegisterPrompt. */
+    /**
+     * Builds a composite SpannableString for the registration prompt text.
+     * Attaches a ClickableSpan to the action phrase ('Sign up') with custom primary brand styling.
+     */
     private void setupRegisterPrompt(TextView registerPrompt) {
         registerPrompt.setText(R.string.login_signup_action);
         registerPrompt.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
@@ -499,14 +557,12 @@ public class LoginActivity extends BaseActivity {
         int end = start + actionText.length();
         SpannableString spannable = new SpannableString(fullText);
         spannable.setSpan(new ClickableSpan() {
-            /** Handle event klik butang/elemen UI. */
-    @Override
+            @Override
             public void onClick(View widget) {
                 openRegisterWithSwipe();
             }
 
-            /** Simpan atau hantar data DrawState. */
-    @Override
+            @Override
             public void updateDrawState(TextPaint ds) {
                 super.updateDrawState(ds);
                 ds.setColor(ContextCompat.getColor(LoginActivity.this, R.color.brand_primary));
@@ -519,7 +575,12 @@ public class LoginActivity extends BaseActivity {
         registerPrompt.setHighlightColor(android.graphics.Color.TRANSPARENT);
     }
 
-    /** Fungsi untuk signInAndLoadProfile. */
+    /**
+     * Authenticates the user with Firebase Authentication using email and password credentials.
+     * On authentication success, fetches the user profile from Realtime Database under 'users/{uid}'.
+     * If the profile node is missing, redirects to RegisterActivity to complete onboarding.
+     * Once loaded, caches user data into UserPrefs, initiates background sync tasks, and navigates to MainActivity.
+     */
     private void signInAndLoadProfile(String emailValue, String passwordValue, MaterialButton btnLogin) {
         FirebaseAuth.getInstance()
                 .signInWithEmailAndPassword(emailValue, passwordValue)
@@ -532,6 +593,7 @@ public class LoginActivity extends BaseActivity {
                     }
                     String uid = user.getUid();
 
+                    // Retrieve user profile snapshot from Realtime Database
                     FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
                             .getReference("users")
                             .child(uid)
@@ -539,7 +601,7 @@ public class LoginActivity extends BaseActivity {
                             .addOnSuccessListener(snapshot -> {
                                 if (snapshot == null || !snapshot.exists()) {
                                     // User authenticated in Auth, but DB profile node is missing (incomplete setup or deleted from DB).
-                                    // Seamlessly forward them to RegisterActivity to complete profile!
+                                    // Seamlessly forward user to RegisterActivity to complete missing profile details
                                     btnLogin.setEnabled(true);
                                     Toast.makeText(this, R.string.toast_login_profile_missing, Toast.LENGTH_LONG).show();
                                     Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
@@ -550,17 +612,19 @@ public class LoginActivity extends BaseActivity {
                                     finish();
                                     return;
                                 }
+
+                                // Store authentication credentials and profile attributes locally in SharedPreferences
                                 UserPrefs.setUid(this, uid);
                                 UserPrefs.setEmail(this, emailValue);
                                 applyUserSnapshot(snapshot);
 
                                 ensureNotificationsPermissionBestEffort();
 
-                                // Navigate segera — jangan tunggu operasi DB lain
+                                // Fast-path navigation to MainActivity without blocking on non-critical background synchronization
                                 startActivity(new Intent(this, MainActivity.class));
                                 finish();
 
-                                // Fire-and-forget: sync registeredEmails, admin check & room fetch di background
+                                // Background Task 1: Synchronize sanitized email to registeredEmails registry
                                 String sanitizedEmail = sanitizeEmailForDb(emailValue);
                                 if (!sanitizedEmail.isEmpty()) {
                                     try {
@@ -571,6 +635,8 @@ public class LoginActivity extends BaseActivity {
                                     } catch (Exception ignored) {
                                     }
                                 }
+
+                                // Background Task 2: Auto-provision administrator privileges for official @resqtap.com accounts
                                 if (emailValue != null && emailValue.trim().toLowerCase(java.util.Locale.ROOT).endsWith("@resqtap.com")) {
                                     DatabaseReference adminRef = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
                                             .getReference("admins")
@@ -588,6 +654,8 @@ public class LoginActivity extends BaseActivity {
                                         }
                                     });
                                 }
+
+                                // Background Task 3: Restore active room subscription and restart SOS listener service
                                 FirebaseRoomClient.fetchMostRecentUserRoomCodeQueued(uid, code -> {
                                     String c = String.valueOf(code == null ? "" : code).trim().toUpperCase(java.util.Locale.ROOT);
                                     if (c.isEmpty()) return;
@@ -623,7 +691,10 @@ public class LoginActivity extends BaseActivity {
                 });
     }
 
-    /** Kawal paparan progress loading pada butang Sign in with Google semasa proses pengesahan berjalan. */
+    /**
+     * Toggles UI loading states during the Google Sign-In process.
+     * Hides standard button content and displays the animated GoogleDotsLoadingView while disabling inputs.
+     */
     private void setGoogleLoading(boolean loading) {
         if (isFinishing() || isDestroyed()) return;
         if (layoutGoogleBtnContent != null) {
@@ -649,7 +720,10 @@ public class LoginActivity extends BaseActivity {
         }
     }
 
-    /** Mengendalikan hasil daripada Google Sign-In Intent. */
+    /**
+     * Processes Google Sign-In intent result task.
+     * Extracts GoogleSignInAccount and proceeds to Firebase credential authentication.
+     */
     private void handleGoogleSignInResult(Task<GoogleSignInAccount> completedTask) {
         try {
             GoogleSignInAccount account = completedTask.getResult(ApiException.class);
@@ -666,7 +740,9 @@ public class LoginActivity extends BaseActivity {
         }
     }
 
-    /** Sambungkan akaun Google dengan Firebase Auth. */
+    /**
+     * Bridges Google ID token credential into Firebase Authentication.
+     */
     private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
         AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
         FirebaseAuth.getInstance().signInWithCredential(credential)
@@ -689,7 +765,11 @@ public class LoginActivity extends BaseActivity {
                 });
     }
 
-    /** Kendalikan semakan profil pengguna dan navigasi selepas berjaya log masuk Google. */
+    /**
+     * Verifies user profile state in Realtime Database post Google authentication.
+     * If user profile does not exist or personal info (IC/Phone) is incomplete,
+     * deletes temporary Auth record and routes user to RegisterActivity with pre-filled Google claims.
+     */
     private void handlePostGoogleSignIn(FirebaseUser user, GoogleSignInAccount acct) {
         String uid = user.getUid();
         String email = user.getEmail() != null ? user.getEmail() : (acct.getEmail() != null ? acct.getEmail() : "");
@@ -738,6 +818,7 @@ public class LoginActivity extends BaseActivity {
                         startActivity(new Intent(LoginActivity.this, MainActivity.class));
                         finish();
                     } else {
+                        // Populate display name and split names for new Google registration
                         String displayName = acct.getDisplayName();
                         if (displayName != null && !displayName.trim().isEmpty()) {
                             String cleanName = displayName.trim();
@@ -752,11 +833,11 @@ public class LoginActivity extends BaseActivity {
                             UserPrefs.setName(LoginActivity.this, cleanName);
                         }
 
-                        // Padam nombor kad pengenalan dan telefon lama daripada sesi terdahulu
+                        // Clear legacy session identifiers
                         UserPrefs.setIcNumber(LoginActivity.this, "");
                         UserPrefs.setPhoneNumber(LoginActivity.this, "");
 
-                        // Pengguna baru: padam akaun Auth sementara supaya tidak wujud di Firebase Console selagi profil belum lengkap!
+                        // Forward new Google user to registration flow to complete IC, phone, and emergency contacts
                         final String googleToken = acct.getIdToken();
                         final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
                         user.delete().addOnCompleteListener(delTask -> {
@@ -792,7 +873,10 @@ public class LoginActivity extends BaseActivity {
                 });
     }
 
-    /** Paparkan AuthError. */
+    /**
+     * Parses Firebase authentication exceptions and displays user-friendly toast messages.
+     * Categorizes rate limits, non-existent accounts, and invalid credentials accurately.
+     */
     private void showAuthError(Exception e, MaterialButton btnLogin, String emailValue) {
         if (e instanceof FirebaseAuthException) {
             String code = ((FirebaseAuthException) e).getErrorCode();
@@ -845,7 +929,9 @@ public class LoginActivity extends BaseActivity {
         }
     }
 
-    /** Fungsi untuk ensureNotificationsPermissionBestEffort. */
+    /**
+     * Best-effort check and request for POST_NOTIFICATIONS runtime permission on Android 13+ (API 33+).
+     */
     private void ensureNotificationsPermissionBestEffort() {
         if (android.os.Build.VERSION.SDK_INT < 33) return;
         try {
@@ -864,7 +950,10 @@ public class LoginActivity extends BaseActivity {
         void run();
     }
 
-    /** Semak email dalam registeredEmails node (baca cache dulu). */
+    /**
+     * Checks if the given email exists in the 'registeredEmails' database node or via FirebaseAuth.
+     * Invokes callback with true if registered, otherwise false.
+     */
     private void checkRegisteredEmail(String email, BoolCallback callback) {
         String sanitized = sanitizeEmailForDb(email);
         if (sanitized.isEmpty()) {
@@ -901,7 +990,9 @@ public class LoginActivity extends BaseActivity {
                 });
     }
 
-    /** Semak dan sahkan EmailExistsInDb. */
+    /**
+     * Queries the 'users' Realtime Database table indexed by 'email' to test account existence.
+     */
     private void checkEmailExistsInDb(String emailLower, BoolCallback onSuccess, VoidCallback onFailure) {
         String emailValue = String.valueOf(emailLower == null ? "" : emailLower).trim().toLowerCase(java.util.Locale.ROOT);
         if (emailValue.isEmpty()) {
@@ -923,7 +1014,11 @@ public class LoginActivity extends BaseActivity {
                 });
     }
 
-    /** Fungsi untuk applyUserSnapshot. */
+    /**
+     * Hydrates local SharedPreferences (UserPrefs) from a remote Firebase Realtime Database DataSnapshot.
+     * Parses personal identity details, medical metadata (blood type, allergies, conditions),
+     * profile photo assets, and ensures a valid 4-digit public identifier is populated.
+     */
     private void applyUserSnapshot(DataSnapshot snapshot) {
         if (snapshot == null || !snapshot.exists()) return;
         Object nameObj = snapshot.child("name").getValue();
@@ -1023,7 +1118,9 @@ public class LoginActivity extends BaseActivity {
         }
     }
 
-    /** Fungsi untuk currentUidFromAuth. */
+    /**
+     * Extracts the current Firebase authenticated user's unique identifier (UID).
+     */
     private String currentUidFromAuth() {
         try {
             com.google.firebase.auth.FirebaseUser u = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
@@ -1033,7 +1130,10 @@ public class LoginActivity extends BaseActivity {
         }
     }
 
-    /** Fungsi untuk retryPendingPhotoSaveToDb. */
+    /**
+     * Retries uploading any pending local avatar URI to the Realtime Database as Base64.
+     * Compresses the bitmap to 256px max dimension at 72% JPEG quality.
+     */
     private void retryPendingPhotoSaveToDb(String uid, String localUri) {
         try {
             String u = String.valueOf(uid == null ? "" : uid).trim();
@@ -1049,7 +1149,11 @@ public class LoginActivity extends BaseActivity {
         }
     }
 
-    /** Fungsi untuk encodeAvatarToBase64. */
+    /**
+     * Encodes a local image URI to a Base64-encoded JPEG string with memory-safe downsampling.
+     * Uses inJustDecodeBounds to determine aspect ratio before allocation, downsamples to maxDim,
+     * and compresses with the specified JPEG quality to prevent OutOfMemory errors.
+     */
     private String encodeAvatarToBase64(android.net.Uri localUri, int maxDim, int jpegQuality) {
         try {
             android.graphics.BitmapFactory.Options bounds = new android.graphics.BitmapFactory.Options();
