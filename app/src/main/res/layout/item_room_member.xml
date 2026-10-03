@@ -124,11 +124,11 @@
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackgroundBorderless"
                 android:visibility="gone"
-                app:cardBackgroundColor="@color/member_pill_bg"
+                app:cardBackgroundColor="@color/brand_primary"
                 app:cardCornerRadius="999dp"
                 app:cardElevation="0dp"
-                app:strokeColor="@color/member_card_stroke"
-                app:strokeWidth="1dp">
+                app:strokeColor="@color/brand_primary"
+                app:strokeWidth="0dp">
 
                 <TextView
                     android:id="@+id/remove_icon"
@@ -137,7 +137,7 @@
                     android:layout_gravity="center"
                     android:fontFamily="sans-serif-black"
                     android:text="-"
-                    android:textColor="@color/member_pill_tint"
+                    android:textColor="@color/white"
                     android:textSize="18sp"
                     android:includeFontPadding="false" />
             </com.google.android.material.card.MaterialCardView>
