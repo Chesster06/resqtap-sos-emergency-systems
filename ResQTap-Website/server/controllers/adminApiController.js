@@ -151,8 +151,17 @@ async function handleDeleteUser(req, res) {
   }
 
   let body = '';
-  req.on('data', chunk => { body += chunk; });
+  const MAX_PAYLOAD = 100 * 1024; // 100 KB limit
+  req.on('data', chunk => {
+    body += chunk;
+    if (body.length > MAX_PAYLOAD) {
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Payload Too Large' }));
+      req.destroy();
+    }
+  });
   req.on('end', async () => {
+    if (body.length > MAX_PAYLOAD) return;
     try {
       const payload = JSON.parse(body || '{}');
       const uid = payload.uid;
