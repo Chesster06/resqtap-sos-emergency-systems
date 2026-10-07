@@ -858,6 +858,8 @@ const state = {
   supportChats: {},
   aiChats: {},
   highlights: {},
+  medicalCards: {},
+  hospitals: [],
   servedCases: new Set(),
   selectedSosSessionId: "",
   soslivechatSending: false,
@@ -1200,6 +1202,7 @@ async function syncFromSupabase() {
           phone: p.phone || "",
           photoUrl: p.photo_url || "",
           role: p.role || "user",
+          source: "supabase",
           updatedAt: p.updated_at ? new Date(p.updated_at).getTime() : Date.now()
         };
         if (p.role === "admin" || p.role === "ADMIN") {
@@ -1216,7 +1219,33 @@ async function syncFromSupabase() {
       state.admins = { ...aMap, ...state.admins };
     }
 
-    // 2. Highlights
+    // 2. Medical Cards
+    const { data: medCards } = await supabase.from("medical_cards").select("*");
+    if (Array.isArray(medCards)) {
+      const mcMap = {};
+      medCards.forEach((mc) => {
+        mcMap[mc.user_id] = mc;
+        if (state.users[mc.user_id]) {
+          state.users[mc.user_id].bloodType = mc.blood_type || state.users[mc.user_id].bloodType;
+          state.users[mc.user_id].allergies = mc.allergies || state.users[mc.user_id].allergies;
+          state.users[mc.user_id].existingConditions = mc.medical_conditions || state.users[mc.user_id].existingConditions;
+          state.users[mc.user_id].medications = mc.medications || state.users[mc.user_id].medications;
+          state.users[mc.user_id].notes = mc.notes || state.users[mc.user_id].notes;
+          if (Array.isArray(mc.emergency_contacts) && mc.emergency_contacts.length > 0) {
+            state.users[mc.user_id].emergencyContacts = mc.emergency_contacts;
+          }
+        }
+      });
+      state.medicalCards = mcMap;
+    }
+
+    // 3. Hospitals & Emergency Facilities
+    const { data: hospList } = await supabase.from("hospitals").select("*");
+    if (Array.isArray(hospList)) {
+      state.hospitals = hospList;
+    }
+
+    // 4. Highlights
     const { data: hl } = await supabase.from("highlights").select("*").order("display_order", { ascending: true });
     if (Array.isArray(hl) && hl.length > 0) {
       const hlMap = {};
@@ -1233,7 +1262,7 @@ async function syncFromSupabase() {
       state.highlights = { ...hlMap, ...state.highlights };
     }
 
-    // 3. Rooms
+    // 5. Rooms
     const { data: rm } = await supabase.from("rooms").select("*");
     if (Array.isArray(rm) && rm.length > 0) {
       const rmMap = {};
@@ -1246,7 +1275,7 @@ async function syncFromSupabase() {
       state.rooms = { ...rmMap, ...state.rooms };
     }
 
-    // 4. Room Tombstones
+    // 6. Room Tombstones
     const { data: rt } = await supabase.from("room_tombstones").select("*");
     if (Array.isArray(rt) && rt.length > 0) {
       const rtMap = {};
@@ -1260,7 +1289,7 @@ async function syncFromSupabase() {
       state.roomTombstones = { ...rtMap, ...state.roomTombstones };
     }
 
-    // 5. Incident Reports
+    // 7. Incident Reports
     const { data: rep } = await supabase.from("reports").select("*").order("created_at", { ascending: false });
     if (Array.isArray(rep) && rep.length > 0) {
       const repMap = {};
@@ -1283,7 +1312,7 @@ async function syncFromSupabase() {
     }
 
     state.lastSyncAt = Date.now();
-    setSyncStatus(`Live Sync: ${new Date(state.lastSyncAt).toLocaleTimeString()} (Supabase)`);
+    setSyncStatus(`Live Sync: ${new Date(state.lastSyncAt).toLocaleTimeString()} (Firebase ⚡ + Supabase 🐘)`);
     render();
   } catch (err) {
     console.warn("[SUPABASE_SYNC_ERROR]", err);
@@ -1330,7 +1359,12 @@ function startDataListeners() {
   state.supabasePollTimer = window.setInterval(syncFromSupabase, 8000);
 
   subscribe("users", (value) => {
-    state.users = asRecord(value);
+    const rtdbUsers = asRecord(value);
+    const merged = { ...state.users };
+    Object.keys(rtdbUsers).forEach((uid) => {
+      merged[uid] = { ...(merged[uid] || {}), ...rtdbUsers[uid] };
+    });
+    state.users = merged;
   });
   subscribe("rooms", (value) => {
     state.rooms = asRecord(value);
@@ -1367,7 +1401,8 @@ function startDataListeners() {
     cleanupExpiredAiChats().catch((error) => console.warn(error));
   });
   subscribe("highlights", (value) => {
-    state.highlights = asRecord(value);
+    const rtdbHl = asRecord(value);
+    state.highlights = { ...(state.highlights || {}), ...rtdbHl };
   });
   subscribe("adminCalls/incoming", (value) => {
     handleAdminIncomingCall(value);
@@ -3133,6 +3168,7 @@ function render() {
   if (els.aiChatCount) renderAiChat();
   renderAdmins();
   renderHighlights();
+  renderHospitals();
   renderDetail();
 
   // If case update modal is open and the victim cancelled the alert, auto-close modal
@@ -3167,6 +3203,7 @@ function renderNav() {
     notices: "Notifications",
     livechat: "Livechat",
     highlights: "Highlights (Mobile Carousel)",
+    hospitals: "Nearby Emergency Hospitals (Supabase)",
     logs: "Logs",
     admins: "Admins"
   };
@@ -4245,6 +4282,47 @@ function renderHighlights() {
   if (window.lucide) window.lucide.createIcons();
 }
 
+function renderHospitals() {
+  const tbody = document.getElementById("hospitalsTableBody");
+  const countEl = document.getElementById("hospitalsCount");
+  if (!tbody) return;
+  const list = Array.isArray(state.hospitals) ? state.hospitals : [];
+  if (countEl) countEl.textContent = `${list.length} Facilities (Supabase)`;
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="table-empty"><div class="empty-state">No hospital facilities loaded from Supabase.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map((h) => {
+    const cat = text(h.category || "hospital").toLowerCase();
+    const catBadge = cat === "police" 
+      ? '<span class="status-pill info">Police</span>' 
+      : cat === "fire" 
+      ? '<span class="status-pill warning">Fire Dept</span>' 
+      : '<span class="status-pill active">Hospital</span>';
+    const coords = (Number.isFinite(h.latitude) && Number.isFinite(h.longitude)) ? `${h.latitude.toFixed(4)}, ${h.longitude.toFixed(4)}` : "-";
+    const mapUrl = (Number.isFinite(h.latitude) && Number.isFinite(h.longitude)) ? `https://www.google.com/maps?q=${h.latitude},${h.longitude}` : "#";
+    return `
+      <tr>
+        <td>
+          <div class="cell-primary">
+            <strong>${escapeHtml(h.name || "Facility")}</strong>
+          </div>
+        </td>
+        <td>${catBadge}</td>
+        <td><span class="muted" style="font-size: 0.82rem;">${escapeHtml(h.address || "-")}</span></td>
+        <td>${h.phone ? `<a href="tel:${escapeHtml(h.phone)}" style="color: #0284C7; font-weight: 500;">${escapeHtml(h.phone)}</a>` : "-"}</td>
+        <td><code>${coords}</code></td>
+        <td>
+          <a class="small-button" href="${mapUrl}" target="_blank" rel="noreferrer">
+            <i data-lucide="map-pin" style="width: 14px; height: 14px;"></i><span>Navigate</span>
+          </a>
+        </td>
+      </tr>
+    `;
+  }).join("");
+  if (window.lucide) window.lucide.createIcons();
+}
+
 function detailPanelMaxWidth() {
   const shellWidth = els.appShell.getBoundingClientRect().width || window.innerWidth;
   const sidebarWidth = window.matchMedia("(max-width: 1320px)").matches ? 208 : 216;
@@ -4390,12 +4468,19 @@ function renderUserDetail(uid) {
       ${kv("Public ID", user.publicId)}
       ${kv("Email", user.email)}
       ${kv("Phone", user.phoneNumber || user.phone)}
+      ${kv("Data Source", user.source === "supabase" ? "Supabase Cloud" : "Firebase Realtime")}
       ${kv("Last seen", ageLabel(getUserLastSeen(uid, user)))}
     </section>
     <section class="detail-section">
-      ${kv("Blood type", user.bloodType)}
-      ${kv("Allergies", user.allergies)}
-      ${kv("Conditions", user.existingConditions)}
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+        <h3 style="margin: 0; font-size: 0.95rem;">Medical Card</h3>
+        ${state.medicalCards && state.medicalCards[uid] ? '<span class="status-pill active" style="font-size: 10px;">Supabase Verified</span>' : '<span class="status-pill muted" style="font-size: 10px;">Standard</span>'}
+      </div>
+      ${kv("Blood type", (state.medicalCards && state.medicalCards[uid] && state.medicalCards[uid].blood_type) || user.bloodType)}
+      ${kv("Allergies", (state.medicalCards && state.medicalCards[uid] && state.medicalCards[uid].allergies) || user.allergies)}
+      ${kv("Conditions", (state.medicalCards && state.medicalCards[uid] && state.medicalCards[uid].medical_conditions) || user.existingConditions)}
+      ${kv("Medications", (state.medicalCards && state.medicalCards[uid] && state.medicalCards[uid].medications) || user.medications || "-")}
+      ${kv("Medical Notes", (state.medicalCards && state.medicalCards[uid] && state.medicalCards[uid].notes) || "-")}
       ${kv("Date of birth", user.dateOfBirth || user.dob)}
       ${kv("Address", user.address)}
     </section>
@@ -5682,7 +5767,18 @@ async function seedDefaultHighlights() {
 
   try {
     await update(ref(db), updates);
-    showToast("3 Banner Kempen Inklusi OKU rasmi berjaya dimuatkan ke Firebase!");
+    // Persist to Supabase
+    try {
+      await supabase.from("highlights").upsert([
+        { id: "hl_people_first", title: "People First Abilities Always", image_url: "assets/highlight_1.jpg", action_url: "https://www.jkm.gov.my", display_order: 1, active: true },
+        { id: "hl_ability_limits", title: "Ability Has No Limits - Inclusion Is Everyone's Mission", image_url: "assets/highlight_2.jpg", action_url: "https://www.moh.gov.my", display_order: 2, active: true },
+        { id: "hl_different_abilities", title: "Different Abilities One Community - Inclusion Today", image_url: "assets/highlight_3.jpg", action_url: "https://www.malaysia.gov.my", display_order: 3, active: true }
+      ]);
+      syncFromSupabase();
+    } catch (sErr) {
+      console.warn("[SUPABASE_HL_SEED_ERR]", sErr);
+    }
+    showToast("3 Banner Kempen Inklusi OKU rasmi berjaya dimuatkan ke Firebase & Supabase!");
   } catch (error) {
     console.error(error);
     showToast(error.message || "Gagal memuatkan banner default.");
@@ -5699,6 +5795,13 @@ async function grantAdmin(uid) {
     grantedAt: serverTimestamp(),
     grantedBy: state.currentUser.uid
   });
+  // Dual-cloud sync: Update Supabase profile role
+  try {
+    await supabase.from("profiles").update({ role: "admin", updated_at: new Date().toISOString() }).eq("id", uid);
+    if (state.users[uid]) state.users[uid].role = "admin";
+  } catch (sErr) {
+    console.warn("[SUPABASE_GRANT_ADMIN_ERR]", sErr);
+  }
   els.adminUidInput.value = "";
   showToast("Admin access granted.");
 }
@@ -5714,6 +5817,13 @@ async function revokeAdmin(uid) {
     : `Revoke admin access for ${uid}?`;
   if (!window.confirm(message)) return;
   await remove(ref(db, `admins/${uid}`));
+  // Dual-cloud sync: Update Supabase profile role
+  try {
+    await supabase.from("profiles").update({ role: "user", updated_at: new Date().toISOString() }).eq("id", uid);
+    if (state.users[uid]) state.users[uid].role = "user";
+  } catch (sErr) {
+    console.warn("[SUPABASE_REVOKE_ADMIN_ERR]", sErr);
+  }
   showToast("Admin access revoked.");
 }
 
@@ -5732,6 +5842,12 @@ async function setReportStatus(reportId, status) {
   if (meta.id === "resolved") updates.resolvedAt = serverTimestamp();
   if (meta.id === "rejected") updates.rejectedAt = serverTimestamp();
   await update(ref(db, `incidentReports/${reportId}`), updates);
+  // Dual-cloud sync: Update Supabase reports table
+  try {
+    await supabase.from("reports").update({ status: meta.id }).eq("id", reportId);
+  } catch (sErr) {
+    console.warn("[SUPABASE_REPORT_STATUS_ERR]", sErr);
+  }
   showToast(`Report marked ${meta.label.toLowerCase()}.`);
 }
 
@@ -5741,6 +5857,12 @@ async function deleteReport(reportId) {
     return;
   }
   if (!window.confirm(`Delete report ${reportId}?`)) return;
+  // Dual-cloud sync: Delete from Supabase reports table
+  try {
+    await supabase.from("reports").delete().eq("id", reportId);
+  } catch (sErr) {
+    console.warn("[SUPABASE_REPORT_DEL_ERR]", sErr);
+  }
   let rep = state.incidentReports && state.incidentReports[reportId];
   if (!rep) {
     try {
@@ -6156,6 +6278,11 @@ function handleAction(button) {
       const curActive = button.dataset.active === "true";
       if (hlId) {
         await update(ref(db, `highlights/${hlId}`), { active: !curActive });
+        try {
+          await supabase.from("highlights").update({ active: !curActive }).eq("id", hlId);
+        } catch (sErr) {
+          console.warn("[SUPABASE_HL_TOGGLE_ERR]", sErr);
+        }
         showToast(curActive ? "Highlight hidden from mobile." : "Highlight active on mobile.");
       }
     }
@@ -6208,6 +6335,12 @@ function handleAction(button) {
       const hlId = button.dataset.highlightId;
       if (hlId && window.confirm("Delete this highlight banner permanently?")) {
         await remove(ref(db, `highlights/${hlId}`));
+        try {
+          await supabase.from("highlights").delete().eq("id", hlId);
+        } catch (sErr) {
+          console.warn("[SUPABASE_HL_DEL_ERR]", sErr);
+        }
+        delete state.highlights[hlId];
         showToast("Highlight banner deleted.");
       }
     }
