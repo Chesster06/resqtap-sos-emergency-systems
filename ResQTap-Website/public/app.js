@@ -32,14 +32,11 @@ import {
   deleteSingleAuthAccount,
   listAllAuthUsers
 } from "./admin_auth_bridge.js";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, firebaseConfig } from "./config.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDZ8X0sDpjbaMLt20DVA4ocNOzw9rqy-Xw",
-  authDomain: "resqtap-b9ff5.firebaseapp.com",
-  databaseURL: "https://resqtap-b9ff5-default-rtdb.firebaseio.com",
-  projectId: "resqtap-b9ff5",
-  storageBucket: "resqtap-b9ff5.firebasestorage.app"
-};
+export { SUPABASE_URL, SUPABASE_ANON_KEY };
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -640,7 +637,14 @@ function initKatupChatbot() {
     const bubble = document.createElement("div");
     bubble.className = "katup-msg-bubble";
 
-    const formatted = text
+    const safeText = String(text || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+    const formatted = safeText
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\n/g, "<br>");
     bubble.innerHTML = `<p>${formatted}</p>`;
@@ -1096,6 +1100,19 @@ function isAdminValue(value) {
 }
 
 async function isCurrentUserAdmin(uid) {
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", uid)
+      .maybeSingle();
+    if (profile && (profile.role === "admin" || profile.role === "ADMIN")) {
+      return true;
+    }
+  } catch (e) {
+    console.warn("[SUPABASE_ADMIN_CHECK_ERR]", e);
+  }
+
   const adminSnapshot = await get(ref(db, `admins/${uid}`));
   if (isAdminValue(adminSnapshot.val())) return true;
 
@@ -1163,6 +1180,114 @@ function cleanupDataListeners() {
     window.clearInterval(state.authUsersPollTimer);
     state.authUsersPollTimer = null;
   }
+  if (state.supabasePollTimer) {
+    window.clearInterval(state.supabasePollTimer);
+    state.supabasePollTimer = null;
+  }
+}
+
+async function syncFromSupabase() {
+  try {
+    // 1. Profiles & Admins
+    const { data: profiles } = await supabase.from("profiles").select("*");
+    if (Array.isArray(profiles) && profiles.length > 0) {
+      const uMap = {};
+      const aMap = {};
+      profiles.forEach((p) => {
+        uMap[p.id] = {
+          name: p.full_name || "User",
+          email: p.email || "",
+          phone: p.phone || "",
+          photoUrl: p.photo_url || "",
+          role: p.role || "user",
+          updatedAt: p.updated_at ? new Date(p.updated_at).getTime() : Date.now()
+        };
+        if (p.role === "admin" || p.role === "ADMIN") {
+          aMap[p.id] = {
+            active: true,
+            email: p.email || "",
+            name: p.full_name || "Admin",
+            role: "admin",
+            updatedAt: p.updated_at ? new Date(p.updated_at).getTime() : Date.now()
+          };
+        }
+      });
+      state.users = { ...uMap, ...state.users };
+      state.admins = { ...aMap, ...state.admins };
+    }
+
+    // 2. Highlights
+    const { data: hl } = await supabase.from("highlights").select("*").order("display_order", { ascending: true });
+    if (Array.isArray(hl) && hl.length > 0) {
+      const hlMap = {};
+      hl.forEach((h) => {
+        hlMap[h.id] = {
+          id: h.id,
+          title: h.title,
+          imageUrl: h.image_url,
+          actionUrl: h.action_url,
+          order: h.display_order,
+          active: h.active !== false
+        };
+      });
+      state.highlights = { ...hlMap, ...state.highlights };
+    }
+
+    // 3. Rooms
+    const { data: rm } = await supabase.from("rooms").select("*");
+    if (Array.isArray(rm) && rm.length > 0) {
+      const rmMap = {};
+      rm.forEach((r) => {
+        rmMap[r.id] = {
+          name: r.name || r.id,
+          creatorUid: r.creator_uid
+        };
+      });
+      state.rooms = { ...rmMap, ...state.rooms };
+    }
+
+    // 4. Room Tombstones
+    const { data: rt } = await supabase.from("room_tombstones").select("*");
+    if (Array.isArray(rt) && rt.length > 0) {
+      const rtMap = {};
+      rt.forEach((t) => {
+        rtMap[t.room_code] = {
+          by: t.deleted_by,
+          source: t.source,
+          deletedAt: Number(t.deleted_at_ms || Date.now())
+        };
+      });
+      state.roomTombstones = { ...rtMap, ...state.roomTombstones };
+    }
+
+    // 5. Incident Reports
+    const { data: rep } = await supabase.from("reports").select("*").order("created_at", { ascending: false });
+    if (Array.isArray(rep) && rep.length > 0) {
+      const repMap = {};
+      rep.forEach((r) => {
+        repMap[r.id] = {
+          id: r.id,
+          title: r.title,
+          description: r.description,
+          category: r.category,
+          latitude: r.latitude,
+          longitude: r.longitude,
+          address: r.address,
+          status: r.status,
+          senderName: r.user_name || "User",
+          senderUid: r.user_id,
+          createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now()
+        };
+      });
+      state.incidentReports = { ...repMap, ...state.incidentReports };
+    }
+
+    state.lastSyncAt = Date.now();
+    setSyncStatus(`Live Sync: ${new Date(state.lastSyncAt).toLocaleTimeString()} (Supabase)`);
+    render();
+  } catch (err) {
+    console.warn("[SUPABASE_SYNC_ERROR]", err);
+  }
 }
 
 async function loadAuthUsers() {
@@ -1199,6 +1324,11 @@ function startDataListeners() {
   setSyncStatus("Syncing");
   loadAuthUsers();
   state.authUsersPollTimer = window.setInterval(loadAuthUsers, 30000);
+
+  // Supabase Data Sync
+  syncFromSupabase();
+  state.supabasePollTimer = window.setInterval(syncFromSupabase, 8000);
+
   subscribe("users", (value) => {
     state.users = asRecord(value);
   });
@@ -3880,10 +4010,13 @@ function renderLivechat() {
     }
 
     const attachment = asRecord(message.attachment);
-    const attachmentHtml = attachment.downloadUrl ? `
-      ${text(attachment.downloadUrl).startsWith("data:image/")
-        ? `<img class="livechat-image-preview" src="${escapeHtml(attachment.downloadUrl)}" alt="${escapeHtml(attachment.name || "Attachment")}">`
-        : `<a class="livechat-attachment" href="${escapeHtml(attachment.downloadUrl)}" target="_blank" rel="noreferrer">
+    const rawAttachUrl = text(attachment.downloadUrl).trim();
+    const isSafeAttach = rawAttachUrl.startsWith("https://") || rawAttachUrl.startsWith("http://") || rawAttachUrl.startsWith("data:image/") || rawAttachUrl.startsWith("/");
+    const safeAttachUrl = isSafeAttach ? rawAttachUrl : "#";
+    const attachmentHtml = rawAttachUrl ? `
+      ${rawAttachUrl.startsWith("data:image/")
+        ? `<img class="livechat-image-preview" src="${escapeHtml(safeAttachUrl)}" alt="${escapeHtml(attachment.name || "Attachment")}">`
+        : `<a class="livechat-attachment" href="${escapeHtml(safeAttachUrl)}" target="_blank" rel="noopener noreferrer">
             ${icon("paperclip")}
             <span>${escapeHtml(attachment.name || "Attachment")}</span>
           </a>`}
@@ -6478,6 +6611,7 @@ function bindEvents() {
       }
 
       try {
+        const targetId = editingId || `hl_${Date.now()}`;
         if (editingId) {
           await update(ref(db, `highlights/${editingId}`), {
             title,
@@ -6494,7 +6628,7 @@ function bindEvents() {
         } else {
           const newRef = push(ref(db, "highlights"));
           await set(newRef, {
-            id: newRef.key,
+            id: newRef.key || targetId,
             title,
             imageUrl,
             actionUrl,
@@ -6504,6 +6638,22 @@ function bindEvents() {
           });
           showToast("Highlight banner added successfully!");
         }
+
+        // Persist to Supabase
+        try {
+          await supabase.from("highlights").upsert({
+            id: targetId,
+            title: title,
+            image_url: imageUrl,
+            action_url: actionUrl,
+            display_order: order,
+            active: true
+          });
+          syncFromSupabase();
+        } catch (sErr) {
+          console.warn("[SUPABASE_HL_SAVE_ERR]", sErr);
+        }
+
         hlForm.reset();
         if (hlPreview) hlPreview.style.display = "none";
         if (hlNoPreview) hlNoPreview.style.display = "block";

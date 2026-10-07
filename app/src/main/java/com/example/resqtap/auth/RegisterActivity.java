@@ -1043,16 +1043,11 @@ public class RegisterActivity extends BaseActivity {
 
             btnCreate.setEnabled(false);
 
-            // Semak ketersediaan e-mel dan sahkan sebelum maju ke Langkah 2 tanpa mencipta akaun Auth lagi
-            String sanitized = sanitizeEmailForDb(emailValue);
-            DatabaseReference emailRef = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                    .getReference("registeredEmails")
-                    .child(sanitized);
-
-            emailRef.get().addOnSuccessListener(snapshot -> {
+            // Semak ketersediaan e-mel secara komprehensif merentasi Firebase Auth dan Supabase
+            verifyEmailAvailabilityAsync(emailValue, isAvailable -> {
                 btnCreate.setEnabled(true);
-                boolean existsInDb = snapshot != null && snapshot.exists() && Boolean.TRUE.equals(snapshot.getValue(Boolean.class));
-                if (existsInDb) {
+                if (!isAvailable) {
+                    emailAvailable = false;
                     emailLayout.setError(getString(R.string.toast_email_already_exists));
                     emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
                     emailLayout.setEndIconTintList(null);
@@ -1061,13 +1056,9 @@ public class RegisterActivity extends BaseActivity {
                     return;
                 }
 
-                // E-mel sah dan belum berdaftar: simpan kelayakan sementara dan teruskan ke Langkah 2
-                registeredEmail = emailValue;
-                registeredPassword = passValue;
-                showStep2PersonalInfo();
-            }).addOnFailureListener(e -> {
-                btnCreate.setEnabled(true);
-                // Jika semakan DB gagal disebabkan tiada rangkaian dsb, masih benarkan maju jika e-mel sah
+                emailAvailable = true;
+                emailLayout.setError(null);
+                emailLayout.setErrorEnabled(false);
                 registeredEmail = emailValue;
                 registeredPassword = passValue;
                 showStep2PersonalInfo();
@@ -1411,22 +1402,9 @@ public class RegisterActivity extends BaseActivity {
                     .addOnFailureListener(e -> {
                         Log.e(TAG, "createUserWithEmailAndPassword failed at final save", e);
                         if (e instanceof FirebaseAuthUserCollisionException) {
-                            // Jika e-mel sudah ada dalam Auth, cuba log masuk dengan kata laluan yang dimasukkan
-                            FirebaseAuth.getInstance()
-                                    .signInWithEmailAndPassword(registeredEmail, registeredPassword)
-                                    .addOnSuccessListener(authRes -> {
-                                        if (authRes.getUser() != null) {
-                                            registeredUid = authRes.getUser().getUid();
-                                            saveProfileToDatabase(registeredUid, registeredEmail, firstNameValue, lastNameValue, nameValue, icValue, genderValue, phoneValue, addressValue, religionValue, dobValue, ethnicityValue, bloodValue, allergiesValue, medicationsValue, organDonorValue, emNameValue, emPhoneValue, emRelationValue, btnSaveDetails);
-                                        } else {
-                                            btnSaveDetails.setEnabled(true);
-                                            showAccountExistsDialog(registeredEmail);
-                                        }
-                                    })
-                                    .addOnFailureListener(authErr -> {
-                                        btnSaveDetails.setEnabled(true);
-                                        showAccountExistsDialog(registeredEmail);
-                                    });
+                            btnSaveDetails.setEnabled(true);
+                            Toast.makeText(this, R.string.toast_email_already_exists, Toast.LENGTH_LONG).show();
+                            showAccountExistsDialog(registeredEmail);
                             return;
                         }
                         btnSaveDetails.setEnabled(true);
@@ -1554,76 +1532,48 @@ public class RegisterActivity extends BaseActivity {
             user.put("emergencyContacts", contactList);
         }
 
-        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                .getReference("users")
-                .child(uid)
-                .setValue(user)
-                .addOnSuccessListener(vv -> {
-                    // Simpan UserPrefs segera (tanpa tunggu DB ops lain)
-                    UserPrefs.setActiveRoomCode(this, "");
-                    UserPrefs.setUid(this, uid);
-                    UserPrefs.setEmail(this, emailVal);
-                    UserPrefs.setName(this, nameValue);
-                    UserPrefs.setFirstName(this, firstNameValue);
-                    UserPrefs.setLastName(this, lastNameValue);
-                    UserPrefs.setIcNumber(this, icValue);
-                    UserPrefs.setGender(this, genderValue);
-                    UserPrefs.setPhoneNumber(this, phoneValue);
-                    UserPrefs.setAddress(this, addressValue);
-                    UserPrefs.setReligion(this, religionValue);
-                    UserPrefs.setDateOfBirth(this, dobValue);
-                    UserPrefs.setEthnicity(this, ethnicityValue);
-                    UserPrefs.setBloodType(this, bloodValue);
-                    UserPrefs.setAllergies(this, allergiesValue);
-                    UserPrefs.setExistingConditions(this, medicationsValue);
-                    UserPrefs.setMedications(this, medicationsValue);
-                    UserPrefs.setOrganDonor(this, organDonorValue);
-                    if (!contactList.isEmpty()) {
-                        UserPrefs.setEmergencyContacts(this, contactList);
-                    }
-                    if (!photoB64.isEmpty()) {
-                        UserPrefs.setPhotoB64(this, photoB64);
-                    }
+        // Simpan UserPrefs segera
+        UserPrefs.setActiveRoomCode(this, "");
+        UserPrefs.setUid(this, uid);
+        UserPrefs.setEmail(this, emailVal);
+        UserPrefs.setName(this, nameValue);
+        UserPrefs.setFirstName(this, firstNameValue);
+        UserPrefs.setLastName(this, lastNameValue);
+        UserPrefs.setIcNumber(this, icValue);
+        UserPrefs.setGender(this, genderValue);
+        UserPrefs.setPhoneNumber(this, phoneValue);
+        UserPrefs.setAddress(this, addressValue);
+        UserPrefs.setReligion(this, religionValue);
+        UserPrefs.setDateOfBirth(this, dobValue);
+        UserPrefs.setEthnicity(this, ethnicityValue);
+        UserPrefs.setBloodType(this, bloodValue);
+        UserPrefs.setAllergies(this, allergiesValue);
+        UserPrefs.setExistingConditions(this, medicationsValue);
+        UserPrefs.setMedications(this, medicationsValue);
+        UserPrefs.setOrganDonor(this, organDonorValue);
+        if (!contactList.isEmpty()) {
+            UserPrefs.setEmergencyContacts(this, contactList);
+        }
+        if (!photoB64.isEmpty()) {
+            UserPrefs.setPhotoB64(this, photoB64);
+        }
 
-                    // Profil kini lengkap
-                    isRegistrationCompleted = true;
+        // Simpan profil & kad perubatan secara langsung dan eksklusif ke SUPABASE (tiada di Firebase RTDB)
+        try {
+            com.example.resqtap.supabase.SupabaseManager.getInstance().upsertProfile(uid, emailVal, nameValue, phoneValue, photoB64, null);
+            com.example.resqtap.supabase.SupabaseManager.getInstance().upsertMedicalCard(uid, bloodValue, allergiesValue, medicationsValue, "", null);
+        } catch (Exception ignored) {
+        }
 
-                    // Terus tunjuk step 4 — jangan tunggu DB ops
-                    showStep4GetStarted();
+        // Profil kini lengkap
+        isRegistrationCompleted = true;
 
-                    // Fire-and-forget: registeredEmails, admin, publicId di background
-                    String sanitizedEmail = sanitizeEmailForDb(emailVal);
-                    if (!sanitizedEmail.isEmpty()) {
-                        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                                .getReference("registeredEmails")
-                                .child(sanitizedEmail)
-                                .setValue(true);
-                    }
+        // Terus tunjuk step 4
+        showStep4GetStarted();
 
-                    if (emailVal != null && emailVal.trim().toLowerCase(java.util.Locale.ROOT).endsWith("@resqtap.com")) {
-                        Map<String, Object> adminData = new HashMap<>();
-                        adminData.put("active", true);
-                        adminData.put("email", emailVal.trim().toLowerCase(java.util.Locale.ROOT));
-                        adminData.put("name", nameValue != null ? nameValue : "");
-                        adminData.put("role", "admin");
-                        adminData.put("assignedAt", System.currentTimeMillis());
-                        adminData.put("assignedBy", "system_auto_domain");
-
-                        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                                .getReference("admins")
-                                .child(uid)
-                                .setValue(adminData);
-                    }
-
-                    assignPublicId(uid, publicId -> {
-                        UserPrefs.setPublicId(RegisterActivity.this, publicId);
-                    });
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "save profile failed. uid=" + uid, e);
-                    if (btnSaveDetails != null) btnSaveDetails.setEnabled(true);
-                    Toast.makeText(this, R.string.toast_register_failed_db, Toast.LENGTH_SHORT).show();
-                });
+        assignPublicId(uid, publicId -> {
+            UserPrefs.setPublicId(RegisterActivity.this, publicId);
+        });
     }
 
     /**
@@ -1808,7 +1758,52 @@ public class RegisterActivity extends BaseActivity {
                 .replace("@", "_at_");
     }
 
-    /** Semak dan sahkan EmailAvailability secara langsung melalui Firebase RTDB registeredEmails dan Auth. */
+    private interface EmailAvailabilityCheckCallback {
+        void onResult(boolean isAvailable);
+    }
+
+    /**
+     * Semak ketersediaan e-mel secara komprehensif merentasi Firebase Auth dan Supabase.
+     * Jika e-mel sudah didaftarkan melalui Google Sign-In atau e-mel/kata laluan, pendaftaran e-mel dihalang serta-merta.
+     */
+    private void verifyEmailAvailabilityAsync(String email, EmailAvailabilityCheckCallback callback) {
+        String query = String.valueOf(email == null ? "" : email).trim().toLowerCase(java.util.Locale.ROOT);
+        if (query.isEmpty() || !isGmail(query)) {
+            if (callback != null) callback.onResult(false);
+            return;
+        }
+
+        // 1. Semak Firebase Authentication (Google SignIn / Email-Password)
+        FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(authTask -> {
+            if (authTask.isSuccessful() && authTask.getResult() != null) {
+                java.util.List<String> methods = authTask.getResult().getSignInMethods();
+                if (methods != null && !methods.isEmpty()) {
+                    // E-mel sudah wujud dalam Firebase Auth (Google atau Password)!
+                    if (callback != null) callback.onResult(false);
+                    return;
+                }
+            }
+
+            // 2. Semak pangkalan data Supabase profiles
+            com.example.resqtap.supabase.SupabaseManager.getInstance().checkEmailExists(query, new com.example.resqtap.supabase.SupabaseManager.Callback<Boolean>() {
+                @Override
+                public void onSuccess(Boolean existsInSupabase) {
+                    if (Boolean.TRUE.equals(existsInSupabase)) {
+                        if (callback != null) callback.onResult(false);
+                    } else {
+                        if (callback != null) callback.onResult(true);
+                    }
+                }
+
+                @Override
+                public void onError(Exception error) {
+                    if (callback != null) callback.onResult(true);
+                }
+            });
+        });
+    }
+
+    /** Semak dan sahkan EmailAvailability secara langsung melalui Firebase Auth dan Supabase. */
     private void checkEmailAvailability(String email, TextInputLayout emailLayout, MaterialButton btnCreate) {
         String query = email.trim().toLowerCase(java.util.Locale.ROOT);
         if (query.isEmpty() || !isGmail(query)) return;
@@ -1817,92 +1812,24 @@ public class RegisterActivity extends BaseActivity {
         String currentInput = inputEmail != null && inputEmail.getText() != null ? inputEmail.getText().toString().trim().toLowerCase(java.util.Locale.ROOT) : "";
         if (!query.equals(currentInput)) return;
 
-        String sanitized = sanitizeEmailForDb(query);
-        DatabaseReference ref = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                .getReference("registeredEmails")
-                .child(sanitized);
-
-        ref.get().addOnSuccessListener(snapshot -> {
+        verifyEmailAvailabilityAsync(query, isAvailable -> {
             TextInputEditText currentEditText = findViewById(R.id.input_email);
             String liveInput = currentEditText != null && currentEditText.getText() != null ? currentEditText.getText().toString().trim().toLowerCase(java.util.Locale.ROOT) : "";
             if (!query.equals(liveInput)) return;
 
-            boolean dbExists = snapshot != null && snapshot.exists() && Boolean.TRUE.equals(snapshot.getValue(Boolean.class));
-            if (dbExists) {
-                // Sahkan dengan Firebase Auth secara langsung untuk elak sekatan akibat cache basi
-                FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(task -> {
-                    TextInputEditText innerEditText = findViewById(R.id.input_email);
-                    String innerInput = innerEditText != null && innerEditText.getText() != null ? innerEditText.getText().toString().trim().toLowerCase(java.util.Locale.ROOT) : "";
-                    if (!query.equals(innerInput)) return;
-
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        java.util.List<String> methods = task.getResult().getSignInMethods();
-                        if (methods != null && methods.isEmpty()) {
-                            // Akaun sudah tiada dalam Auth; rekod RTDB ini hanyalah cache basi / yatim
-                            try { ref.removeValue(); } catch (Exception ignored) {}
-                            emailAvailable = true;
-                            emailLayout.setError(null); emailLayout.setErrorEnabled(false);
-                            emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
-                            emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.success_green)));
-                            btnCreate.setEnabled(true);
-                            return;
-                        }
-                    }
-
-                    // Sahkan ada akaun di Auth atau ralat semakan auth
-                    emailAvailable = false;
-                    emailLayout.setError(getString(R.string.toast_email_already_exists));
-                    emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
-                    emailLayout.setEndIconTintList(null);
-                    btnCreate.setEnabled(false);
-                });
-            } else {
-                FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(task -> {
-                    TextInputEditText innerEditText = findViewById(R.id.input_email);
-                    String innerInput = innerEditText != null && innerEditText.getText() != null ? innerEditText.getText().toString().trim().toLowerCase(java.util.Locale.ROOT) : "";
-                    if (!query.equals(innerInput)) return;
-
-                    if (task.isSuccessful() && task.getResult() != null) {
-                        java.util.List<String> methods = task.getResult().getSignInMethods();
-                        if (methods != null && !methods.isEmpty()) {
-                            emailAvailable = false;
-                            emailLayout.setError(getString(R.string.toast_email_already_exists));
-                            emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
-                            emailLayout.setEndIconTintList(null);
-                            btnCreate.setEnabled(false);
-                            return;
-                        }
-                    }
-                    emailAvailable = true;
-                    emailLayout.setError(null); emailLayout.setErrorEnabled(false);
-                    emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
-                    emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.success_green)));
-                    btnCreate.setEnabled(true);
-                });
-            }
-        }).addOnFailureListener(e -> {
-            FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(task -> {
-                TextInputEditText innerEditText = findViewById(R.id.input_email);
-                String innerInput = innerEditText != null && innerEditText.getText() != null ? innerEditText.getText().toString().trim().toLowerCase(java.util.Locale.ROOT) : "";
-                if (!query.equals(innerInput)) return;
-
-                if (task.isSuccessful() && task.getResult() != null) {
-                    java.util.List<String> methods = task.getResult().getSignInMethods();
-                    if (methods != null && !methods.isEmpty()) {
-                        emailAvailable = false;
-                        emailLayout.setError(getString(R.string.toast_email_already_exists));
-                        emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
-                        emailLayout.setEndIconTintList(null);
-                        btnCreate.setEnabled(false);
-                        return;
-                    }
-                }
-                emailAvailable = true;
-                emailLayout.setError(null); emailLayout.setErrorEnabled(false);
-                emailLayout.setEndIconDrawable(null);
-                emailLayout.setEndIconTintList(null);
+            emailAvailable = isAvailable;
+            if (isAvailable) {
+                emailLayout.setError(null);
+                emailLayout.setErrorEnabled(false);
+                emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
+                emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(this, R.color.success_green)));
                 btnCreate.setEnabled(true);
-            });
+            } else {
+                emailLayout.setError(getString(R.string.toast_email_already_exists));
+                emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
+                emailLayout.setEndIconTintList(null);
+                btnCreate.setEnabled(false);
+            }
         });
     }
 
@@ -1918,50 +1845,10 @@ public class RegisterActivity extends BaseActivity {
      * @param callback Callback invoked once tag is assigned
      */
     private void assignPublicId(String uid, PublicIdCallback callback) {
-        DatabaseReference counterRef = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                .getReference("counters")
-                .child("user_public_id");
-
-        counterRef.runTransaction(new Transaction.Handler() {
-            @Override
-            public Transaction.Result doTransaction(MutableData currentData) {
-                long current = 0L;
-                if (currentData.getValue() != null) {
-                    try {
-                        current = ((Number) currentData.getValue()).longValue();
-                    } catch (Exception ignored) {
-                        current = 0L;
-                    }
-                }
-                currentData.setValue(current + 1);
-                return Transaction.success(currentData);
-            }
-
-            /** Fungsi untuk onComplete. */
-    @Override
-            public void onComplete(com.google.firebase.database.DatabaseError error, boolean committed, com.google.firebase.database.DataSnapshot currentData) {
-                String publicId;
-                if (committed && currentData != null && currentData.getValue() != null) {
-                    long seq = ((Number) currentData.getValue()).longValue();
-                    publicId = String.format(java.util.Locale.US, "%04d", (seq % 9000) + 1000);
-                } else {
-                    SecureRandom random = new SecureRandom();
-                    publicId = String.format(java.util.Locale.US, "%04d", random.nextInt(9000) + 1000);
-                }
-
-                Map<String, Object> updateMap = new HashMap<>();
-                updateMap.put("publicId", publicId);
-                updateMap.put("publicIdSeq", System.currentTimeMillis());
-
-                FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                        .getReference("users")
-                        .child(uid)
-                        .updateChildren(updateMap)
-                        .addOnCompleteListener(task -> {
-                            if (callback != null) callback.onAssigned(publicId);
-                        });
-            }
-        });
+        String publicId = com.example.resqtap.friend.FirebaseFriendClient.format4DigitId(uid, "");
+        if (callback != null) {
+            callback.onAssigned(publicId);
+        }
     }
 
     /** Semak dan sahkan Gmail. */
@@ -2050,7 +1937,7 @@ public class RegisterActivity extends BaseActivity {
 
         try {
             com.google.firebase.auth.FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
-            if (current != null) {
+            if (current != null && !fromGoogleSignIn && !completeProfileMode) {
                 current.delete().addOnCompleteListener(task -> {
                     FirebaseAuth.getInstance().signOut();
                     UserPrefs.clearAccountData(this);
@@ -2070,7 +1957,7 @@ public class RegisterActivity extends BaseActivity {
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.account_exists_dialog_title)
                 .setMessage(getString(R.string.account_exists_dialog_msg, emailValue))
-                .setPositiveButton(R.string.go_to_login, (d, w) -> finishToLogin())
+                .setPositiveButton(R.string.go_to_login, (d, w) -> finishToLogin(emailValue))
                 .setNegativeButton(R.string.reset_password, (d, w) -> {
                     Intent intent = new Intent(this, ForgotPasswordActivity.class);
                     intent.putExtra("email", emailValue);
@@ -2082,8 +1969,15 @@ public class RegisterActivity extends BaseActivity {
 
     /** Fungsi untuk finishToLogin. */
     private void finishToLogin() {
+        finishToLogin(registeredEmail);
+    }
+
+    private void finishToLogin(String emailToPass) {
         Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        if (emailToPass != null && !emailToPass.trim().isEmpty()) {
+            intent.putExtra("email", emailToPass.trim().toLowerCase(java.util.Locale.ROOT));
+        }
         startActivity(intent);
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         finish();
@@ -2094,10 +1988,7 @@ public class RegisterActivity extends BaseActivity {
         super.onDestroy();
         if (!isRegistrationCompleted && isFinishing()) {
             try {
-                com.google.firebase.auth.FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
-                if (current != null) {
-                    current.delete();
-                }
+                // Jangan padam akaun Google atau sesi pengguna jika tidak sengaja keluar
                 FirebaseAuth.getInstance().signOut();
             } catch (Exception ignored) {}
         }
@@ -2651,72 +2542,77 @@ public class RegisterActivity extends BaseActivity {
             UserPrefs.setEmail(this, email);
         }
 
-        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                .getReference("users")
-                .child(uid)
-                .get()
-                .addOnSuccessListener(snapshot -> {
-                    if (snapshot != null && snapshot.exists()) {
-                        applyExistingGoogleUserSnapshot(snapshot);
-                        final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
-                        if (!UserPrefs.isPersonalInfoComplete(this)) {
-                            // Profil belum lengkap: beralih ke Step 2 terus
-                            fromGoogleSignIn = true;
-                            googleIdToken = acct.getIdToken() != null ? acct.getIdToken() : "";
-                            googlePhotoUrl = googlePhoto;
-                            registeredUid = uid;
-                            registeredEmail = email;
+        final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
+        fromGoogleSignIn = true;
+        googleIdToken = acct.getIdToken() != null ? acct.getIdToken() : "";
+        googlePhotoUrl = googlePhoto;
+        registeredUid = uid;
+        registeredEmail = email;
 
-                            user.delete().addOnCompleteListener(delTask -> {
-                                FirebaseAuth.getInstance().signOut();
-                                setupGoogleProfileStep2(acct, googlePhoto);
-                            });
-                            return;
-                        }
-
-                        // Profil sedia ada lengkap: terus ke MainActivity
-                        String sanitizedEmail = sanitizeEmailForDb(email);
-                        if (!sanitizedEmail.isEmpty()) {
-                            try {
-                                FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                                        .getReference("registeredEmails")
-                                        .child(sanitizedEmail)
-                                        .setValue(true);
-                            } catch (Exception ignored) {}
-                        }
-
+        // Semak profil dari Supabase terlebih dahulu
+        com.example.resqtap.supabase.SupabaseManager.getInstance().getProfile(uid, new com.example.resqtap.supabase.SupabaseManager.Callback<org.json.JSONObject>() {
+            @Override
+            public void onSuccess(org.json.JSONObject profile) {
+                if (profile != null) {
+                    applySupabaseProfile(profile);
+                    if (UserPrefs.isPersonalInfoComplete(RegisterActivity.this)) {
                         setGoogleLoading(false);
                         startActivity(new Intent(RegisterActivity.this, MainActivity.class));
                         finish();
-                    } else {
-                        // Pengguna baru mendaftar dengan Google
-                        final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
-                        fromGoogleSignIn = true;
-                        googleIdToken = acct.getIdToken() != null ? acct.getIdToken() : "";
-                        googlePhotoUrl = googlePhoto;
-                        registeredUid = uid;
-                        registeredEmail = email;
-
-                        user.delete().addOnCompleteListener(delTask -> {
-                            FirebaseAuth.getInstance().signOut();
-                            setupGoogleProfileStep2(acct, googlePhoto);
-                        });
+                        return;
                     }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to fetch user from DB after Google sign-in", e);
-                    final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
-                    fromGoogleSignIn = true;
-                    googleIdToken = acct.getIdToken() != null ? acct.getIdToken() : "";
-                    googlePhotoUrl = googlePhoto;
-                    registeredUid = uid;
-                    registeredEmail = email;
+                }
+                setupGoogleProfileStep2(acct, googlePhoto);
+            }
 
-                    user.delete().addOnCompleteListener(delTask -> {
-                        FirebaseAuth.getInstance().signOut();
-                        setupGoogleProfileStep2(acct, googlePhoto);
-                    });
-                });
+            @Override
+            public void onError(Exception e) {
+                // Fallback: semak RTDB jika ada rekod lama
+                FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                        .getReference("users")
+                        .child(uid)
+                        .get()
+                        .addOnSuccessListener(snapshot -> {
+                            if (snapshot != null && snapshot.exists()) {
+                                applyExistingGoogleUserSnapshot(snapshot);
+                                if (UserPrefs.isPersonalInfoComplete(RegisterActivity.this)) {
+                                    setGoogleLoading(false);
+                                    startActivity(new Intent(RegisterActivity.this, MainActivity.class));
+                                    finish();
+                                    return;
+                                }
+                            }
+                            setupGoogleProfileStep2(acct, googlePhoto);
+                        })
+                        .addOnFailureListener(err -> setupGoogleProfileStep2(acct, googlePhoto));
+            }
+        });
+    }
+
+    private void applySupabaseProfile(org.json.JSONObject profile) {
+        if (profile == null) return;
+        try {
+            String name = profile.optString("full_name", "");
+            if (!name.isEmpty()) UserPrefs.setName(this, name);
+            String phone = profile.optString("phone", "");
+            if (phone.isEmpty()) phone = profile.optString("phone_number", "");
+            if (!phone.isEmpty()) UserPrefs.setPhoneNumber(this, phone);
+            String ic = profile.optString("ic_number", "");
+            if (!ic.isEmpty()) UserPrefs.setIcNumber(this, ic);
+            String gender = profile.optString("gender", "");
+            if (!gender.isEmpty()) UserPrefs.setGender(this, gender);
+            String dob = profile.optString("dob", "");
+            if (!dob.isEmpty()) UserPrefs.setDateOfBirth(this, dob);
+            String address = profile.optString("address", "");
+            if (!address.isEmpty()) UserPrefs.setAddress(this, address);
+            String photo = profile.optString("photo_url", "");
+            if (photo.isEmpty()) photo = profile.optString("avatar_url", "");
+            if (!photo.isEmpty()) UserPrefs.setPhotoUrl(this, photo);
+
+            String uid = profile.optString("id", "");
+            String pubId = com.example.resqtap.friend.FirebaseFriendClient.format4DigitId(uid, "");
+            UserPrefs.setPublicId(this, pubId);
+        } catch (Exception ignored) {}
     }
 
     private void setupGoogleProfileStep2(GoogleSignInAccount acct, String googlePhoto) {
@@ -2797,7 +2693,6 @@ public class RegisterActivity extends BaseActivity {
         String pubId = publicIdObj == null ? "" : String.valueOf(publicIdObj).trim();
         if (pubId.isEmpty()) {
             pubId = com.example.resqtap.friend.FirebaseFriendClient.format4DigitId(snapshot.getKey(), "");
-            snapshot.getRef().child("publicId").setValue(pubId);
         } else {
             pubId = com.example.resqtap.friend.FirebaseFriendClient.format4DigitId(snapshot.getKey(), pubId);
         }

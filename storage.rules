@@ -3,7 +3,7 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /supportChats/{uid}/{allPaths=**} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (request.auth.uid == uid || request.auth.token.admin == true);
       allow write: if request.auth != null
         && request.auth.uid == uid
         && request.resource.size < 25 * 1024 * 1024;
@@ -17,7 +17,7 @@ service firebase.storage {
     }
 
     match /incidentReports/{uid}/{allPaths=**} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (request.auth.uid == uid || request.auth.token.admin == true);
       allow write: if request.auth != null
         && request.auth.uid == uid
         && request.resource.size < 25 * 1024 * 1024;

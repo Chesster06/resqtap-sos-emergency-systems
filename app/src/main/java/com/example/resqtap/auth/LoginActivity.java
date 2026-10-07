@@ -160,23 +160,23 @@ public class LoginActivity extends BaseActivity {
                 finish();
                 return;
             }
-            // Slow-path: Check Realtime Database for complete profile before routing
-            FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                    .getReference("users")
-                    .child(current.getUid())
-                    .get()
-                    .addOnSuccessListener(snapshot -> {
-                        if (snapshot != null && snapshot.exists()) {
-                            applyUserSnapshot(snapshot);
-                            if (UserPrefs.isPersonalInfoComplete(this)) {
-                                startActivity(new Intent(this, MainActivity.class));
-                                finish();
-                            }
+            // Slow-path: Check Supabase for complete profile before routing
+            com.example.resqtap.supabase.SupabaseManager.getInstance().getProfile(current.getUid(), new com.example.resqtap.supabase.SupabaseManager.Callback<org.json.JSONObject>() {
+                @Override
+                public void onSuccess(org.json.JSONObject profile) {
+                    if (profile != null) {
+                        applySupabaseProfile(profile);
+                        if (UserPrefs.isPersonalInfoComplete(LoginActivity.this)) {
+                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                            finish();
                         }
-                    })
-                    .addOnFailureListener(e -> {
-                        // Suppress failure and allow user to authenticate manually
-                    });
+                    }
+                }
+                @Override
+                public void onError(Exception e) {
+                    // Suppress failure and allow user to authenticate manually
+                }
+            });
         }
 
         // Show registration success banner if routed from RegisterActivity
@@ -274,6 +274,13 @@ public class LoginActivity extends BaseActivity {
             }
         });
 
+        // Pre-fill email if passed from Registration or other screens
+        String passedEmail = getIntent() != null ? getIntent().getStringExtra("email") : null;
+        if (passedEmail != null && !passedEmail.trim().isEmpty()) {
+            email.setText(passedEmail.trim());
+            password.requestFocus();
+        }
+
         // Real-time password input listener: clears error indicator upon user interaction
         password.addTextChangedListener(new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -370,75 +377,122 @@ public class LoginActivity extends BaseActivity {
      * Updates TextInputLayout end-icon indicators (green checkmark for registered, red error for unregistered).
      * Includes fallback check via FirebaseAuth fetchSignInMethodsForEmail and allows @resqtap.com admin accounts.
      */
+    /**
+     * Semak status pendaftaran e-mel merentasi Supabase, Firebase Auth, dan RTDB secara asynchronously.
+     */
+    private void verifyLoginEmailRegisteredAsync(String emailStr, BoolCallback callback) {
+        String query = String.valueOf(emailStr == null ? "" : emailStr).trim().toLowerCase(java.util.Locale.ROOT);
+        if (query.isEmpty() || !isGmail(query)) {
+            if (callback != null) callback.onResult(false);
+            return;
+        }
+
+        if (query.endsWith("@resqtap.com")) {
+            if (callback != null) callback.onResult(true);
+            return;
+        }
+
+        // 1. Semak database utama Supabase profiles
+        com.example.resqtap.supabase.SupabaseManager.getInstance().checkEmailExists(query, new com.example.resqtap.supabase.SupabaseManager.Callback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean exists) {
+                if (Boolean.TRUE.equals(exists)) {
+                    if (callback != null) callback.onResult(true);
+                    return;
+                }
+
+                // 2. Semak Firebase Authentication (Google/Password)
+                FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        java.util.List<String> methods = task.getResult().getSignInMethods();
+                        if (methods != null && !methods.isEmpty()) {
+                            if (callback != null) callback.onResult(true);
+                            return;
+                        }
+                    }
+
+                    // 3. Semak cache registeredEmails dalam RTDB
+                    String sanitized = sanitizeEmailForDb(query);
+                    FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                            .getReference("registeredEmails")
+                            .child(sanitized)
+                            .addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(DataSnapshot snapshot) {
+                                    boolean reg = snapshot != null && snapshot.exists() && Boolean.TRUE.equals(snapshot.getValue(Boolean.class));
+                                    if (callback != null) callback.onResult(reg);
+                                }
+
+                                @Override
+                                public void onCancelled(DatabaseError error) {
+                                    if (callback != null) callback.onResult(false);
+                                }
+                            });
+                });
+            }
+
+            @Override
+            public void onError(Exception error) {
+                // Fallback sekiranya rangkaian Supabase ralat
+                FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(task -> {
+                    if (task.isSuccessful() && task.getResult() != null) {
+                        java.util.List<String> methods = task.getResult().getSignInMethods();
+                        if (methods != null && !methods.isEmpty()) {
+                            if (callback != null) callback.onResult(true);
+                            return;
+                        }
+                    }
+                    String sanitized = sanitizeEmailForDb(query);
+                    FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
+                            .getReference("registeredEmails")
+                            .child(sanitized)
+                            .addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(DataSnapshot snapshot) {
+                                    boolean reg = snapshot != null && snapshot.exists() && Boolean.TRUE.equals(snapshot.getValue(Boolean.class));
+                                    if (callback != null) callback.onResult(reg);
+                                }
+
+                                @Override
+                                public void onCancelled(DatabaseError error) {
+                                    if (callback != null) callback.onResult(true);
+                                }
+                            });
+                });
+            }
+        });
+    }
+
+    /**
+     * Asynchronously verifies if the entered email is registered in Supabase or Firebase.
+     * Updates TextInputLayout end-icon indicators (green checkmark for registered, red error for unregistered).
+     */
     private void checkLoginEmailRegistered(String emailStr, TextInputLayout emailLayout, MaterialButton btnLogin) {
         String query = emailStr.trim().toLowerCase(java.util.Locale.ROOT);
         if (query.isEmpty() || !isGmail(query)) {
             return;
         }
 
-        String sanitized = sanitizeEmailForDb(query);
-        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                .getReference("registeredEmails")
-                .child(sanitized)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot snapshot) {
-                        boolean isRegistered = snapshot != null && snapshot.exists() && Boolean.TRUE.equals(snapshot.getValue(Boolean.class));
-                        if (isRegistered) {
-                            loginEmailKnownRegistered = true;
-                            emailLayout.setError(null); emailLayout.setErrorEnabled(false);
-                            emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
-                            emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(LoginActivity.this, R.color.success_green)));
-                            btnLogin.setEnabled(true);
-                        } else {
-                            // Fallback direct verification against Firebase Authentication service
-                            FirebaseAuth.getInstance().fetchSignInMethodsForEmail(query).addOnCompleteListener(task -> {
-                                if (task.isSuccessful() && task.getResult() != null) {
-                                    java.util.List<String> methods = task.getResult().getSignInMethods();
-                                    if (methods != null && !methods.isEmpty()) {
-                                        loginEmailKnownRegistered = true;
-                                        emailLayout.setError(null); emailLayout.setErrorEnabled(false);
-                                        emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
-                                        emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(LoginActivity.this, R.color.success_green)));
-                                        btnLogin.setEnabled(true);
-                                        // Synchronize registered state to Realtime Database cache
-                                        try {
-                                            FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                                                    .getReference("registeredEmails")
-                                                    .child(sanitized)
-                                                    .setValue(true);
-                                        } catch (Exception ignored) {
-                                        }
-                                        return;
-                                    }
-                                }
+        verifyLoginEmailRegisteredAsync(query, isRegistered -> {
+            TextInputEditText inputEmail = findViewById(R.id.input_email);
+            String liveInput = inputEmail != null && inputEmail.getText() != null ? inputEmail.getText().toString().trim().toLowerCase(java.util.Locale.ROOT) : "";
+            if (!query.equals(liveInput)) return;
 
-                                if (query.endsWith("@resqtap.com")) {
-                                    // Official ResQTap administrator domain: allow login without pre-registration block
-                                    loginEmailKnownRegistered = true;
-                                    emailLayout.setError(null); emailLayout.setErrorEnabled(false);
-                                    emailLayout.setEndIconDrawable(null);
-                                    emailLayout.setEndIconTintList(null);
-                                    btnLogin.setEnabled(true);
-                                    return;
-                                }
-
-                                loginEmailKnownRegistered = false;
-                                emailLayout.setErrorEnabled(true);
-                                emailLayout.setError(getString(R.string.toast_email_not_registered));
-                                emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
-                                emailLayout.setEndIconTintList(null);
-                            });
-                        }
-                    }
-                    @Override
-                    public void onCancelled(DatabaseError error) {
-                        loginEmailKnownRegistered = true;
-                        emailLayout.setEndIconDrawable(null);
-                        emailLayout.setEndIconTintList(null);
-                        btnLogin.setEnabled(true);
-                    }
-                });
+            if (isRegistered) {
+                loginEmailKnownRegistered = true;
+                emailLayout.setError(null);
+                emailLayout.setErrorEnabled(false);
+                emailLayout.setEndIconDrawable(R.drawable.ic_check_24);
+                emailLayout.setEndIconTintList(ColorStateList.valueOf(ContextCompat.getColor(LoginActivity.this, R.color.success_green)));
+                btnLogin.setEnabled(true);
+            } else {
+                loginEmailKnownRegistered = false;
+                emailLayout.setErrorEnabled(true);
+                emailLayout.setError(getString(R.string.toast_email_not_registered));
+                emailLayout.setEndIconDrawable(R.drawable.ic_error_circle_24);
+                emailLayout.setEndIconTintList(null);
+            }
+        });
     }
 
     /**
@@ -593,97 +647,58 @@ public class LoginActivity extends BaseActivity {
                     }
                     String uid = user.getUid();
 
-                    // Retrieve user profile snapshot from Realtime Database
-                    FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                            .getReference("users")
-                            .child(uid)
-                            .get()
-                            .addOnSuccessListener(snapshot -> {
-                                if (snapshot == null || !snapshot.exists()) {
-                                    // User authenticated in Auth, but DB profile node is missing (incomplete setup or deleted from DB).
-                                    // Seamlessly forward user to RegisterActivity to complete missing profile details
-                                    btnLogin.setEnabled(true);
-                                    Toast.makeText(this, R.string.toast_login_profile_missing, Toast.LENGTH_LONG).show();
-                                    Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-                                    intent.putExtra("complete_profile", true);
-                                    intent.putExtra("uid", uid);
-                                    intent.putExtra("email", emailValue);
-                                    startActivity(intent);
+                    // Retrieve user profile from Supabase
+                    com.example.resqtap.supabase.SupabaseManager.getInstance().getProfile(uid, new com.example.resqtap.supabase.SupabaseManager.Callback<org.json.JSONObject>() {
+                        @Override
+                        public void onSuccess(org.json.JSONObject profile) {
+                            if (profile == null) {
+                                if (UserPrefs.isPersonalInfoComplete(LoginActivity.this)) {
+                                    startActivity(new Intent(LoginActivity.this, MainActivity.class));
                                     finish();
                                     return;
                                 }
-
-                                // Store authentication credentials and profile attributes locally in SharedPreferences
-                                UserPrefs.setUid(this, uid);
-                                UserPrefs.setEmail(this, emailValue);
-                                applyUserSnapshot(snapshot);
-
-                                ensureNotificationsPermissionBestEffort();
-
-                                // Fast-path navigation to MainActivity without blocking on non-critical background synchronization
-                                startActivity(new Intent(this, MainActivity.class));
-                                finish();
-
-                                // Background Task 1: Synchronize sanitized email to registeredEmails registry
-                                String sanitizedEmail = sanitizeEmailForDb(emailValue);
-                                if (!sanitizedEmail.isEmpty()) {
-                                    try {
-                                        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                                                .getReference("registeredEmails")
-                                                .child(sanitizedEmail)
-                                                .setValue(true);
-                                    } catch (Exception ignored) {
-                                    }
-                                }
-
-                                // Background Task 2: Auto-provision administrator privileges for official @resqtap.com accounts
-                                if (emailValue != null && emailValue.trim().toLowerCase(java.util.Locale.ROOT).endsWith("@resqtap.com")) {
-                                    DatabaseReference adminRef = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                                            .getReference("admins")
-                                            .child(uid);
-                                    adminRef.get().addOnSuccessListener(adminSnap -> {
-                                        if (adminSnap == null || !adminSnap.exists()) {
-                                            Map<String, Object> adminData = new HashMap<>();
-                                            adminData.put("active", true);
-                                            adminData.put("email", emailValue.trim().toLowerCase(java.util.Locale.ROOT));
-                                            adminData.put("name", UserPrefs.getName(this));
-                                            adminData.put("role", "admin");
-                                            adminData.put("assignedAt", System.currentTimeMillis());
-                                            adminData.put("assignedBy", "system_auto_domain");
-                                            adminRef.setValue(adminData);
-                                        }
-                                    });
-                                }
-
-                                // Background Task 3: Restore active room subscription and restart SOS listener service
-                                FirebaseRoomClient.fetchMostRecentUserRoomCodeQueued(uid, code -> {
-                                    String c = String.valueOf(code == null ? "" : code).trim().toUpperCase(java.util.Locale.ROOT);
-                                    if (c.isEmpty()) return;
-                                    try {
-                                        UserPrefs.setActiveRoomCode(LoginActivity.this, c);
-                                    } catch (Exception ignored) {
-                                    }
-                                    try {
-                                        SosServiceStarter.start(LoginActivity.this, c);
-                                    } catch (Exception ignored) {
-                                    }
-                                });
-                            })
-                            .addOnFailureListener(e -> {
-                                Log.e(TAG, "Failed to read user profile from DB. uid=" + uid, e);
-                                FirebaseAuth.getInstance().signOut();
-                                UserPrefs.clearAccountData(this);
                                 btnLogin.setEnabled(true);
-                                String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
-                                if (msg.contains("permission_denied")
-                                        || (msg.contains("permission") && msg.contains("denied"))
-                                        || msg.contains("permission denied")
-                                        || msg.contains("denied")) {
-                                    Toast.makeText(this, R.string.toast_login_db_denied, Toast.LENGTH_LONG).show();
-                                } else {
-                                    Toast.makeText(this, R.string.toast_login_failed, Toast.LENGTH_SHORT).show();
-                                }
+                                Toast.makeText(LoginActivity.this, R.string.toast_login_profile_missing, Toast.LENGTH_LONG).show();
+                                Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+                                intent.putExtra("complete_profile", true);
+                                intent.putExtra("uid", uid);
+                                intent.putExtra("email", emailValue);
+                                startActivity(intent);
+                                finish();
+                                return;
+                            }
+
+                            UserPrefs.setUid(LoginActivity.this, uid);
+                            UserPrefs.setEmail(LoginActivity.this, emailValue);
+                            applySupabaseProfile(profile);
+
+                            ensureNotificationsPermissionBestEffort();
+
+                            // Restore active room subscription
+                            FirebaseRoomClient.fetchMostRecentUserRoomCodeQueued(uid, code -> {
+                                String c = String.valueOf(code == null ? "" : code).trim().toUpperCase(java.util.Locale.ROOT);
+                                if (c.isEmpty()) return;
+                                try {
+                                    UserPrefs.setActiveRoomCode(LoginActivity.this, c);
+                                    SosServiceStarter.start(LoginActivity.this, c);
+                                } catch (Exception ignored) {}
                             });
+
+                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                            finish();
+                        }
+
+                        @Override
+                        public void onError(Exception error) {
+                            if (UserPrefs.isPersonalInfoComplete(LoginActivity.this)) {
+                                startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                                finish();
+                                return;
+                            }
+                            btnLogin.setEnabled(true);
+                            Toast.makeText(LoginActivity.this, R.string.toast_login_profile_missing, Toast.LENGTH_LONG).show();
+                        }
+                    });
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "signInWithEmailAndPassword failed. email=" + emailValue, e);
@@ -778,88 +793,14 @@ public class LoginActivity extends BaseActivity {
             UserPrefs.setEmail(this, email);
         }
 
-        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                .getReference("users")
-                .child(uid)
-                .get()
-                .addOnSuccessListener(snapshot -> {
-                    if (snapshot != null && snapshot.exists()) {
-                        applyUserSnapshot(snapshot);
-                        final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
-                        if (!UserPrefs.isPersonalInfoComplete(this)) {
-                            final String googleToken = acct.getIdToken();
-                            user.delete().addOnCompleteListener(delTask -> {
-                                FirebaseAuth.getInstance().signOut();
-                                Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-                                intent.putExtra("complete_profile", true);
-                                intent.putExtra("from_google_sign_in", true);
-                                intent.putExtra("google_id_token", googleToken);
-                                intent.putExtra("google_photo_url", googlePhoto);
-                                intent.putExtra("uid", uid);
-                                intent.putExtra("email", email);
-                                startActivity(intent);
-                                finish();
-                            });
-                            return;
-                        }
-
-                        ensureNotificationsPermissionBestEffort();
-
-                        String sanitizedEmail = sanitizeEmailForDb(email);
-                        if (!sanitizedEmail.isEmpty()) {
-                            try {
-                                FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                                        .getReference("registeredEmails")
-                                        .child(sanitizedEmail)
-                                        .setValue(true);
-                            } catch (Exception ignored) {}
-                        }
-
-                        startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                        finish();
-                    } else {
-                        // Populate display name and split names for new Google registration
-                        String displayName = acct.getDisplayName();
-                        if (displayName != null && !displayName.trim().isEmpty()) {
-                            String cleanName = displayName.trim();
-                            int spaceIdx = cleanName.indexOf(' ');
-                            if (spaceIdx > 0) {
-                                UserPrefs.setFirstName(LoginActivity.this, cleanName.substring(0, spaceIdx).trim());
-                                UserPrefs.setLastName(LoginActivity.this, cleanName.substring(spaceIdx + 1).trim());
-                            } else {
-                                UserPrefs.setFirstName(LoginActivity.this, cleanName);
-                                UserPrefs.setLastName(LoginActivity.this, "");
-                            }
-                            UserPrefs.setName(LoginActivity.this, cleanName);
-                        }
-
-                        // Clear legacy session identifiers
-                        UserPrefs.setIcNumber(LoginActivity.this, "");
-                        UserPrefs.setPhoneNumber(LoginActivity.this, "");
-
-                        // Forward new Google user to registration flow to complete IC, phone, and emergency contacts
-                        final String googleToken = acct.getIdToken();
-                        final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
-                        user.delete().addOnCompleteListener(delTask -> {
-                            FirebaseAuth.getInstance().signOut();
-                            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-                            intent.putExtra("complete_profile", true);
-                            intent.putExtra("from_google_sign_in", true);
-                            intent.putExtra("google_id_token", googleToken);
-                            intent.putExtra("google_photo_url", googlePhoto);
-                            intent.putExtra("uid", uid);
-                            intent.putExtra("email", email);
-                            startActivity(intent);
-                            finish();
-                        });
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to fetch user from DB after Google sign-in", e);
-                    final String googleToken = acct.getIdToken();
+        com.example.resqtap.supabase.SupabaseManager.getInstance().getProfile(uid, new com.example.resqtap.supabase.SupabaseManager.Callback<org.json.JSONObject>() {
+            @Override
+            public void onSuccess(org.json.JSONObject profile) {
+                if (profile != null) {
+                    applySupabaseProfile(profile);
                     final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
-                    user.delete().addOnCompleteListener(delTask -> {
-                        FirebaseAuth.getInstance().signOut();
+                    if (!UserPrefs.isPersonalInfoComplete(LoginActivity.this)) {
+                        final String googleToken = acct.getIdToken();
                         Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
                         intent.putExtra("complete_profile", true);
                         intent.putExtra("from_google_sign_in", true);
@@ -869,8 +810,69 @@ public class LoginActivity extends BaseActivity {
                         intent.putExtra("email", email);
                         startActivity(intent);
                         finish();
-                    });
-                });
+                        return;
+                    }
+
+                    ensureNotificationsPermissionBestEffort();
+
+                    // Sinkronkan profil Google ke Supabase
+                    try {
+                        String uName = UserPrefs.getName(LoginActivity.this);
+                        if (uName.isEmpty()) uName = acct.getDisplayName() != null ? acct.getDisplayName() : "User";
+                        String uPhone = UserPrefs.getPhoneNumber(LoginActivity.this);
+                        String uPhoto = acct.getPhotoUrl() != null ? acct.getPhotoUrl().toString() : UserPrefs.getPhotoUrl(LoginActivity.this);
+                        com.example.resqtap.supabase.SupabaseManager.getInstance().upsertProfile(uid, email, uName, uPhone, uPhoto, null);
+                    } catch (Exception ignored) {}
+
+                    startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                    finish();
+                } else {
+                    // Populate display name and split names for new Google registration
+                    String displayName = acct.getDisplayName();
+                    if (displayName != null && !displayName.trim().isEmpty()) {
+                        String cleanName = displayName.trim();
+                        int spaceIdx = cleanName.indexOf(' ');
+                        if (spaceIdx > 0) {
+                            UserPrefs.setFirstName(LoginActivity.this, cleanName.substring(0, spaceIdx).trim());
+                            UserPrefs.setLastName(LoginActivity.this, cleanName.substring(spaceIdx + 1).trim());
+                        } else {
+                            UserPrefs.setFirstName(LoginActivity.this, cleanName);
+                            UserPrefs.setLastName(LoginActivity.this, "");
+                        }
+                        UserPrefs.setName(LoginActivity.this, cleanName);
+                    }
+
+                    // Forward new Google user to registration flow to complete IC, phone, and emergency contacts
+                    final String googleToken = acct.getIdToken();
+                    final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
+                    Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+                    intent.putExtra("complete_profile", true);
+                    intent.putExtra("from_google_sign_in", true);
+                    intent.putExtra("google_id_token", googleToken);
+                    intent.putExtra("google_photo_url", googlePhoto);
+                    intent.putExtra("uid", uid);
+                    intent.putExtra("email", email);
+                    startActivity(intent);
+                    finish();
+                }
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "Failed to fetch user from Supabase after Google sign-in", e);
+                final String googleToken = acct.getIdToken();
+                final String googlePhoto = acct.getPhotoUrl() != null ? AvatarUtils.getHighResUrl(acct.getPhotoUrl().toString()) : "";
+                Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+                intent.putExtra("complete_profile", true);
+                intent.putExtra("from_google_sign_in", true);
+                intent.putExtra("google_id_token", googleToken);
+                intent.putExtra("google_photo_url", googlePhoto);
+                intent.putExtra("uid", uid);
+                intent.putExtra("email", email);
+                startActivity(intent);
+                finish();
+            }
+        });
     }
 
     /**
@@ -896,7 +898,7 @@ public class LoginActivity extends BaseActivity {
                 btnLogin.setEnabled(true);
                 checkRegisteredEmail(emailValue, registered -> {
                     if (registered) {
-                        Toast.makeText(this, R.string.toast_login_invalid, Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, "Kata laluan tidak tepat. Jika anda mendaftar menggunakan Google, sila tekan butang 'Sign in with Google'.", Toast.LENGTH_LONG).show();
                     } else {
                         Toast.makeText(this, R.string.toast_account_not_exist, Toast.LENGTH_LONG).show();
                     }
@@ -913,7 +915,7 @@ public class LoginActivity extends BaseActivity {
             btnLogin.setEnabled(true);
             checkRegisteredEmail(emailValue, registered -> {
                 if (registered) {
-                    Toast.makeText(this, R.string.toast_login_invalid, Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Kata laluan tidak tepat. Jika anda mendaftar menggunakan Google, sila tekan butang 'Sign in with Google'.", Toast.LENGTH_LONG).show();
                 } else {
                     Toast.makeText(this, R.string.toast_account_not_exist, Toast.LENGTH_LONG).show();
                 }
@@ -951,67 +953,21 @@ public class LoginActivity extends BaseActivity {
     }
 
     /**
-     * Checks if the given email exists in the 'registeredEmails' database node or via FirebaseAuth.
+     * Checks if the given email exists in Supabase, registeredEmails, or FirebaseAuth.
      * Invokes callback with true if registered, otherwise false.
      */
     private void checkRegisteredEmail(String email, BoolCallback callback) {
-        String sanitized = sanitizeEmailForDb(email);
-        if (sanitized.isEmpty()) {
-            if (callback != null) callback.onResult(false);
-            return;
-        }
-        FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                .getReference("registeredEmails")
-                .child(sanitized)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot snapshot) {
-                        boolean exists = snapshot != null && snapshot.exists()
-                                && Boolean.TRUE.equals(snapshot.getValue(Boolean.class));
-                        if (exists) {
-                            if (callback != null) callback.onResult(true);
-                        } else {
-                            FirebaseAuth.getInstance().fetchSignInMethodsForEmail(email.trim().toLowerCase(java.util.Locale.ROOT))
-                                    .addOnCompleteListener(task -> {
-                                        if (task.isSuccessful() && task.getResult() != null
-                                                && task.getResult().getSignInMethods() != null
-                                                && !task.getResult().getSignInMethods().isEmpty()) {
-                                            if (callback != null) callback.onResult(true);
-                                        } else {
-                                            if (callback != null) callback.onResult(email.trim().toLowerCase(java.util.Locale.ROOT).endsWith("@resqtap.com"));
-                                        }
-                                    });
-                        }
-                    }
-                    @Override
-                    public void onCancelled(DatabaseError error) {
-                        if (callback != null) callback.onResult(email.trim().toLowerCase(java.util.Locale.ROOT).endsWith("@resqtap.com"));
-                    }
-                });
+        String query = String.valueOf(email == null ? "" : email).trim().toLowerCase(java.util.Locale.ROOT);
+        verifyLoginEmailRegisteredAsync(query, callback);
     }
 
     /**
-     * Queries the 'users' Realtime Database table indexed by 'email' to test account existence.
+     * Semak kewujudan akaun e-mel melalui FirebaseAuth.
      */
     private void checkEmailExistsInDb(String emailLower, BoolCallback onSuccess, VoidCallback onFailure) {
-        String emailValue = String.valueOf(emailLower == null ? "" : emailLower).trim().toLowerCase(java.util.Locale.ROOT);
-        if (emailValue.isEmpty()) {
-            if (onSuccess != null) onSuccess.onResult(false);
-            return;
-        }
-        com.google.firebase.database.Query q = FirebaseDatabase.getInstance(FirebaseRoomClient.DATABASE_URL)
-                .getReference("users")
-                .orderByChild("email")
-                .equalTo(emailValue)
-                .limitToFirst(1);
-        q.get()
-                .addOnSuccessListener(snapshot -> {
-                    boolean exists = snapshot != null && snapshot.exists();
-                    if (onSuccess != null) onSuccess.onResult(exists);
-                })
-                .addOnFailureListener(err -> {
-                    if (onFailure != null) onFailure.run();
-                });
+        checkRegisteredEmail(emailLower, exists -> {
+            if (onSuccess != null) onSuccess.onResult(exists);
+        });
     }
 
     /**
@@ -1054,7 +1010,6 @@ public class LoginActivity extends BaseActivity {
         String pubId = publicIdObj == null ? "" : String.valueOf(publicIdObj).trim();
         if (pubId.isEmpty()) {
             pubId = com.example.resqtap.friend.FirebaseFriendClient.format4DigitId(snapshot.getKey(), "");
-            snapshot.getRef().child("publicId").setValue(pubId);
         } else {
             pubId = com.example.resqtap.friend.FirebaseFriendClient.format4DigitId(snapshot.getKey(), pubId);
         }
@@ -1116,6 +1071,32 @@ public class LoginActivity extends BaseActivity {
             }
         } catch (Exception ignored) {
         }
+    }
+
+    private void applySupabaseProfile(org.json.JSONObject profile) {
+        if (profile == null) return;
+        try {
+            String name = profile.optString("full_name", "");
+            if (!name.isEmpty()) UserPrefs.setName(this, name);
+            String phone = profile.optString("phone", "");
+            if (phone.isEmpty()) phone = profile.optString("phone_number", "");
+            if (!phone.isEmpty()) UserPrefs.setPhoneNumber(this, phone);
+            String ic = profile.optString("ic_number", "");
+            if (!ic.isEmpty()) UserPrefs.setIcNumber(this, ic);
+            String gender = profile.optString("gender", "");
+            if (!gender.isEmpty()) UserPrefs.setGender(this, gender);
+            String dob = profile.optString("dob", "");
+            if (!dob.isEmpty()) UserPrefs.setDateOfBirth(this, dob);
+            String address = profile.optString("address", "");
+            if (!address.isEmpty()) UserPrefs.setAddress(this, address);
+            String photo = profile.optString("photo_url", "");
+            if (photo.isEmpty()) photo = profile.optString("avatar_url", "");
+            if (!photo.isEmpty()) UserPrefs.setPhotoUrl(this, photo);
+
+            String uid = profile.optString("id", "");
+            String pubId = com.example.resqtap.friend.FirebaseFriendClient.format4DigitId(uid, "");
+            UserPrefs.setPublicId(this, pubId);
+        } catch (Exception ignored) {}
     }
 
     /**

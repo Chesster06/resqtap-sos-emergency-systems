@@ -644,6 +644,41 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
 
         final String category = currentCategory == null ? "all" : currentCategory;
 
+        // 1. Semak data pangkalan data Supabase terlebih dahulu
+        com.example.resqtap.supabase.SupabaseManager.getInstance().getHospitals(category, new com.example.resqtap.supabase.SupabaseManager.Callback<org.json.JSONArray>() {
+            @Override
+            public void onSuccess(org.json.JSONArray result) {
+                if (result != null && result.length() > 0) {
+                    ArrayList<HospitalItem> sList = new ArrayList<>();
+                    for (int i = 0; i < result.length(); i++) {
+                        try {
+                            org.json.JSONObject obj = result.getJSONObject(i);
+                            String name = obj.optString("name", "Hospital");
+                            String address = obj.optString("address", "");
+                            double lat = obj.optDouble("latitude", 0.0);
+                            double lng = obj.optDouble("longitude", 0.0);
+                            String cat = obj.optString("category", "hospital");
+                            if (lat != 0.0 && lng != 0.0) {
+                                sList.add(new HospitalItem(name, address, lat, lng, cat));
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                    if (!sList.isEmpty()) {
+                        applyHospitals(sList);
+                        return;
+                    }
+                }
+                executeGooglePlacesSearch(center, apiKey, category);
+            }
+
+            @Override
+            public void onError(Exception error) {
+                executeGooglePlacesSearch(center, apiKey, category);
+            }
+        });
+    }
+
+    private void executeGooglePlacesSearch(LatLng center, String apiKey, String category) {
         executor.execute(() -> {
             try {
                 ArrayList<HospitalItem> combined = new ArrayList<>();

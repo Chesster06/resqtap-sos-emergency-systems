@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 public final class FirebaseRoomClient {
     private static final int TIMEOUT_SECONDS = 12;
 
-    public static final String DATABASE_URL = "https://resqtap-b9ff5-default-rtdb.firebaseio.com";
+    public static final String DATABASE_URL = com.example.resqtap.config.AppConfig.FIREBASE_DATABASE_URL;
 
     public static final class Member {
         public final String uid;
@@ -521,19 +521,7 @@ public final class FirebaseRoomClient {
             String u = String.valueOf(uid == null ? "" : uid).trim();
             if (u.isEmpty()) return;
 
-            // Sentiasa kemas kini koordinat terkini di users/{u} agar admin Leaflet map sentiasa dapat kesan lokasi tanpa memerlukan room
-            if (lat != 0 || lng != 0) {
-                Map<String, Object> userLoc = new HashMap<>();
-                userLoc.put("lat", lat);
-                userLoc.put("lng", lng);
-                userLoc.put("latitude", lat);
-                userLoc.put("longitude", lng);
-                if (name != null && !name.trim().isEmpty()) userLoc.put("name", name.trim());
-                if (photoUrl != null && !photoUrl.trim().isEmpty()) userLoc.put("photoUrl", photoUrl.trim());
-                if (batteryPct >= 0 && batteryPct <= 100) userLoc.put("batteryPct", batteryPct);
-                userLoc.put("updatedAt", ServerValue.TIMESTAMP);
-                db().child("users").child(u).updateChildren(userLoc);
-            }
+            // Lokasi bilik dikemaskini dalam bilik kecemasan sahaja (tiada lagi data peribadi di nod users RTDB)
 
             String code = normalizeCode(roomCode);
             if (code.length() < 4) return;
@@ -682,7 +670,6 @@ public final class FirebaseRoomClient {
             updates.put("photoUrl", "");
             updates.put("photoUri", "");
             updates.put("updatedAt", ServerValue.TIMESTAMP);
-            db().child("users").child(u).updateChildren(updates);
         } catch (Exception ignored) {
         }
     }
@@ -697,7 +684,6 @@ public final class FirebaseRoomClient {
             updates.put("photoUrl", "");
             updates.put("photoUri", "");
             updates.put("updatedAt", ServerValue.TIMESTAMP);
-            db().child("users").child(u).updateChildren(updates);
 
             db().child("userRooms").child(u).get()
                     .addOnSuccessListener(snap -> {
@@ -827,14 +813,7 @@ public final class FirebaseRoomClient {
                 payload.put("latitude", lat);
                 payload.put("longitude", lng);
 
-                // Pastikan users/{from} juga menyimpan koordinat terkini
-                Map<String, Object> userLoc = new HashMap<>();
-                userLoc.put("lat", lat);
-                userLoc.put("lng", lng);
-                userLoc.put("latitude", lat);
-                userLoc.put("longitude", lng);
-                userLoc.put("updatedAt", ServerValue.TIMESTAMP);
-                db().child("users").child(from).updateChildren(userLoc);
+                // Koordinat disimpan dalam rekod alert SOS, bukan node users RTDB
             } else {
                 // Sertakan juga koordinat GPS terakhir mangsa daripada profil users/{from} sekiranya ada
                 try {
@@ -1478,33 +1457,23 @@ public final class FirebaseRoomClient {
         user.put("height", height == null ? "" : height.trim());
         user.put("updatedAt", ServerValue.TIMESTAMP);
 
-        await(db().child("users").child(u).updateChildren(user));
+        // Simpan profil & kad perubatan secara langsung ke Supabase (tiada di RTDB users)
+        try {
+            com.example.resqtap.supabase.SupabaseManager.getInstance().upsertProfile(u, email, name, phoneNumber, photoUrl, null);
+            com.example.resqtap.supabase.SupabaseManager.getInstance().upsertMedicalCard(u, bloodType, allergies, existingConditions, "", null);
+        } catch (Exception ignored) {}
     }
 
     /** Simpan atau hantar data UserPhotoUrl. */
     public static void updateUserPhotoUrl(String uid, String photoUrl) throws Exception {
         String u = String.valueOf(uid == null ? "" : uid).trim();
         if (u.isEmpty()) throw new RuntimeException("invalid_uid");
-        Map<String, Object> updates = new HashMap<>();
-        updates.put("photoUrl", photoUrl == null ? "" : photoUrl.trim());
-        updates.put("photoUri", photoUrl == null ? "" : photoUrl.trim());
-        updates.put("updatedAt", ServerValue.TIMESTAMP);
-        await(db().child("users").child(u).updateChildren(updates));
+        // Gambar disimpan di profil Supabase, bukan node users RTDB
     }
 
     /** Simpan atau hantar data UserPhotoUrlQueued. */
     public static void updateUserPhotoUrlQueued(String uid, String photoUrl) {
-        try {
-            String u = String.valueOf(uid == null ? "" : uid).trim();
-            String url = String.valueOf(photoUrl == null ? "" : photoUrl).trim();
-            if (u.isEmpty() || url.isEmpty()) return;
-            Map<String, Object> updates = new HashMap<>();
-            updates.put("photoUrl", url);
-            updates.put("photoUri", url);
-            updates.put("updatedAt", ServerValue.TIMESTAMP);
-            db().child("users").child(u).updateChildren(updates);
-        } catch (Exception ignored) {
-        }
+        // Gambar disimpan di profil Supabase, bukan node users RTDB
     }
 
     /** Simpan atau hantar data UserFcmTokenQueued. */
@@ -1516,14 +1485,9 @@ public final class FirebaseRoomClient {
     public static void updateUserFcmTokenQueued(String uid, String deviceId, String fcmToken) {
         try {
             String u = String.valueOf(uid == null ? "" : uid).trim();
-            String dev = String.valueOf(deviceId == null ? "" : deviceId).trim();
             String t = String.valueOf(fcmToken == null ? "" : fcmToken).trim();
             if (u.isEmpty() || t.isEmpty()) return;
-            Map<String, Object> updates = new HashMap<>();
-            updates.put("fcmToken", t);
-            if (!dev.isEmpty()) updates.put("fcmTokens/" + dev, t);
-            updates.put("updatedAt", ServerValue.TIMESTAMP);
-            db().child("users").child(u).updateChildren(updates);
+            com.example.resqtap.supabase.SupabaseManager.getInstance().updateFcmToken(u, t);
         } catch (Exception ignored) {
         }
     }
@@ -1534,44 +1498,14 @@ public final class FirebaseRoomClient {
 
     /** Ambil atau muat data UserPhotoUrlQueued. */
     public static void fetchUserPhotoUrlQueued(String uid, PhotoUrlHandler handler) {
-        try {
-            String u = String.valueOf(uid == null ? "" : uid).trim();
-            if (u.isEmpty() || handler == null) return;
-            DatabaseReference userRef = db().child("users").child(u);
-            userRef.child("photoUrl").get()
-                    .addOnSuccessListener(snap -> {
-                        String url = (snap != null && snap.exists() && snap.getValue() != null)
-                                ? String.valueOf(snap.getValue())
-                                : "";
-                        String out = url == null ? "" : url;
-                        if (!out.trim().isEmpty()) {
-                            handler.onPhotoUrl(u, out);
-                            return;
-                        }
-
-                        userRef.child("photoUri").get()
-                                .addOnSuccessListener(snap2 -> {
-                                    String v = (snap2 != null && snap2.exists() && snap2.getValue() != null)
-                                            ? String.valueOf(snap2.getValue())
-                                            : "";
-                                    handler.onPhotoUrl(u, v == null ? "" : v);
-                                })
-                                .addOnFailureListener(e -> handler.onPhotoUrl(u, ""));
-                    })
-                    .addOnFailureListener(e -> handler.onPhotoUrl(u, ""));
-        } catch (Exception ignored) {
-        }
+        if (handler != null) handler.onPhotoUrl(uid, "");
     }
 
     /** Simpan atau hantar data UserName. */
     public static void updateUserName(String uid, String name) throws Exception {
         String u = String.valueOf(uid == null ? "" : uid).trim();
         if (u.isEmpty()) throw new RuntimeException("invalid_uid");
-
-        Map<String, Object> updates = new HashMap<>();
-        updates.put("name", name == null ? "" : name.trim());
-        updates.put("updatedAt", ServerValue.TIMESTAMP);
-        await(db().child("users").child(u).updateChildren(updates));
+        // Profil diuruskan oleh Supabase
     }
 
     /** Fungsi untuk upsertEmergencyContact. */
@@ -1579,27 +1513,14 @@ public final class FirebaseRoomClient {
         String u = String.valueOf(uid == null ? "" : uid).trim();
         if (u.isEmpty()) throw new RuntimeException("invalid_uid");
         if (contact == null) throw new RuntimeException("invalid_contact");
-
-        String id = String.valueOf(contact.id == null ? "" : contact.id).trim();
-        if (id.isEmpty()) throw new RuntimeException("invalid_contact");
-
-        Map<String, Object> value = new HashMap<>();
-        value.put("id", id);
-        value.put("name", contact.name == null ? "" : contact.name.trim());
-        value.put("relationship", contact.relationship == null ? "" : contact.relationship.trim());
-        value.put("phone", contact.phone == null ? "" : contact.phone.trim());
-        value.put("updatedAt", ServerValue.TIMESTAMP);
-
-        await(db().child("users").child(u).child("emergencyContacts").child(id).updateChildren(value));
+        // Hubungan kecemasan diuruskan oleh Supabase
     }
 
     /** Padam atau bersihkan EmergencyContact. */
     public static void deleteEmergencyContact(String uid, String contactId) throws Exception {
         String u = String.valueOf(uid == null ? "" : uid).trim();
         if (u.isEmpty()) throw new RuntimeException("invalid_uid");
-        String id = String.valueOf(contactId == null ? "" : contactId).trim();
-        if (id.isEmpty()) throw new RuntimeException("invalid_contact");
-        await(db().child("users").child(u).child("emergencyContacts").child(id).removeValue());
+        // Hubungan kecemasan diuruskan oleh Supabase
     }
 
     /** Ambil atau muat data Members. */

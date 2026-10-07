@@ -89,7 +89,7 @@
             ".validate": "!newData.exists() || (newData.hasChildren(['id','senderUid','text','timestamp']) && newData.child('senderUid').val() === auth.uid)"
           }
         },
-        ".read": "auth != null"
+        ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true || root.child('rooms').child($roomId).child('creatorUid').val() === auth.uid || (root.child('rooms').child($roomId).child('members').child(auth.uid).exists() && !root.child('roomTombstones').child($roomId).exists()))"
       }
     },
     "supportChats": {
@@ -148,36 +148,36 @@
     },
     "userRooms": {
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null",
+        ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)",
         ".indexOn": ["createdAt"],
         "$roomId": {
-          ".write": "auth != null"
+          ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)"
         }
       }
     },
     "userFriends": {
       "$uid": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)"
       }
     },
     "friendRequests": {
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)",
-        ".write": "auth != null"
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true || newData.child('senderUid').val() === auth.uid)"
       }
     },
     "sentRequests": {
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)",
-        ".write": "auth != null"
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)"
       }
     },
     "userNotifications": {
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)",
-        ".write": "auth != null"
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true || newData.child('fromUid').val() === auth.uid)"
       }
     },
     "publicIds": {
@@ -186,35 +186,35 @@
     },
     "highlights": {
       ".read": "true",
-      ".write": "auth != null"
+      ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)"
     },
     "userCalls": {
       "$uid": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)"
       }
     },
     "calls": {
       "$callId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true || data.child('callerUid').val() === auth.uid || data.child('targetUid').val() === auth.uid || newData.child('callerUid').val() === auth.uid || newData.child('targetUid').val() === auth.uid)",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true || (!data.exists() && newData.child('callerUid').val() === auth.uid) || data.child('callerUid').val() === auth.uid || data.child('targetUid').val() === auth.uid)"
       }
     },
     "registeredEmails": {
-      ".read": true,
+      ".read": "auth != null",
       ".write": "auth != null"
     },
     "adminCalls": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)"
     },
     "admin_audit_logs": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)"
     },
     "call_logs": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)",
+      ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || root.child('admins').child(auth.uid).child('active').val() === true)"
     }
   }
 }

@@ -336,12 +336,46 @@ public class MainActivity extends BaseActivity {
                     });
                 }
 
-                // If empty in database, seed real initial banners to Firebase RTDB
+                // If empty in RTDB, fetch from Supabase
                 if (list.isEmpty()) {
-                    seedHighlightsToFirebase(hlRef);
-                    list.add(new HighlightItem("hl_people_first", "People First Abilities Always", R.drawable.img_highlight_1, "https://www.jkm.gov.my"));
-                    list.add(new HighlightItem("hl_ability_limits", "Ability Has No Limits - Inclusion Is Everyone's Mission", R.drawable.img_highlight_2, "https://www.moh.gov.my"));
-                    list.add(new HighlightItem("hl_different_abilities", "Different Abilities One Community - Inclusion Today", R.drawable.img_highlight_3, "https://www.malaysia.gov.my"));
+                    com.example.resqtap.supabase.SupabaseManager.getInstance().getHighlights(new com.example.resqtap.supabase.SupabaseManager.Callback<org.json.JSONArray>() {
+                        @Override
+                        public void onSuccess(org.json.JSONArray sResult) {
+                            if (sResult != null && sResult.length() > 0) {
+                                java.util.List<HighlightItem> sList = new java.util.ArrayList<>();
+                                for (int i = 0; i < sResult.length(); i++) {
+                                    try {
+                                        org.json.JSONObject obj = sResult.getJSONObject(i);
+                                        String id = obj.optString("id", "hl_" + i);
+                                        String title = obj.optString("title", "");
+                                        String imgUrl = obj.optString("image_url", "");
+                                        String actUrl = obj.optString("action_url", "");
+                                        int ord = obj.optInt("display_order", i + 1);
+                                        sList.add(new HighlightItem(id, title, imgUrl, actUrl, true, System.currentTimeMillis(), ord));
+                                    } catch (Exception ignored) {}
+                                }
+                                if (!sList.isEmpty() && highlightAdapter != null) {
+                                    highlightAdapter.submitList(sList);
+                                    return;
+                                }
+                            }
+                            java.util.List<HighlightItem> defaults = new java.util.ArrayList<>();
+                            defaults.add(new HighlightItem("hl_people_first", "People First Abilities Always", R.drawable.img_highlight_1, "https://www.jkm.gov.my"));
+                            defaults.add(new HighlightItem("hl_ability_limits", "Ability Has No Limits - Inclusion Is Everyone's Mission", R.drawable.img_highlight_2, "https://www.moh.gov.my"));
+                            defaults.add(new HighlightItem("hl_different_abilities", "Different Abilities One Community - Inclusion Today", R.drawable.img_highlight_3, "https://www.malaysia.gov.my"));
+                            if (highlightAdapter != null) highlightAdapter.submitList(defaults);
+                        }
+
+                        @Override
+                        public void onError(Exception error) {
+                            java.util.List<HighlightItem> defaults = new java.util.ArrayList<>();
+                            defaults.add(new HighlightItem("hl_people_first", "People First Abilities Always", R.drawable.img_highlight_1, "https://www.jkm.gov.my"));
+                            defaults.add(new HighlightItem("hl_ability_limits", "Ability Has No Limits - Inclusion Is Everyone's Mission", R.drawable.img_highlight_2, "https://www.moh.gov.my"));
+                            defaults.add(new HighlightItem("hl_different_abilities", "Different Abilities One Community - Inclusion Today", R.drawable.img_highlight_3, "https://www.malaysia.gov.my"));
+                            if (highlightAdapter != null) highlightAdapter.submitList(defaults);
+                        }
+                    });
+                    return;
                 }
 
                 if (highlightAdapter != null) {

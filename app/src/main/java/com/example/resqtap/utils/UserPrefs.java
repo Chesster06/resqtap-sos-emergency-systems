@@ -631,9 +631,6 @@ public final class UserPrefs {
         String pubId = publicIdObj == null ? "" : String.valueOf(publicIdObj).trim();
         if (pubId.isEmpty()) {
             pubId = com.example.resqtap.friend.FirebaseFriendClient.format4DigitId(snapshot.getKey(), "");
-            try {
-                snapshot.getRef().child("publicId").setValue(pubId);
-            } catch (Exception ignored) {}
         } else {
             pubId = com.example.resqtap.friend.FirebaseFriendClient.format4DigitId(snapshot.getKey(), pubId);
         }

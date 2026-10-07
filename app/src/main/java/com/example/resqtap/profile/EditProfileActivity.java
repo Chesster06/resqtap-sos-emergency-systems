@@ -909,6 +909,12 @@ public class EditProfileActivity extends BaseActivity {
                         weight,
                         height
                 );
+                // Sinkronkan ke Supabase
+                try {
+                    com.example.resqtap.supabase.SupabaseManager.getInstance().upsertProfile(uid, email, name, phone, null);
+                    com.example.resqtap.supabase.SupabaseManager.getInstance().upsertMedicalCard(uid, bloodType, allergies, existingConditions, "", null);
+                } catch (Exception ignored) {
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Sync profile failed", e);
             }

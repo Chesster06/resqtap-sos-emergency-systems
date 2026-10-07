@@ -721,6 +721,20 @@ public class ReportActivity extends BaseActivity implements OnMapReadyCallback {
                                 .child("lastIncidentReportId").setValue(reportId);
                     } catch (Exception ignored) {
                     }
+                    // Juga simpan laporan ke Supabase
+                    try {
+                        String uId = user != null ? user.getUid() : "anon";
+                        String uName = safe(UserPrefs.getName(ReportActivity.this));
+                        String rTitle = report.containsKey("title") && report.get("title") != null ? String.valueOf(report.get("title")) : category;
+                        String rDesc = report.containsKey("description") && report.get("description") != null ? String.valueOf(report.get("description")) : "";
+                        String rAddr = report.containsKey("address") && report.get("address") != null ? String.valueOf(report.get("address")) : "";
+                        double rLat = report.get("latitude") instanceof Number ? ((Number) report.get("latitude")).doubleValue() : 0.0;
+                        double rLng = report.get("longitude") instanceof Number ? ((Number) report.get("longitude")).doubleValue() : 0.0;
+                        com.example.resqtap.supabase.SupabaseManager.getInstance().submitReport(
+                                uId, uName, rTitle, rDesc, category, rLat, rLng, rAddr, null
+                        );
+                    } catch (Exception ignored) {
+                    }
                     if (successOverlay != null) successOverlay.setVisibility(View.GONE);
                     showProgressMode(reportId, report);
                     Toast.makeText(ReportActivity.this, R.string.report_submitted, Toast.LENGTH_SHORT).show();
