@@ -14,10 +14,19 @@ const server = http.createServer((req, res) => {
 
   // Handle CORS Preflight
   if (req.method === 'OPTIONS') {
+    const origin = req.headers['origin'] || '';
+    const allowed = [
+      'http://localhost:5000',
+      'http://127.0.0.1:5000',
+      'https://resqtap-b9ff5.web.app',
+      'https://resqtap-b9ff5.firebaseapp.com'
+    ].includes(origin) ? origin : 'http://localhost:5000';
+
     res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': allowed,
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Credentials': 'true'
     });
     res.end();
     return;

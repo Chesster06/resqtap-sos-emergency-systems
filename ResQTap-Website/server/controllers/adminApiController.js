@@ -37,16 +37,19 @@ async function verifyAdminToken(req) {
     const admin = await getAdmin();
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     
-    // Verify user role in RTDB or check domain
+    // Verify user role in RTDB or check domain (must have verified email!)
     const db = admin.database();
     const adminSnap = await db.ref(`admins/${decodedToken.uid}`).once('value');
     const adminVal = adminSnap.val();
+    const isDomainAdmin = decodedToken.email_verified === true && 
+                          decodedToken.email && 
+                          decodedToken.email.toLowerCase().endsWith('@resqtap.com');
     const isAdmin = adminVal === true || 
                     (adminVal && adminVal.active === true) || 
-                    (decodedToken.email && decodedToken.email.endsWith('@resqtap.com'));
+                    isDomainAdmin;
 
     if (!isAdmin) {
-      console.warn(`[SECURITY] User ${decodedToken.uid} (${decodedToken.email}) attempted admin action without admin role.`);
+      console.warn(`[SECURITY] User ${decodedToken.uid} (${decodedToken.email}, verified: ${decodedToken.email_verified}) attempted admin action without admin role.`);
       return null;
     }
     return decodedToken;
