@@ -9,6 +9,48 @@ try {
   admin = require("./firebase-functions/node_modules/firebase-admin");
 }
 
+// Supabase REST Configuration for full database resets
+const SUPABASE_URL = "https://umcxapvojtoxqlpnrwdw.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtY3hhcHZvanRveHFscG5yd2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMTg2OTksImV4cCI6MjEwNjg5NDY5OX0.8qDJYad_rTwlzAqmF0Z1OiRgQ9ocxaluN7MIjz0mL0M";
+
+async function cleanupSupabaseUsers(uidsToDelete) {
+  try {
+    const headers = {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json"
+    };
+
+    if (uidsToDelete && uidsToDelete.size > 0) {
+      console.log(`[SUPABASE] Memadam ${uidsToDelete.size} rekod pengguna daripada Supabase...`);
+      for (const uid of uidsToDelete) {
+        await Promise.allSettled([
+          fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(uid)}`, { method: "DELETE", headers }),
+          fetch(`${SUPABASE_URL}/rest/v1/medical_cards?user_id=eq.${encodeURIComponent(uid)}`, { method: "DELETE", headers }),
+          fetch(`${SUPABASE_URL}/rest/v1/user_notifications?user_uid=eq.${encodeURIComponent(uid)}`, { method: "DELETE", headers })
+        ]);
+      }
+    } else {
+      console.log("[SUPABASE] Membersihkan semua data pengguna bukan induk dalam Supabase...");
+      await Promise.allSettled([
+        fetch(`${SUPABASE_URL}/rest/v1/profiles?id=neq.dummy_never_match`, { method: "DELETE", headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/medical_cards?user_id=neq.dummy_never_match`, { method: "DELETE", headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/user_notifications?id=neq.dummy_never_match`, { method: "DELETE", headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/room_tombstones?room_code=neq.dummy_never_match`, { method: "DELETE", headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/system_calls?id=neq.dummy_never_match`, { method: "DELETE", headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/system_metadata?key=eq.counters`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ value: { user_public_id: 0 } })
+        })
+      ]);
+    }
+    console.log("[SUPABASE] Pembersihan rekod Supabase selesai dengan jaya.");
+  } catch (err) {
+    console.warn("[SUPABASE] Ralat membersihkan data Supabase:", err.message);
+  }
+}
+
 const FIREBASE_TOOLS_CONFIG = "C:\\Users\\Administrator\\.config\\configstore\\firebase-tools.json";
 const OAUTH_CLIENT_ID = "563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com";
 const OAUTH_CLIENT_SECRET = "j9iVZfS8kkCEFUPaAeJV0sAi";
@@ -342,6 +384,10 @@ async function resetDatabaseAccounts() {
     }
   }
 
+  // 10. PADAM PENGGUNA & DATA DARI SUPABASE
+  console.log(`\nMembersihkan rekod pengguna daripada Supabase...`);
+  await cleanupSupabaseUsers(deleteUids);
+
   const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
   console.log(`\nReset Database & Auth selesai dalam ${durationSec}s.`);
 
@@ -405,6 +451,22 @@ async function deleteSingleUser(uid, emailHint = "") {
 
   // Bersihkan sebarang request deletion
   updates[`admin_user_deletions/${uid}`] = null;
+
+  // 3. Padam daripada Supabase
+  try {
+    const headers = {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+    };
+    await Promise.allSettled([
+      fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(uid)}`, { method: "DELETE", headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/medical_cards?user_id=eq.${encodeURIComponent(uid)}`, { method: "DELETE", headers }),
+      fetch(`${SUPABASE_URL}/rest/v1/user_notifications?user_uid=eq.${encodeURIComponent(uid)}`, { method: "DELETE", headers })
+    ]);
+    console.log(`[DELETE-USER] Berjaya padam dari Supabase: ${uid}`);
+  } catch (err) {
+    console.warn(`[DELETE-USER] Ralat padam Supabase:`, err.message);
+  }
 
   await db.ref().update(updates);
   console.log(`[DELETE-USER] Selesai membersihkan RTDB untuk ${uid}`);
