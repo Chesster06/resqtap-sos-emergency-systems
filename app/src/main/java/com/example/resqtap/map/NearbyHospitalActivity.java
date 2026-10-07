@@ -111,7 +111,7 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
     private TextView status;
     private String currentCategory = "all";
 
-    private static final int SEARCH_RADIUS_METERS = 10000;
+    private static final int SEARCH_RADIUS_METERS = 20000;
 
     private static final class HospitalItem {
         final String name;
@@ -648,8 +648,8 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         com.example.resqtap.supabase.SupabaseManager.getInstance().getHospitals(category, new com.example.resqtap.supabase.SupabaseManager.Callback<org.json.JSONArray>() {
             @Override
             public void onSuccess(org.json.JSONArray result) {
+                ArrayList<HospitalItem> sList = new ArrayList<>();
                 if (result != null && result.length() > 0) {
-                    ArrayList<HospitalItem> sList = new ArrayList<>();
                     for (int i = 0; i < result.length(); i++) {
                         try {
                             org.json.JSONObject obj = result.getJSONObject(i);
@@ -659,29 +659,34 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
                             double lng = obj.optDouble("longitude", 0.0);
                             String cat = obj.optString("category", "hospital");
                             if (lat != 0.0 && lng != 0.0) {
-                                sList.add(new HospitalItem(name, address, lat, lng, cat));
+                                HospitalItem item = new HospitalItem(name, address, lat, lng, cat);
+                                item.distanceMeters = distanceMeters(center, lat, lng);
+                                // Hanya masukkan rekod Supabase jika ia berada dalam jarak liputan munasabah (<= 50km)
+                                if (item.distanceMeters >= 0 && item.distanceMeters <= 50000) {
+                                    sList.add(item);
+                                }
                             }
                         } catch (Exception ignored) {}
                     }
-                    if (!sList.isEmpty()) {
-                        applyHospitals(sList);
-                        return;
-                    }
                 }
-                executeGooglePlacesSearch(center, apiKey, category);
+                // Sentiasa panggil Google Places API untuk melengkapkan carian di kawasan pengguna (cth: Pulau Pinang, Johor, dsb)
+                executeGooglePlacesSearch(center, apiKey, category, sList);
             }
 
             @Override
             public void onError(Exception error) {
-                executeGooglePlacesSearch(center, apiKey, category);
+                executeGooglePlacesSearch(center, apiKey, category, new ArrayList<>());
             }
         });
     }
 
-    private void executeGooglePlacesSearch(LatLng center, String apiKey, String category) {
+    private void executeGooglePlacesSearch(LatLng center, String apiKey, String category, ArrayList<HospitalItem> initialList) {
         executor.execute(() -> {
             try {
                 ArrayList<HospitalItem> combined = new ArrayList<>();
+                if (initialList != null && !initialList.isEmpty()) {
+                    combined.addAll(initialList);
+                }
                 PlacesResponse lastDenied = null;
 
                 if ("all".equalsIgnoreCase(category)) {
@@ -709,39 +714,51 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
                 } else if ("police".equalsIgnoreCase(category)) {
                     PlacesResponse resp = fetchPlacesNearby(center, apiKey, "police", null, "police");
                     if (resp.isDenied()) {
-                        runOnUiThread(() -> showPlacesDenied(resp));
-                        return;
+                        if (combined.isEmpty()) {
+                            runOnUiThread(() -> showPlacesDenied(resp));
+                            return;
+                        }
+                    } else {
+                        combined.addAll(resp.items);
                     }
-                    runOnUiThread(() -> applyHospitals(resp.items));
+                    runOnUiThread(() -> applyHospitals(combined));
                 } else if ("fire".equalsIgnoreCase(category)) {
                     PlacesResponse resp = fetchPlacesNearby(center, apiKey, "fire_station", null, "fire");
                     if (resp.isDenied()) {
-                        runOnUiThread(() -> showPlacesDenied(resp));
-                        return;
+                        if (combined.isEmpty()) {
+                            runOnUiThread(() -> showPlacesDenied(resp));
+                            return;
+                        }
+                    } else {
+                        combined.addAll(resp.items);
                     }
-                    runOnUiThread(() -> applyHospitals(resp.items));
+                    runOnUiThread(() -> applyHospitals(combined));
                 } else {
                     // Default hospital
                     PlacesResponse first = fetchPlacesNearby(center, apiKey, "hospital", null, "hospital");
                     if (first.isDenied()) {
-                        runOnUiThread(() -> showPlacesDenied(first));
-                        return;
+                        if (combined.isEmpty()) {
+                            runOnUiThread(() -> showPlacesDenied(first));
+                            return;
+                        }
+                    } else if (first.isOkWithResults()) {
+                        combined.addAll(first.items);
+                    } else {
+                        PlacesResponse fallback = fetchPlacesNearby(center, apiKey, "health", null, "hospital");
+                        if (!fallback.isDenied() && fallback.isOkWithResults()) {
+                            combined.addAll(fallback.items);
+                        }
                     }
-                    if (first.isOkWithResults()) {
-                        runOnUiThread(() -> applyHospitals(first.items));
-                        return;
-                    }
-                    PlacesResponse fallback = fetchPlacesNearby(center, apiKey, "health", null, "hospital");
-                    if (fallback.isDenied()) {
-                        runOnUiThread(() -> showPlacesDenied(fallback));
-                        return;
-                    }
-                    runOnUiThread(() -> applyHospitals(fallback.items));
+                    runOnUiThread(() -> applyHospitals(combined));
                 }
             } catch (Exception e) {
-                runOnUiThread(() -> {
-                    if (status != null) status.setText(R.string.nearby_hospital_error_failed_load);
-                });
+                if (initialList != null && !initialList.isEmpty()) {
+                    runOnUiThread(() -> applyHospitals(initialList));
+                } else {
+                    runOnUiThread(() -> {
+                        if (status != null) status.setText(R.string.nearby_hospital_error_failed_load);
+                    });
+                }
                 pendingSearch = false;
             }
         });
@@ -843,16 +860,25 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         hospitals.clear();
         displayItems.clear();
         ArrayList<HospitalItem> nearbyOnly = new ArrayList<>();
+        java.util.HashSet<String> seenKeys = new java.util.HashSet<>();
         if (currentLatLng != null && found != null) {
             for (HospitalItem h : found) {
                 h.distanceMeters = distanceMeters(currentLatLng, h.lat, h.lng);
                 // Hanya terima lokasi dalam jarak munasabah (maksimum 50km) untuk elak isu Places API cari di negara lain
                 if (h.distanceMeters >= 0 && h.distanceMeters <= 50000) {
-                    nearbyOnly.add(h);
+                    String key = (h.name == null ? "" : h.name.trim().toLowerCase()) + "_" + Math.round(h.lat * 1000) + "_" + Math.round(h.lng * 1000);
+                    if (seenKeys.add(key)) {
+                        nearbyOnly.add(h);
+                    }
                 }
             }
         } else if (found != null) {
-            nearbyOnly.addAll(found);
+            for (HospitalItem h : found) {
+                String key = (h.name == null ? "" : h.name.trim().toLowerCase()) + "_" + Math.round(h.lat * 1000) + "_" + Math.round(h.lng * 1000);
+                if (seenKeys.add(key)) {
+                    nearbyOnly.add(h);
+                }
+            }
         }
 
         // Susun mengikut keutamaan: Bomba (1) -> Medic / Hospital (2) -> Polis (3), dan dalam setiap kategori susun mengikut jarak terdekat
