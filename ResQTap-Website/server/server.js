@@ -44,7 +44,15 @@ const server = http.createServer((req, res) => {
     pathname = '/index.html';
   }
 
-  let filePath = path.join(PUBLIC_DIR, pathname);
+  // Normalize safe path and prevent directory traversal / arbitrary file reads
+  const safePath = path.resolve(PUBLIC_DIR, '.' + pathname);
+  if (!safePath.startsWith(PUBLIC_DIR)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    res.end('403 Forbidden: Access Denied');
+    return;
+  }
+
+  let filePath = safePath;
 
   // Check if directory -> index.html
   if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
@@ -59,6 +67,13 @@ const server = http.createServer((req, res) => {
   // SPA fallback
   if (!fs.existsSync(filePath)) {
     filePath = path.join(PUBLIC_DIR, 'index.html');
+  }
+
+  // Final check to guarantee filePath does not leave PUBLIC_DIR
+  if (!path.resolve(filePath).startsWith(PUBLIC_DIR)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    res.end('403 Forbidden: Access Denied');
+    return;
   }
 
   fs.readFile(filePath, (err, data) => {

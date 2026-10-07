@@ -415,14 +415,55 @@ public final class UserPrefs {
         prefs(context).edit().putBoolean(KEY_APP_LOCK_ENABLED, enabled).apply();
     }
 
-    /** Ambil atau muat data AppLockPin. */
+    /** Ambil atau muat data status kewujudan AppLockPin. */
+    public static boolean hasAppLockPin(Context context) {
+        String pin = prefs(context).getString(KEY_APP_LOCK_PIN, "");
+        return pin != null && !pin.trim().isEmpty();
+    }
+
+    /** Ambil atau muat data AppLockPin (mengembalikan hash atau raw jika legacy). */
     public static String getAppLockPin(Context context) {
         return prefs(context).getString(KEY_APP_LOCK_PIN, "");
     }
 
-    /** Fungsi untuk setAppLockPin. */
+    /** Helper hashing PIN menggunakan SHA-256 dan device salt */
+    public static String hashPin(Context context, String rawPin) {
+        if (rawPin == null || rawPin.isEmpty()) return "";
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            String salt = "ResQTap_Salt_" + context.getPackageName();
+            byte[] hash = md.digest((salt + rawPin).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return rawPin;
+        }
+    }
+
+    /** Pengesahan AppLockPin secara selamat (menyokong PIN hashed dan migrasi legasi). */
+    public static boolean verifyAppLockPin(Context context, String enteredPin) {
+        if (enteredPin == null) return false;
+        String stored = getAppLockPin(context);
+        if (stored.isEmpty()) return false;
+        // Jika stored sudah di-hash (panjang SHA-256 = 64 aksara)
+        if (stored.length() == 64) {
+            return stored.equals(hashPin(context, enteredPin));
+        }
+        // Legasi plaintext: sahkan dan migrasi secara automatik ke bentuk hash
+        if (stored.equals(enteredPin)) {
+            setAppLockPin(context, enteredPin);
+            return true;
+        }
+        return false;
+    }
+
+    /** Fungsi untuk setAppLockPin dengan hashing automatik. */
     public static void setAppLockPin(Context context, String pin) {
-        prefs(context).edit().putString(KEY_APP_LOCK_PIN, pin == null ? "" : pin).apply();
+        String toSave = (pin == null || pin.isEmpty()) ? "" : hashPin(context, pin);
+        prefs(context).edit().putString(KEY_APP_LOCK_PIN, toSave).apply();
     }
 
     /** Semak dan sahkan FingerprintEnabled. */
@@ -435,14 +476,36 @@ public final class UserPrefs {
         prefs(context).edit().putBoolean(KEY_FINGERPRINT_ENABLED, enabled).apply();
     }
 
+    /** Ambil atau muat data status kewujudan BiometricPin. */
+    public static boolean hasBiometricPin(Context context) {
+        String pin = prefs(context).getString(KEY_BIOMETRIC_PIN, "");
+        return pin != null && !pin.trim().isEmpty();
+    }
+
     /** Ambil atau muat data BiometricPin. */
     public static String getBiometricPin(Context context) {
         return prefs(context).getString(KEY_BIOMETRIC_PIN, "");
     }
 
-    /** Fungsi untuk setBiometricPin. */
+    /** Pengesahan BiometricPin secara selamat. */
+    public static boolean verifyBiometricPin(Context context, String enteredPin) {
+        if (enteredPin == null) return false;
+        String stored = getBiometricPin(context);
+        if (stored.isEmpty()) return false;
+        if (stored.length() == 64) {
+            return stored.equals(hashPin(context, enteredPin));
+        }
+        if (stored.equals(enteredPin)) {
+            setBiometricPin(context, enteredPin);
+            return true;
+        }
+        return false;
+    }
+
+    /** Fungsi untuk setBiometricPin dengan hashing automatik. */
     public static void setBiometricPin(Context context, String pin) {
-        prefs(context).edit().putString(KEY_BIOMETRIC_PIN, pin == null ? "" : pin).apply();
+        String toSave = (pin == null || pin.isEmpty()) ? "" : hashPin(context, pin);
+        prefs(context).edit().putString(KEY_BIOMETRIC_PIN, toSave).apply();
     }
 
     /** Semak dan sahkan DuressSafeguardEnabled. */

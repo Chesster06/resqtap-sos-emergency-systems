@@ -143,6 +143,10 @@ public class SplashActivity extends BaseActivity {
         }
 
         Intent i = new Intent(SplashActivity.this, MainActivity.class);
+        if (getIntent() != null && getIntent().getData() != null) {
+            i.setData(getIntent().getData());
+            i.setAction(getIntent().getAction());
+        }
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(i);
         try {

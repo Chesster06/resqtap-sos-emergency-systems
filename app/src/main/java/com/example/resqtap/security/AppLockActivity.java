@@ -99,8 +99,8 @@ public class AppLockActivity extends AppCompatActivity {
         btnBiometricKey = findViewById(R.id.btn_biometric_key);
 
         boolean biometricOn = UserPrefs.isFingerprintEnabled(this);
-        boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
-        boolean hasBiometricPin = UserPrefs.isFingerprintEnabled(this) && UserPrefs.getBiometricPin(this).length() == 4;
+        boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.hasAppLockPin(this);
+        boolean hasBiometricPin = UserPrefs.isFingerprintEnabled(this) && UserPrefs.hasBiometricPin(this);
         boolean hasAnyPin = hasAppLockPin || hasBiometricPin;
 
         TextView tvTitle = findViewById(R.id.tv_title);
@@ -149,8 +149,8 @@ public class AppLockActivity extends AppCompatActivity {
                 R.id.key_5, R.id.key_6, R.id.key_7, R.id.key_8, R.id.key_9
         };
 
-        boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
-        boolean hasBiometricPin = UserPrefs.isFingerprintEnabled(this) && UserPrefs.getBiometricPin(this).length() == 4;
+        boolean hasAppLockPin = UserPrefs.isAppLockEnabled(this) && UserPrefs.hasAppLockPin(this);
+        boolean hasBiometricPin = UserPrefs.isFingerprintEnabled(this) && UserPrefs.hasBiometricPin(this);
         boolean hasAnyPin = hasAppLockPin || hasBiometricPin;
 
         for (int id : keyIds) {
@@ -210,8 +210,8 @@ public class AppLockActivity extends AppCompatActivity {
 
     private void verifyPin() {
         String input = enteredPin.toString();
-        boolean appLockValid = UserPrefs.isAppLockEnabled(this) && input.equals(UserPrefs.getAppLockPin(this));
-        boolean biometricPinValid = UserPrefs.isFingerprintEnabled(this) && input.equals(UserPrefs.getBiometricPin(this));
+        boolean appLockValid = UserPrefs.isAppLockEnabled(this) && UserPrefs.verifyAppLockPin(this, input);
+        boolean biometricPinValid = UserPrefs.isFingerprintEnabled(this) && UserPrefs.verifyBiometricPin(this, input);
 
         if (appLockValid || biometricPinValid) {
             unlockSuccess();

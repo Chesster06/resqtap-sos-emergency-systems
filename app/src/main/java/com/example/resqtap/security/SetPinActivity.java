@@ -69,13 +69,8 @@ public class SetPinActivity extends AppCompatActivity {
 
         isChanging = getIntent().getBooleanExtra(EXTRA_IS_CHANGING, false);
         isForBiometric = getIntent().getBooleanExtra(EXTRA_IS_FOR_BIOMETRIC, false);
-        String existingPin;
-        if (isForBiometric) {
-            existingPin = UserPrefs.getBiometricPin(this);
-        } else {
-            existingPin = UserPrefs.getAppLockPin(this);
-        }
-        if (isChanging && existingPin != null && existingPin.length() == 4) {
+        boolean hasExisting = isForBiometric ? UserPrefs.hasBiometricPin(this) : UserPrefs.hasAppLockPin(this);
+        if (isChanging && hasExisting) {
             currentState = STATE_ENTER_CURRENT;
         } else {
             currentState = STATE_ENTER_NEW;
@@ -211,13 +206,8 @@ public class SetPinActivity extends AppCompatActivity {
         String input = enteredPin.toString();
 
         if (currentState == STATE_ENTER_CURRENT) {
-            String existing;
-            if (isForBiometric) {
-                existing = UserPrefs.getBiometricPin(this);
-            } else {
-                existing = UserPrefs.getAppLockPin(this);
-            }
-            if (input.equals(existing)) {
+            boolean isValid = isForBiometric ? UserPrefs.verifyBiometricPin(this, input) : UserPrefs.verifyAppLockPin(this, input);
+            if (isValid) {
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                     currentState = STATE_ENTER_NEW;
                     enteredPin.setLength(0);

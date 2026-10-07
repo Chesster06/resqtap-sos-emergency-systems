@@ -137,9 +137,9 @@ public class SecuritySettingsActivity extends BaseActivity {
     private void syncSecuritySettingsUI() {
         isSyncingUI = true;
         try {
-            boolean appLockOn = UserPrefs.isAppLockEnabled(this) && UserPrefs.getAppLockPin(this).length() == 4;
+            boolean appLockOn = UserPrefs.isAppLockEnabled(this) && UserPrefs.hasAppLockPin(this);
             boolean biometricOn = UserPrefs.isFingerprintEnabled(this);
-            boolean hasBiometricPin = UserPrefs.getBiometricPin(this) != null && UserPrefs.getBiometricPin(this).length() == 4;
+            boolean hasBiometricPin = UserPrefs.hasBiometricPin(this);
             boolean duressOn = UserPrefs.isDuressSafeguardEnabled(this);
 
             if (toggleAppLock != null) {
@@ -202,7 +202,7 @@ public class SecuritySettingsActivity extends BaseActivity {
                 if (isSyncingUI) return;
                 if (isChecked) {
                     // Setiap kali Pin Lock di-enable semula, buka UI Pin (SetPinActivity)
-                    if (!UserPrefs.isAppLockEnabled(this) || UserPrefs.getAppLockPin(this).length() != 4) {
+                    if (!UserPrefs.isAppLockEnabled(this) || !UserPrefs.hasAppLockPin(this)) {
                         openSetPin(false);
                     } else {
                         if (rowChangePin != null) rowChangePin.setVisibility(View.VISIBLE);

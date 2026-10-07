@@ -152,14 +152,28 @@ ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rooms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.room_members ENABLE ROW LEVEL SECURITY;
 
+-- 7.0 Fungsi Pembantu Admin Selamat (Mengelakkan Recursive Policy / Error 42P17)
+CREATE OR REPLACE FUNCTION public.is_app_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE id = auth.uid() AND (role = 'admin' OR is_admin = true)
+    );
+$$;
+
 -- 7.1 Hospitals: Awam boleh membaca hospital terdekat, hanya admin boleh sunting
 CREATE POLICY "Public Read Hospitals" ON public.hospitals FOR SELECT USING (true);
 CREATE POLICY "Admin Manage Hospitals" ON public.hospitals FOR ALL 
-    USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+    USING (public.is_app_admin());
 
 -- 7.2 Profiles: Pengguna hanya boleh melihat dan menyunting profil sendiri (atau dibaca oleh admin)
 CREATE POLICY "Read Profiles" ON public.profiles FOR SELECT 
-    USING (auth.uid() = id OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+    USING (auth.uid() = id OR public.is_app_admin());
 CREATE POLICY "Update Own Profile" ON public.profiles FOR UPDATE 
     USING (auth.uid() = id);
 CREATE POLICY "Insert Own Profile" ON public.profiles FOR INSERT 
@@ -167,17 +181,17 @@ CREATE POLICY "Insert Own Profile" ON public.profiles FOR INSERT
 
 -- 7.3 Medical Cards: Data perubatan peribadi HANYA boleh diakses oleh pemilik atau responden/admin kecemasan
 CREATE POLICY "Read Medical Cards" ON public.medical_cards FOR SELECT 
-    USING (auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+    USING (auth.uid() = user_id OR public.is_app_admin());
 CREATE POLICY "Modify Own Medical Card" ON public.medical_cards FOR ALL 
     USING (auth.uid() = user_id);
 
 -- 7.4 Reports: Laporan boleh dibaca oleh pengirim atau admin; boleh dicipta oleh pengguna sah
 CREATE POLICY "Read Reports" ON public.reports FOR SELECT 
-    USING (auth.uid() = reporter_uid OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+    USING (auth.uid() = reporter_uid OR public.is_app_admin());
 CREATE POLICY "Insert Reports" ON public.reports FOR INSERT 
     WITH CHECK (auth.uid() = reporter_uid OR auth.uid() IS NOT NULL);
 CREATE POLICY "Admin Update Reports" ON public.reports FOR UPDATE 
-    USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+    USING (public.is_app_admin());
 
 -- 7.5 Rooms & Members: Hanya ahli atau pencipta bilik boleh membaca dan mengurus
 CREATE POLICY "Read Rooms" ON public.rooms FOR SELECT 
