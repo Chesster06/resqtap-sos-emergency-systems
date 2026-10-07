@@ -506,41 +506,43 @@ public class MainActivity extends BaseActivity {
             btnSos2.setScaleY(0.7f);
             btnSos2.animate()
                     .alpha(1f).scaleX(1f).scaleY(1f)
-                    .setDuration(600)
-                    .setStartDelay(220)
+                    .setDuration(400)
+                    .setStartDelay(100)
                     .setInterpolator(new android.view.animation.OvershootInterpolator(1.2f))
+                    .withLayer()
                     .start();
         }
         if (sosHint != null) {
             sosHint.setAlpha(0f);
-            sosHint.animate().alpha(1f).setDuration(500).setStartDelay(600).start();
+            sosHint.animate().alpha(1f).setDuration(350).setStartDelay(250).withLayer().start();
         }
 
         int[] cardIds = {R.id.feature_hospital, R.id.feature_contacts, R.id.feature_support, R.id.feature_language};
-        long[] delays = {350, 430, 510, 590};
+        long[] delays = {120, 180, 240, 300};
         for (int i = 0; i < cardIds.length; i++) {
             android.view.View card = findViewById(cardIds[i]);
             if (card == null) continue;
             card.setAlpha(0f);
-            card.setTranslationY(70f);
-            card.setScaleX(0.93f);
-            card.setScaleY(0.93f);
+            card.setTranslationY(40f);
+            card.setScaleX(0.96f);
+            card.setScaleY(0.96f);
             final int idx = i;
             card.animate()
                     .alpha(1f)
                     .translationY(0f)
                     .scaleX(1f)
                     .scaleY(1f)
-                    .setDuration(450)
+                    .setDuration(320)
                     .setStartDelay(delays[idx])
                     .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .withLayer()
                     .start();
         }
 
         android.view.View featuresTitle = findViewById(R.id.features_title);
         if (featuresTitle != null) {
             featuresTitle.setAlpha(0f);
-            featuresTitle.animate().alpha(1f).setDuration(400).setStartDelay(300).start();
+            featuresTitle.animate().alpha(1f).setDuration(300).setStartDelay(100).withLayer().start();
         }
     }
 

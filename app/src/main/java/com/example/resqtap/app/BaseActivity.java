@@ -136,9 +136,9 @@ public abstract class BaseActivity extends AppCompatActivity {
         if (shouldAnimateContentIn()) animateContentIn();
     }
 
-    /** Fungsi untuk shouldAnimateContentIn. */
+    /** Fungsi untuk shouldAnimateContentIn: Ditutup secara lalai untuk elak FPS drop & delay render bertindih dengan window transition. */
     protected boolean shouldAnimateContentIn() {
-        return true;
+        return false;
     }
 
     /** Fungsi untuk startActivity. */
@@ -191,9 +191,9 @@ public abstract class BaseActivity extends AppCompatActivity {
                 .alpha(1f)
                 .scaleX(1f)
                 .scaleY(1f)
-                .setDuration(360L)
-                .setStartDelay(35L)
-                .setInterpolator(new OvershootInterpolator(0.55f))
+                .setDuration(300L)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .withLayer()
                 .start();
         staggerChildren(root);
     }
@@ -215,9 +215,10 @@ public abstract class BaseActivity extends AppCompatActivity {
                     .translationY(0f)
                     .scaleX(1f)
                     .scaleY(1f)
-                    .setDuration(340L)
-                    .setStartDelay(80L + (animated * 45L))
+                    .setDuration(280L)
+                    .setStartDelay(50L + (animated * 30L))
                     .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                    .withLayer()
                     .start();
             animated++;
         }

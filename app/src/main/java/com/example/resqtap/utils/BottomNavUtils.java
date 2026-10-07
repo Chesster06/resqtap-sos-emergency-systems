@@ -207,13 +207,9 @@ public final class BottomNavUtils {
         Intent intent = new Intent(from, to);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         from.startActivity(intent);
-        try {
-            from.overridePendingTransition(R.anim.resqtap_enter, R.anim.resqtap_exit);
-        } catch (Exception ignored) {
-        }
         from.finish();
         try {
-            from.overridePendingTransition(R.anim.resqtap_enter, R.anim.resqtap_exit);
+            from.overridePendingTransition(0, 0);
         } catch (Exception ignored) {
         }
     }
