@@ -83,6 +83,8 @@ async function handleListUsers(req, res) {
       localId: u.uid,
       email: u.email,
       displayName: u.displayName,
+      photoURL: u.photoURL,
+      photoUrl: u.photoURL,
       createdAt: u.metadata.creationTime,
       lastSignInTime: u.metadata.lastSignInTime,
       disabled: u.disabled

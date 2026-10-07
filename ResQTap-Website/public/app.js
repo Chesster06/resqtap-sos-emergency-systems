@@ -1028,12 +1028,24 @@ function initials(name, email, uid) {
 function avatarHtml(item, uid) {
   const name = text(item.name || item.senderName || item.fromName);
   const email = text(item.email);
-  const photoUrl = text(item.photoUrl || item.photoUri).trim();
+  let photoUrl = text(item.photoUrl || item.photoUri || item.photoURL || item.photo).trim();
   const b64 = text(item.photoB64).trim();
   const label = escapeHtml(initials(name, email, uid));
-  const src = photoUrl || (b64 && b64.length < 250000 ? `data:image/jpeg;base64,${b64}` : "");
+
+  // Jika photoUrl adalah raw base64 string (seperti JPEG / PNG dari kamera Android)
+  if (photoUrl && !photoUrl.startsWith("http://") && !photoUrl.startsWith("https://") && !photoUrl.startsWith("data:")) {
+    if (photoUrl.startsWith("/9j/") || photoUrl.startsWith("iVBORw0KGgo") || photoUrl.length > 100) {
+      photoUrl = `data:image/jpeg;base64,${photoUrl}`;
+    }
+  }
+
+  let src = photoUrl;
+  if (!src && b64) {
+    src = b64.startsWith("data:") ? b64 : `data:image/jpeg;base64,${b64}`;
+  }
+
   if (src) {
-    return `<span class="avatar"><img src="${escapeHtml(src)}" alt=""></span>`;
+    return `<span class="avatar"><img src="${escapeHtml(src)}" alt="" referrerpolicy="no-referrer" onerror="this.onerror=null;this.parentElement.className='avatar avatar-default';this.parentElement.innerHTML='<span title=\\'${label}\\'>${label}</span>';"></span>`;
   }
   return `<span class="avatar avatar-default" title="${label}">${icon("user-round")}</span>`;
 }
@@ -1196,11 +1208,16 @@ async function syncFromSupabase() {
       const uMap = {};
       const aMap = {};
       profiles.forEach((p) => {
+        let pUrl = (p.photo_url || "").trim();
+        if (pUrl && !pUrl.startsWith("http://") && !pUrl.startsWith("https://") && !pUrl.startsWith("data:")) {
+          pUrl = `data:image/jpeg;base64,${pUrl}`;
+        }
         uMap[p.id] = {
           name: p.full_name || "User",
           email: p.email || "",
           phone: p.phone || "",
-          photoUrl: p.photo_url || "",
+          photoUrl: pUrl,
+          photo_url: pUrl,
           role: p.role || "user",
           source: "supabase",
           updatedAt: p.updated_at ? new Date(p.updated_at).getTime() : Date.now()
@@ -1452,11 +1469,13 @@ function getUsers() {
     const name = authUser.displayName || (email ? email.split("@")[0] : "User");
     const lastLogin = Number(authUser.lastLoginAt) || 0;
     const createdAt = Number(authUser.createdAt) || 0;
+    const photoUrl = authUser.photoURL || authUser.photoUrl || "";
     map.set(uid, {
       uid,
       data: {
         name,
         email,
+        photoUrl,
         createdAt,
         lastLoginAt: lastLogin
       },
