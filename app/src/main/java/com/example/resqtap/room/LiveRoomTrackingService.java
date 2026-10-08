@@ -532,7 +532,7 @@ public class LiveRoomTrackingService extends Service {
         try {
             long localLastSeen = SosPrefs.getLastSeenAlertTime(this, code);
             FirebaseRoomClient.fetchServerNowQueued(serverNow -> {
-                // Use localLastSeen as the query start — this catches any SOS fired while
+                // Use localLastSeen as the query start, this catches any SOS fired while
                 // the service was killed/restarting. Fall back to serverNow only on first
                 // ever attach (localLastSeen == 0) to avoid replaying entire history.
                 long baseline = localLastSeen > 0L ? localLastSeen : serverNow;

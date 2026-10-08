@@ -26,8 +26,16 @@ public class QrCodeUtils {
 
         /** Semak dan sahkan Valid. */
         public boolean isValid() {
-            return !uid.isEmpty();
+            return isValidFirebaseKey(uid);
         }
+    }
+
+    /** Semak sama ada string merupakan kunci Firebase yang sah (tanpa ., #, $, [, ], /). */
+    public static boolean isValidFirebaseKey(String key) {
+        if (key == null) return false;
+        String trimmed = key.trim();
+        if (trimmed.length() < 3 || trimmed.length() > 128) return false;
+        return !trimmed.matches(".*[.#$\\[\\]/].*");
     }
 
     /** Fungsi untuk createQrPayload. */
@@ -40,7 +48,7 @@ public class QrCodeUtils {
             obj.put("name", String.valueOf(name == null ? "" : name).trim());
             return obj.toString();
         } catch (Exception e) {
-            return "resqtap://friend?uid=" + uid + "&publicId=" + publicId;
+            return "https://resqtap.web.app/connect?uid=" + uid + "&id=" + publicId;
         }
     }
 
@@ -56,20 +64,31 @@ public class QrCodeUtils {
                 payload.uid = obj.optString("uid", "").trim();
                 payload.publicId = obj.optString("publicId", "").trim();
                 payload.name = obj.optString("name", "").trim();
-                if (!payload.uid.isEmpty()) return payload;
+                if (payload.isValid()) return payload;
             }
         } catch (Exception ignored) {}
 
-        if (raw.startsWith("resqtap://friend")) {
+        if (raw.startsWith("resqtap://") || raw.startsWith("http://") || raw.startsWith("https://")) {
             try {
                 android.net.Uri uri = android.net.Uri.parse(raw);
-                payload.uid = String.valueOf(uri.getQueryParameter("uid") == null ? "" : uri.getQueryParameter("uid")).trim();
-                payload.publicId = String.valueOf(uri.getQueryParameter("publicId") == null ? "" : uri.getQueryParameter("publicId")).trim();
-                if (!payload.uid.isEmpty()) return payload;
+                String u = uri.getQueryParameter("uid");
+                if (u == null || u.trim().isEmpty()) {
+                    u = uri.getQueryParameter("targetUid");
+                }
+                String pub = uri.getQueryParameter("publicId");
+                if (pub == null || pub.trim().isEmpty()) {
+                    pub = uri.getQueryParameter("id");
+                }
+                String n = uri.getQueryParameter("name");
+
+                payload.uid = String.valueOf(u == null ? "" : u).trim();
+                payload.publicId = String.valueOf(pub == null ? "" : pub).trim();
+                payload.name = String.valueOf(n == null ? "" : n).trim();
+                if (payload.isValid()) return payload;
             } catch (Exception ignored) {}
         }
 
-        if (raw.length() >= 10 && !raw.contains(" ")) {
+        if (raw.length() >= 10 && raw.length() <= 128 && !raw.contains(" ") && isValidFirebaseKey(raw)) {
             payload.uid = raw;
         }
         return payload;

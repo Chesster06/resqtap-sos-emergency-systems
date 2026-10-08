@@ -9,18 +9,20 @@ const ALLOWED_ORIGINS = new Set([
 
 function getCorsOrigin(req) {
   const origin = req.headers['origin'] || '';
+  if (!origin) return 'http://localhost:5000';
   if (ALLOWED_ORIGINS.has(origin)) {
     return origin;
   }
-  // Default to localhost for local browser tools
-  return 'http://localhost:5000';
+  return null;
 }
 
 function setCorsHeaders(res, origin) {
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
 }
 
 /**
@@ -65,6 +67,11 @@ async function verifyAdminToken(req) {
  */
 async function handleListUsers(req, res) {
   const origin = getCorsOrigin(req);
+  if (req.headers['origin'] && !origin) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: false, error: 'Forbidden: Untrusted Origin' }));
+    return;
+  }
   setCorsHeaders(res, origin);
 
   const adminUser = await verifyAdminToken(req);
@@ -104,6 +111,11 @@ async function handleListUsers(req, res) {
  */
 async function handleClearDatabase(req, res) {
   const origin = getCorsOrigin(req);
+  if (req.headers['origin'] && !origin) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: false, error: 'Forbidden: Untrusted Origin' }));
+    return;
+  }
   setCorsHeaders(res, origin);
 
   if (req.method !== 'POST') {
@@ -120,18 +132,32 @@ async function handleClearDatabase(req, res) {
     return;
   }
 
-  try {
-    console.log(`[SERVER API] Verified admin ${adminUser.email} requested database reset.`);
-    delete require.cache[require.resolve(cleanupScriptPath)];
-    const { resetDatabaseAccounts: runReset } = require(cleanupScriptPath);
-    const result = await runReset();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(result));
-  } catch (err) {
-    console.error('[SERVER API] Clear database error:', err);
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ success: false, error: err.message || 'Internal server error' }));
-  }
+  let body = '';
+  const MAX_PAYLOAD = 50 * 1024;
+  req.on('data', chunk => {
+    body += chunk;
+    if (body.length > MAX_PAYLOAD) {
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: 'Payload Too Large' }));
+      req.destroy();
+    }
+  });
+
+  req.on('end', async () => {
+    if (body.length > MAX_PAYLOAD) return;
+    try {
+      console.log(`[SERVER API] Verified admin ${adminUser.email} requested database reset.`);
+      delete require.cache[require.resolve(cleanupScriptPath)];
+      const { resetDatabaseAccounts: runReset } = require(cleanupScriptPath);
+      const result = await runReset();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      console.error('[SERVER API] Clear database error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: err.message || 'Internal server error' }));
+    }
+  });
 }
 
 /**
@@ -139,6 +165,11 @@ async function handleClearDatabase(req, res) {
  */
 async function handleDeleteUser(req, res) {
   const origin = getCorsOrigin(req);
+  if (req.headers['origin'] && !origin) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: false, error: 'Forbidden: Untrusted Origin' }));
+    return;
+  }
   setCorsHeaders(res, origin);
 
   if (req.method !== 'POST') {

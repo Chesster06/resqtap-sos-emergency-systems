@@ -426,41 +426,91 @@ public final class UserPrefs {
         return prefs(context).getString(KEY_APP_LOCK_PIN, "");
     }
 
-    /** Helper hashing PIN menggunakan SHA-256 dan device salt */
+    private static final int PBKDF2_ITERATIONS = 12000;
+    private static final int PBKDF2_KEY_LENGTH = 256;
+
+    /** Helper hashing PIN menggunakan PBKDF2WithHmacSHA256 dan salt rawak unik. */
     public static String hashPin(Context context, String rawPin) {
         if (rawPin == null || rawPin.isEmpty()) return "";
         try {
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] salt = new byte[16];
+            new SecureRandom().nextBytes(salt);
+            javax.crypto.spec.PBEKeySpec spec = new javax.crypto.spec.PBEKeySpec(rawPin.toCharArray(), salt, PBKDF2_ITERATIONS, PBKDF2_KEY_LENGTH);
+            javax.crypto.SecretKeyFactory skf = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            byte[] hash = skf.generateSecret(spec).getEncoded();
+            return "pbkdf2$" + PBKDF2_ITERATIONS + "$" + bytesToHex(salt) + "$" + bytesToHex(hash);
+        } catch (Exception e) {
+            return legacySha256Pin(context, rawPin);
+        }
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
+    private static byte[] hexToBytes(String hex) {
+        int len = hex.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
+                    + Character.digit(hex.charAt(i + 1), 16));
+        }
+        return data;
+    }
+
+    private static String legacySha256Pin(Context context, String rawPin) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
             String salt = "ResQTap_Salt_" + context.getPackageName();
-            byte[] hash = md.digest((salt + rawPin).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
+            byte[] hash = md.digest((salt + rawPin).getBytes(StandardCharsets.UTF_8));
+            return bytesToHex(hash);
         } catch (Exception e) {
             return rawPin;
         }
     }
 
-    /** Pengesahan AppLockPin secara selamat (menyokong PIN hashed dan migrasi legasi). */
+    private static boolean verifyPinInternal(Context context, String stored, String enteredPin) {
+        if (stored == null || stored.isEmpty() || enteredPin == null || enteredPin.isEmpty()) return false;
+        if (stored.startsWith("pbkdf2$")) {
+            String[] parts = stored.split("\\$");
+            if (parts.length == 4) {
+                try {
+                    int iters = Integer.parseInt(parts[1]);
+                    byte[] salt = hexToBytes(parts[2]);
+                    byte[] expectedHash = hexToBytes(parts[3]);
+                    javax.crypto.spec.PBEKeySpec spec = new javax.crypto.spec.PBEKeySpec(enteredPin.toCharArray(), salt, iters, expectedHash.length * 8);
+                    javax.crypto.SecretKeyFactory skf = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+                    byte[] actualHash = skf.generateSecret(spec).getEncoded();
+                    return MessageDigest.isEqual(expectedHash, actualHash);
+                } catch (Exception ignored) {}
+            }
+            return false;
+        }
+        // Legasi SHA-256 (64 aksara hex)
+        if (stored.length() == 64) {
+            return stored.equalsIgnoreCase(legacySha256Pin(context, enteredPin));
+        }
+        // Legasi teks biasa
+        return stored.equals(enteredPin);
+    }
+
+    /** Pengesahan AppLockPin secara selamat (menyokong PBKDF2 dan migrasi automatik legasi). */
     public static boolean verifyAppLockPin(Context context, String enteredPin) {
         if (enteredPin == null) return false;
         String stored = getAppLockPin(context);
         if (stored.isEmpty()) return false;
-        // Jika stored sudah di-hash (panjang SHA-256 = 64 aksara)
-        if (stored.length() == 64) {
-            return stored.equals(hashPin(context, enteredPin));
-        }
-        // Legasi plaintext: sahkan dan migrasi secara automatik ke bentuk hash
-        if (stored.equals(enteredPin)) {
+        boolean valid = verifyPinInternal(context, stored, enteredPin);
+        if (valid && !stored.startsWith("pbkdf2$")) {
             setAppLockPin(context, enteredPin);
-            return true;
         }
-        return false;
+        return valid;
     }
 
-    /** Fungsi untuk setAppLockPin dengan hashing automatik. */
+    /** Fungsi untuk setAppLockPin dengan hashing automatik PBKDF2. */
     public static void setAppLockPin(Context context, String pin) {
         String toSave = (pin == null || pin.isEmpty()) ? "" : hashPin(context, pin);
         prefs(context).edit().putString(KEY_APP_LOCK_PIN, toSave).apply();
@@ -487,19 +537,16 @@ public final class UserPrefs {
         return prefs(context).getString(KEY_BIOMETRIC_PIN, "");
     }
 
-    /** Pengesahan BiometricPin secara selamat. */
+    /** Pengesahan BiometricPin secara selamat (menyokong PBKDF2 dan migrasi automatik legasi). */
     public static boolean verifyBiometricPin(Context context, String enteredPin) {
         if (enteredPin == null) return false;
         String stored = getBiometricPin(context);
         if (stored.isEmpty()) return false;
-        if (stored.length() == 64) {
-            return stored.equals(hashPin(context, enteredPin));
-        }
-        if (stored.equals(enteredPin)) {
+        boolean valid = verifyPinInternal(context, stored, enteredPin);
+        if (valid && !stored.startsWith("pbkdf2$")) {
             setBiometricPin(context, enteredPin);
-            return true;
         }
-        return false;
+        return valid;
     }
 
     /** Fungsi untuk setBiometricPin dengan hashing automatik. */

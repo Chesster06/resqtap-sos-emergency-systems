@@ -260,6 +260,37 @@ public class MainActivity extends BaseActivity {
         setupMedicalNews();
 
         playEntranceAnimations();
+        handleIncomingDeepLink(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIncomingDeepLink(intent);
+    }
+
+    private void handleIncomingDeepLink(Intent intent) {
+        if (intent == null) return;
+        android.net.Uri data = intent.getData();
+        if (data != null) {
+            String scheme = data.getScheme();
+            String host = data.getHost();
+            String path = data.getPath();
+
+            boolean isWebConnect = ("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))
+                    && ("resqtap.web.app".equalsIgnoreCase(host) || "resqtap-b9ff5.web.app".equalsIgnoreCase(host))
+                    && path != null && path.startsWith("/connect");
+
+            boolean isSchemeConnect = "resqtap".equalsIgnoreCase(scheme)
+                    && ("connect".equalsIgnoreCase(host) || "friend".equalsIgnoreCase(host));
+
+            if (isWebConnect || isSchemeConnect) {
+                Intent connectIntent = new Intent(this, com.example.resqtap.friend.ScanQrActivity.class);
+                connectIntent.putExtra("extra_connect_payload", data.toString());
+                startActivity(connectIntent);
+            }
+        }
     }
 
     private void setupHighlights() {
@@ -475,13 +506,7 @@ public class MainActivity extends BaseActivity {
         });
     }
 
-    /** Handle intent baharu yang dihantar ke aktiviti. */
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-        checkCheckinTrigger(intent);
-    }
+
 
     // =========================================================================
     // 1. ENTRANCE ANIMATIONS
@@ -789,7 +814,7 @@ public class MainActivity extends BaseActivity {
                             String sosId = String.valueOf(id == null ? "" : id).trim();
                             if (sosId.isEmpty()) return;
                             if (sosCancelledWhilePending) {
-                                // User cancelled before this ID arrived — kill it immediately
+                                // User cancelled before this ID arrived, kill it immediately
                                 FirebaseRoomClient.cancelRoomSosQueued(code, sosId, dev);
                             } else {
                                 activeSosIds.put(code, sosId);
@@ -815,7 +840,7 @@ public class MainActivity extends BaseActivity {
                 });
     }
 
-    /** Tekan SOS — sheet muncul, onSosStarted akan broadcast ke semua room atau DIRECT fallback. */
+    /** Tekan SOS: sheet muncul, onSosStarted akan broadcast ke semua room atau DIRECT fallback. */
     private void triggerSosFlow() {
         if (sosSheet == null) return;
         FirebaseUser cu = FirebaseAuth.getInstance().getCurrentUser();

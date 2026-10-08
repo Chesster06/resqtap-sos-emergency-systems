@@ -508,29 +508,37 @@ exports.onRoomSosUpdated = rtdb
   });
 
 /**
- * Auto-assign Admin Role for @resqtap.com accounts
- * Dipanggil secara automatik apabila akaun baharu dicipta dalam Firebase Auth.
+ * Auto-assign Admin Role for @resqtap.com accounts (Verified Email Only)
+ * Memastikan peranan admin HANYA diberikan sekiranya e-mel telah disahkan secara sah.
  */
 exports.onUserCreated = functions.region("asia-southeast1").auth.user().onCreate(async (user) => {
   try {
     const email = (user.email || "").trim().toLowerCase();
+    const isVerified = user.emailVerified === true;
+
     if (email.endsWith("@resqtap.com")) {
       const uid = user.uid;
       const adminRef = admin.database().ref(`/admins/${uid}`);
-      await adminRef.set({
-        active: true,
-        email: email,
-        name: user.displayName || "",
-        role: "admin",
-        assignedAt: admin.database.ServerValue.TIMESTAMP,
-        assignedBy: "system_auto_resqtap_domain"
-      });
-      console.log(`[AUTO-ADMIN] Assigned admin privileges to ${email} (${uid})`);
+
+      if (isVerified) {
+        await adminRef.set({
+          active: true,
+          email: email,
+          name: user.displayName || "",
+          role: "admin",
+          assignedAt: admin.database.ServerValue.TIMESTAMP,
+          assignedBy: "system_verified_resqtap_domain"
+        });
+        console.log(`[AUTO-ADMIN] Assigned verified admin privileges to ${email} (${uid})`);
+      } else {
+        console.warn(`[SECURITY] Account ${email} (${uid}) registered with @resqtap.com domain but email is unverified. Admin privileges withheld.`);
+      }
     }
   } catch (err) {
-    console.error("[AUTO-ADMIN] Error auto-assigning admin role:", err);
+    console.error("[AUTO-ADMIN] Error handling admin role assignment:", err);
   }
 });
+
 
 /**
  * Handle Admin User Deletion Request
@@ -546,9 +554,12 @@ exports.onAdminUserDeletionRequest = rtdb
     const adminUid = String(payload.deletedBy || "").trim();
 
     try {
-      if (adminUid) {
-        await assertActiveAdminUid(adminUid);
+      if (!adminUid) {
+        console.warn(`[ADMIN-DELETE] Rejected user deletion request for ${uid}: missing deletedBy admin UID.`);
+        await snap.ref.remove();
+        return null;
       }
+      await assertActiveAdminUid(adminUid);
 
       // Padam akaun daripada Firebase Authentication
       try {

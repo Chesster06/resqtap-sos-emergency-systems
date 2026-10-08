@@ -34,7 +34,7 @@ public final class SosPrefs {
 
     /** Fungsi untuk bumpBaselineAtListenerStart.
      * Hanya set baseline ke serverNow jika tiada lastSeen sebelumnya (first-time).
-     * Kalau ada lastSeen, biarkan — kita nak catch SOS yang fired masa service mati. */
+     * Kalau ada lastSeen, biarkan, kita nak catch SOS yang fired masa service mati. */
     public static void bumpBaselineAtListenerStart(Context context, String roomId, long serverNowMsOrLocalNow) {
         long lastSeen = getLastSeenAlertTime(context, roomId);
         // Only initialise baseline on first ever attach; never overwrite an existing lastSeen with serverNow.
@@ -55,7 +55,7 @@ public final class SosPrefs {
         long createdAt = Math.max(0L, createdAtMs);
         if (room.isEmpty() || id.isEmpty() || createdAt <= 0L) return false;
 
-        // Reject duplicates by alertId — same SOS fired twice won't alarm twice.
+        // Reject duplicates by alertId: same SOS fired twice won't alarm twice.
         String lastId = getLastHandledAlertId(context, room);
         if (!lastId.isEmpty() && lastId.equals(id)) return false;
 

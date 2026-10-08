@@ -131,36 +131,58 @@ public class FirebaseFriendClient {
             targetName = raw;
         }
 
-        DatabaseReference usersRef = db().child("users");
-        DataSnapshot allUsersSnap = await(usersRef.get());
-        if (allUsersSnap != null && allUsersSnap.exists()) {
-            for (DataSnapshot child : allUsersSnap.getChildren()) {
-                FriendInfo info = buildFriendInfoFromUserSnap(child);
-                if (info == null) continue;
-
-                String uName = info.name.trim();
-                String uTag = info.publicId.trim();
-                String uUid = info.uid.trim();
-
-                if (!targetName.isEmpty() && !targetTag.isEmpty()) {
-                    if (uName.equalsIgnoreCase(targetName) && (uTag.equalsIgnoreCase(targetTag) || uTag.endsWith(targetTag))) {
-                        return info;
+        // 1. Carian langsung melalui indeks publicIds atau direct UID (Pantas & selamat)
+        if (!targetTag.isEmpty()) {
+            try {
+                DataSnapshot pidSnap = await(db().child("publicIds").child(targetTag).get());
+                if (pidSnap != null && pidSnap.exists()) {
+                    String foundUid = String.valueOf(pidSnap.getValue() == null ? "" : pidSnap.getValue()).trim();
+                    if (!foundUid.isEmpty()) {
+                        DataSnapshot uSnap = await(db().child("users").child(foundUid).get());
+                        FriendInfo info = buildFriendInfoFromUserSnap(uSnap);
+                        if (info != null) return info;
                     }
                 }
+            } catch (Exception ignored) {}
 
-                else if (!targetTag.isEmpty()) {
-                    if (uTag.equalsIgnoreCase(targetTag) || uTag.endsWith(targetTag) || uUid.equalsIgnoreCase(targetTag)) {
-                        return info;
-                    }
+            try {
+                DataSnapshot directSnap = await(db().child("users").child(targetTag).get());
+                if (directSnap != null && directSnap.exists()) {
+                    FriendInfo info = buildFriendInfoFromUserSnap(directSnap);
+                    if (info != null) return info;
                 }
+            } catch (Exception ignored) {}
+        }
 
-                else if (!targetName.isEmpty()) {
-                    if (uName.equalsIgnoreCase(targetName) || uUid.equalsIgnoreCase(targetName)) {
-                        return info;
+        // 2. Fallback carian luas jika dibenarkan kebenaran peranan
+        try {
+            DatabaseReference usersRef = db().child("users");
+            DataSnapshot allUsersSnap = await(usersRef.get());
+            if (allUsersSnap != null && allUsersSnap.exists()) {
+                for (DataSnapshot child : allUsersSnap.getChildren()) {
+                    FriendInfo info = buildFriendInfoFromUserSnap(child);
+                    if (info == null) continue;
+
+                    String uName = info.name.trim();
+                    String uTag = info.publicId.trim();
+                    String uUid = info.uid.trim();
+
+                    if (!targetName.isEmpty() && !targetTag.isEmpty()) {
+                        if (uName.equalsIgnoreCase(targetName) && (uTag.equalsIgnoreCase(targetTag) || uTag.endsWith(targetTag))) {
+                            return info;
+                        }
+                    } else if (!targetTag.isEmpty()) {
+                        if (uTag.equalsIgnoreCase(targetTag) || uTag.endsWith(targetTag) || uUid.equalsIgnoreCase(targetTag)) {
+                            return info;
+                        }
+                    } else if (!targetName.isEmpty()) {
+                        if (uName.equalsIgnoreCase(targetName) || uUid.equalsIgnoreCase(targetName)) {
+                            return info;
+                        }
                     }
                 }
             }
-        }
+        } catch (Exception ignored) {}
 
         return null;
     }
@@ -185,8 +207,8 @@ public class FirebaseFriendClient {
     public static void sendFriendRequest(Context context, String fromUid, String fromName, String fromPublicId, String targetUid) throws Exception {
         String fUid = String.valueOf(fromUid == null ? "" : fromUid).trim();
         String tUid = String.valueOf(targetUid == null ? "" : targetUid).trim();
-        if (fUid.isEmpty()) throw new RuntimeException("invalid_from_uid");
-        if (tUid.isEmpty()) throw new RuntimeException("invalid_target_uid");
+        if (fUid.isEmpty() || !QrCodeUtils.isValidFirebaseKey(fUid)) throw new RuntimeException("invalid_from_uid");
+        if (tUid.isEmpty() || !QrCodeUtils.isValidFirebaseKey(tUid)) throw new RuntimeException("invalid_target_uid");
         if (fUid.equals(tUid)) throw new RuntimeException("cannot_add_self");
 
         try {
@@ -257,7 +279,7 @@ public class FirebaseFriendClient {
         if (request == null) throw new RuntimeException("invalid_request");
         String cUid = String.valueOf(currentUid == null ? "" : currentUid).trim();
         String fUid = String.valueOf(request.fromUid == null ? "" : request.fromUid).trim();
-        if (cUid.isEmpty() || fUid.isEmpty()) throw new RuntimeException("invalid_uids");
+        if (cUid.isEmpty() || fUid.isEmpty() || !QrCodeUtils.isValidFirebaseKey(cUid) || !QrCodeUtils.isValidFirebaseKey(fUid)) throw new RuntimeException("invalid_uids");
 
         DataSnapshot fromUserSnap = await(db().child("users").child(fUid).get());
         String fName = request.fromName;
@@ -330,7 +352,7 @@ public class FirebaseFriendClient {
         try {
             String cUid = String.valueOf(currentUid == null ? "" : currentUid).trim();
             String fUid = String.valueOf(friendUid == null ? "" : friendUid).trim();
-            if (cUid.isEmpty() || fUid.isEmpty()) return;
+            if (cUid.isEmpty() || fUid.isEmpty() || !QrCodeUtils.isValidFirebaseKey(cUid) || !QrCodeUtils.isValidFirebaseKey(fUid)) return;
             Map<String, Object> updates = new HashMap<>();
             if (photoB64 != null && !photoB64.trim().isEmpty()) {
                 updates.put("photoB64", photoB64.trim());
@@ -348,7 +370,7 @@ public class FirebaseFriendClient {
     public static void rejectFriendRequest(String currentUid, String fromUid) throws Exception {
         String cUid = String.valueOf(currentUid == null ? "" : currentUid).trim();
         String fUid = String.valueOf(fromUid == null ? "" : fromUid).trim();
-        if (cUid.isEmpty() || fUid.isEmpty()) return;
+        if (cUid.isEmpty() || fUid.isEmpty() || !QrCodeUtils.isValidFirebaseKey(cUid) || !QrCodeUtils.isValidFirebaseKey(fUid)) return;
 
         Map<String, Object> updates = new HashMap<>();
         updates.put("friendRequests/" + cUid + "/" + fUid, null);
@@ -360,7 +382,7 @@ public class FirebaseFriendClient {
     public static void removeFriend(String currentUid, String friendUid) throws Exception {
         String cUid = String.valueOf(currentUid == null ? "" : currentUid).trim();
         String fUid = String.valueOf(friendUid == null ? "" : friendUid).trim();
-        if (cUid.isEmpty() || fUid.isEmpty()) return;
+        if (cUid.isEmpty() || fUid.isEmpty() || !QrCodeUtils.isValidFirebaseKey(cUid) || !QrCodeUtils.isValidFirebaseKey(fUid)) return;
 
         Map<String, Object> updates = new HashMap<>();
         updates.put("userFriends/" + cUid + "/" + fUid, null);
@@ -372,7 +394,7 @@ public class FirebaseFriendClient {
     public static void updateFriendNickname(String currentUid, String friendUid, String newNickname) {
         String cUid = String.valueOf(currentUid == null ? "" : currentUid).trim();
         String fUid = String.valueOf(friendUid == null ? "" : friendUid).trim();
-        if (cUid.isEmpty() || fUid.isEmpty()) return;
+        if (cUid.isEmpty() || fUid.isEmpty() || !QrCodeUtils.isValidFirebaseKey(cUid) || !QrCodeUtils.isValidFirebaseKey(fUid)) return;
 
         String safeNick = newNickname == null ? "" : newNickname.trim();
         db().child("userFriends").child(cUid).child(fUid).child("nickname").setValue(safeNick);

@@ -7563,10 +7563,8 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
   setActiveView("livechat");
 });
 
-/* ================================================================
-   LIVE MAP MODULE — Leaflet satellite map of all user locations,
-   active SOS alerts, and incident reports in real time.
-================================================================ */
+/* Live map module: Leaflet satellite map of all user locations,
+   active SOS alerts, and incident reports in real time. */
 (function initLiveMapModule() {
   // ── Inject CSS ──────────────────────────────────────────────────
   if (!document.getElementById("livemap-styles")) {
@@ -7822,8 +7820,8 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
         const st  = stCls(mem.updatedAt);
         const it  = hasSos ? "sos" : st;
         const nm  = escapeHtml(userName(uid));
-        const bat = mem.batteryPct!==null ? `${mem.batteryPct}%` : "—";
-        const ago = mem.updatedAt ? ageLabel(mem.updatedAt) : "—";
+        const bat = mem.batteryPct!==null ? `${mem.batteryPct}%` : "N/A";
+        const ago = mem.updatedAt ? ageLabel(mem.updatedAt) : "N/A";
         const photo = getUserPhoto(uid, mem.data);
         const avatarSnippet = buildAvatarHtml(photo);
         const stBorder = it === 'sos' ? '#ef4444' : st === 'online' ? '#22c55e' : st === 'recent' ? '#f59e0b' : '#94a3b8';
@@ -8033,7 +8031,7 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
   function watchLivemapView() {
     const view = document.getElementById("livemapView");
     if (!view) {
-      // DOM not ready yet — retry once after a short delay
+      // DOM not ready yet, retry once after a short delay
       setTimeout(watchLivemapView, 300);
       return;
     }
@@ -8059,7 +8057,7 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
     // Also patch renderNav's titles map so "Live Map" shows in the topbar
     // We wait for the module-level renderNav to exist before patching
     const origRenderNav = renderNav;
-    // Shadow renderNav in module scope — this works because it's in the same script
+    // Shadow renderNav in module scope: this works because it's in the same script
     window.__livemapPatchNav = function() {
       if (state.activeView === "livemap" && els.viewTitle) {
         els.viewTitle.textContent = "Live Map";

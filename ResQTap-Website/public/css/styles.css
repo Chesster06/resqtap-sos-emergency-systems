@@ -17,8 +17,8 @@
   --panel: #FFFFFF;
   --panel-soft: #F6F7FB;
   --ink: #1C1E21;
-  --muted: #64748B;
-  --faint: #8E95A2;
+  --muted: #526177;
+  --faint: #6B7280;
   --line: #EEF0F4;
   --line-strong: #E2E5EB;
   --purple: #E60067;
@@ -133,6 +133,27 @@ button:disabled {
 
 a {
   color: inherit;
+}
+
+/* Universal accessible keyboard focus ring (WCAG 2.4.7 & R-32) */
+:focus-visible {
+  outline: 2.5px solid #E60067 !important;
+  outline-offset: 2px !important;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2.5px solid #E60067 !important;
+  outline-offset: 2px !important;
+}
+
+body.dark-mode :focus-visible {
+  outline: 2.5px solid #F43F5E !important;
+  outline-offset: 2px !important;
 }
 
 .hidden {
@@ -6355,13 +6376,13 @@ body.admin-site-active:not(.dark-mode) .livechat-selected-attachment button:hove
   }
 
   .pill-nav-item {
-    min-height: 36px;
-    padding: 6px 10px;
+    min-height: 44px;
+    padding: 8px 10px;
     font-size: 0.78rem;
   }
 
   .pill-nav-item.is-active {
-    padding: 6px 14px;
+    padding: 8px 14px;
   }
 
   .hero-copy h1 {
@@ -6479,8 +6500,8 @@ body.admin-site-active:not(.dark-mode) .livechat-selected-attachment button:hove
   }
 
   .pill-nav-item {
-    min-height: 32px;
-    padding: 5px 6px;
+    min-height: 40px;
+    padding: 6px 8px;
     font-size: 0.72rem;
   }
 

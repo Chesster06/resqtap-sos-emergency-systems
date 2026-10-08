@@ -131,6 +131,7 @@ public class ScanQrActivity extends BaseActivity {
 
         setupFlashlight();
         checkCameraPermissionAndStartScanner();
+        handleIncomingConnectIntent(getIntent());
     }
 
     /** Paparkan AddFriendByCodeDialog. */
@@ -401,16 +402,37 @@ public class ScanQrActivity extends BaseActivity {
         });
     }
 
+    @Override
+    protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIncomingConnectIntent(intent);
+    }
+
+    private void handleIncomingConnectIntent(android.content.Intent intent) {
+        if (intent == null) return;
+        String payload = intent.getStringExtra("extra_connect_payload");
+        if ((payload == null || payload.trim().isEmpty()) && intent.getData() != null) {
+            payload = intent.getData().toString();
+        }
+        if (payload != null && !payload.trim().isEmpty()) {
+            handleScannedQrCode(payload.trim());
+        }
+    }
+
     /** Fungsi untuk handleScannedQrCode. */
     private void handleScannedQrCode(String scannedData) {
+        if (qrScannerView != null) qrScannerView.pause();
         QrCodeUtils.QrPayload payload = QrCodeUtils.parseQrPayload(scannedData);
         if (!payload.isValid()) {
             Toast.makeText(this, R.string.friend_qr_invalid, Toast.LENGTH_SHORT).show();
+            if (qrScannerView != null) qrScannerView.resume();
             return;
         }
 
         if (uid.equalsIgnoreCase(payload.uid)) {
             Toast.makeText(this, R.string.cannot_add_self, Toast.LENGTH_SHORT).show();
+            if (qrScannerView != null) qrScannerView.resume();
             return;
         }
 

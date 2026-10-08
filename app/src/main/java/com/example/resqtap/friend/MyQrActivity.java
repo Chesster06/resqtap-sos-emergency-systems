@@ -290,6 +290,6 @@ public class MyQrActivity extends BaseActivity {
                 + "📲 Don't have the app yet? Download ResQTap here:\n"
                 + downloadLink + "\n\n"
                 + "Thank you for being one of my trusted contacts. Please keep this information private and only use it when necessary.\n\n"
-                + "❤️ ResQTap — Stay Connected, Stay Safe.";
+                + "❤️ ResQTap: Stay Connected, Stay Safe.";
     }
 }

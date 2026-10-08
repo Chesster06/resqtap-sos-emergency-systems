@@ -51,9 +51,32 @@ async function cleanupSupabaseUsers(uidsToDelete) {
   }
 }
 
-const FIREBASE_TOOLS_CONFIG = "C:\\Users\\Administrator\\.config\\configstore\\firebase-tools.json";
-const OAUTH_CLIENT_ID = "563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com";
-const OAUTH_CLIENT_SECRET = "j9iVZfS8kkCEFUPaAeJV0sAi";
+// Load optional local environment variables from .env if present
+const envPath = path.join(__dirname, ".env");
+if (fs.existsSync(envPath)) {
+  try {
+    const envContent = fs.readFileSync(envPath, "utf8");
+    envContent.split(/\r?\n/).forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) return;
+      const idx = trimmed.indexOf("=");
+      if (idx > 0) {
+        const key = trimmed.substring(0, idx).trim();
+        const val = trimmed.substring(idx + 1).trim().replace(/^['"]|['"]$/g, "");
+        if (!process.env[key]) process.env[key] = val;
+      }
+    });
+  } catch (ignored) {}
+}
+
+const FIREBASE_TOOLS_CONFIG = process.env.FIREBASE_TOOLS_CONFIG || (
+  process.env.USERPROFILE 
+    ? path.join(process.env.USERPROFILE, ".config", "configstore", "firebase-tools.json")
+    : "C:\\Users\\Administrator\\.config\\configstore\\firebase-tools.json"
+);
+const OAUTH_CLIENT_ID = process.env.FIREBASE_OAUTH_CLIENT_ID || "563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com";
+const OAUTH_CLIENT_SECRET = process.env.FIREBASE_OAUTH_CLIENT_SECRET || "";
+
 
 async function getValidAccessToken() {
   if (!fs.existsSync(FIREBASE_TOOLS_CONFIG)) {
@@ -130,7 +153,7 @@ async function getValidAccessToken() {
 let appInitialized = false;
 async function getAdmin() {
   if (!appInitialized) {
-    const saPath = path.join(__dirname, "resqtap-b9ff5-firebase-adminsdk-fbsvc-ea81d54f3d.json");
+    const saPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || path.join(__dirname, "resqtap-b9ff5-firebase-adminsdk-fbsvc-ea81d54f3d.json");
     if (!admin.apps || admin.apps.length === 0) {
       if (fs.existsSync(saPath)) {
         console.log(`[ADMIN-INIT] Using service account JSON: ${saPath}`);
