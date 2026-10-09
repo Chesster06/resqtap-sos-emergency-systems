@@ -17,23 +17,23 @@
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/card_category_icon"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             app:cardCornerRadius="14dp"
             app:cardElevation="0dp"
-            app:strokeWidth="0dp"
-            app:cardBackgroundColor="#1AE91E63"
+            app:strokeWidth="1dp"
+            app:strokeColor="#12000000"
+            app:cardBackgroundColor="#F8F9FA"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent">
 
             <ImageView
                 android:id="@+id/img_category_icon"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:layout_gravity="center"
-                android:src="@drawable/ic_category_hospital"
-                app:tint="@color/brand_primary"
+                android:src="@drawable/logo_kkm"
                 android:contentDescription="@null" />
         </com.google.android.material.card.MaterialCardView>
 

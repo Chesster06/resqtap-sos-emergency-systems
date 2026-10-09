@@ -133,9 +133,9 @@
                     android:layout_height="wrap_content"
                     android:text="@string/filter_hospital"
                     android:textColor="@color/text_primary"
-                    app:chipIcon="@drawable/ic_category_hospital"
-                    app:chipIconSize="18dp"
-                    app:chipIconTint="@color/brand_primary"
+                    app:chipIcon="@drawable/logo_kkm"
+                    app:chipIconSize="20dp"
+                    app:chipIconTint="@null"
                     app:chipCornerRadius="16dp"
                     app:chipBackgroundColor="@color/panel"
                     app:chipStrokeColor="@color/divider"
@@ -148,9 +148,9 @@
                     android:layout_height="wrap_content"
                     android:text="@string/filter_police"
                     android:textColor="@color/text_primary"
-                    app:chipIcon="@drawable/ic_category_police"
-                    app:chipIconSize="18dp"
-                    app:chipIconTint="@color/brand_primary"
+                    app:chipIcon="@drawable/logo_pdrm"
+                    app:chipIconSize="20dp"
+                    app:chipIconTint="@null"
                     app:chipCornerRadius="16dp"
                     app:chipBackgroundColor="@color/panel"
                     app:chipStrokeColor="@color/divider"
@@ -163,9 +163,9 @@
                     android:layout_height="wrap_content"
                     android:text="@string/filter_fire"
                     android:textColor="@color/text_primary"
-                    app:chipIcon="@drawable/ic_category_fire"
-                    app:chipIconSize="18dp"
-                    app:chipIconTint="@color/brand_primary"
+                    app:chipIcon="@drawable/logo_bomba"
+                    app:chipIconSize="20dp"
+                    app:chipIconTint="@null"
                     app:chipCornerRadius="16dp"
                     app:chipBackgroundColor="@color/panel"
                     app:chipStrokeColor="@color/divider"
@@ -270,18 +270,18 @@
                     android:layout_marginTop="12dp"
                     app:cardCornerRadius="24dp"
                     app:cardElevation="0dp"
-                    app:cardBackgroundColor="#1AE91E63"
-                    app:strokeWidth="0dp"
+                    app:cardBackgroundColor="#F8F9FA"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="#12000000"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/nav_sheet_handle">
 
                     <ImageView
                         android:id="@+id/nav_category_icon"
-                        android:layout_width="26dp"
-                        android:layout_height="26dp"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
                         android:layout_gravity="center"
-                        android:src="@drawable/ic_category_hospital"
-                        app:tint="@color/brand_primary" />
+                        android:src="@drawable/logo_kkm" />
                 </com.google.android.material.card.MaterialCardView>
 
                 <!-- Center Info (ETA, Destination, Address) -->

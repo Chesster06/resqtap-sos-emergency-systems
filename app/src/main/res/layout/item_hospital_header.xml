@@ -12,20 +12,20 @@
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/header_icon_card"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
-        app:cardCornerRadius="8dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        app:cardCornerRadius="9dp"
         app:cardElevation="0dp"
-        app:strokeWidth="0dp"
-        app:cardBackgroundColor="#1AFB8C00">
+        app:strokeWidth="1dp"
+        app:strokeColor="#12000000"
+        app:cardBackgroundColor="#F8F9FA">
 
         <ImageView
             android:id="@+id/header_icon"
-            android:layout_width="16dp"
-            android:layout_height="16dp"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_category_fire"
-            app:tint="#FB8C00"
+            android:src="@drawable/logo_kkm"
             android:contentDescription="@null" />
     </com.google.android.material.card.MaterialCardView>
 

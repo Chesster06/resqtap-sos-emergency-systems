@@ -249,18 +249,16 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
                     vh.count.setText(String.valueOf(item.count));
                 }
 
+                vh.icon.setImageTintList(null);
                 if ("fire".equalsIgnoreCase(item.category)) {
-                    vh.icon.setImageResource(R.drawable.ic_category_fire);
-                    vh.icon.setImageTintList(ColorStateList.valueOf(Color.parseColor("#FB8C00")));
-                    vh.iconCard.setCardBackgroundColor(Color.parseColor("#1AFB8C00"));
+                    vh.icon.setImageResource(R.drawable.logo_bomba);
+                    vh.iconCard.setCardBackgroundColor(Color.parseColor("#FFF7ED"));
                 } else if ("police".equalsIgnoreCase(item.category)) {
-                    vh.icon.setImageResource(R.drawable.ic_category_police);
-                    vh.icon.setImageTintList(ColorStateList.valueOf(Color.parseColor("#1E88E5")));
-                    vh.iconCard.setCardBackgroundColor(Color.parseColor("#1A1E88E5"));
+                    vh.icon.setImageResource(R.drawable.logo_pdrm);
+                    vh.iconCard.setCardBackgroundColor(Color.parseColor("#F0F4F9"));
                 } else {
-                    vh.icon.setImageResource(R.drawable.ic_category_hospital);
-                    vh.icon.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(NearbyHospitalActivity.this, R.color.brand_primary)));
-                    vh.iconCard.setCardBackgroundColor(Color.parseColor("#1AE91E63"));
+                    vh.icon.setImageResource(R.drawable.logo_kkm);
+                    vh.iconCard.setCardBackgroundColor(Color.parseColor("#FFF0F2"));
                 }
             } else if (holder instanceof ServiceViewHolder) {
                 ServiceViewHolder vh = (ServiceViewHolder) holder;
@@ -272,23 +270,21 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
                 vh.itemView.setOnClickListener(v -> openDirections(hospital));
 
                 if (vh.imgCategory != null) {
+                    vh.imgCategory.setImageTintList(null);
                     if ("police".equalsIgnoreCase(hospital.category)) {
-                        vh.imgCategory.setImageResource(R.drawable.ic_category_police);
-                        vh.imgCategory.setImageTintList(ColorStateList.valueOf(Color.parseColor("#1E88E5")));
+                        vh.imgCategory.setImageResource(R.drawable.logo_pdrm);
                         if (vh.cardCategory != null) {
-                            vh.cardCategory.setCardBackgroundColor(Color.parseColor("#1A1E88E5"));
+                            vh.cardCategory.setCardBackgroundColor(Color.parseColor("#F0F4F9"));
                         }
                     } else if ("fire".equalsIgnoreCase(hospital.category)) {
-                        vh.imgCategory.setImageResource(R.drawable.ic_category_fire);
-                        vh.imgCategory.setImageTintList(ColorStateList.valueOf(Color.parseColor("#FB8C00")));
+                        vh.imgCategory.setImageResource(R.drawable.logo_bomba);
                         if (vh.cardCategory != null) {
-                            vh.cardCategory.setCardBackgroundColor(Color.parseColor("#1AFB8C00"));
+                            vh.cardCategory.setCardBackgroundColor(Color.parseColor("#FFF7ED"));
                         }
                     } else {
-                        vh.imgCategory.setImageResource(R.drawable.ic_category_hospital);
-                        vh.imgCategory.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(NearbyHospitalActivity.this, R.color.brand_primary)));
+                        vh.imgCategory.setImageResource(R.drawable.logo_kkm);
                         if (vh.cardCategory != null) {
-                            vh.cardCategory.setCardBackgroundColor(Color.parseColor("#1AE91E63"));
+                            vh.cardCategory.setCardBackgroundColor(Color.parseColor("#FFF0F2"));
                         }
                     }
                 }
@@ -404,6 +400,13 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
 
         ChipGroup chipGroupFilters = findViewById(R.id.chip_group_filters);
         if (chipGroupFilters != null) {
+            com.google.android.material.chip.Chip chipHosp = findViewById(R.id.chip_hospital);
+            if (chipHosp != null) chipHosp.setChipIconTint(null);
+            com.google.android.material.chip.Chip chipPol = findViewById(R.id.chip_police);
+            if (chipPol != null) chipPol.setChipIconTint(null);
+            com.google.android.material.chip.Chip chipFir = findViewById(R.id.chip_fire);
+            if (chipFir != null) chipFir.setChipIconTint(null);
+
             chipGroupFilters.setOnCheckedStateChangeListener((group, checkedIds) -> {
                 if (checkedIds.isEmpty()) return;
                 int checkedId = checkedIds.get(0);
@@ -1082,23 +1085,20 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
             if (navAddress != null) navAddress.setText(item.address == null ? "" : item.address);
             if (navEtaDistance != null) navEtaDistance.setText(R.string.nav_calculating_route);
 
-            int iconRes = R.drawable.ic_category_hospital;
-            int tintColor = ContextCompat.getColor(this, R.color.brand_primary);
-            int bgTint = Color.parseColor("#1AE91E63");
+            int iconRes = R.drawable.logo_kkm;
+            int bgTint = Color.parseColor("#FFF0F2");
 
             if ("police".equalsIgnoreCase(item.category)) {
-                iconRes = R.drawable.ic_category_police;
-                tintColor = Color.parseColor("#1E88E5");
-                bgTint = Color.parseColor("#1A1E88E5");
+                iconRes = R.drawable.logo_pdrm;
+                bgTint = Color.parseColor("#F0F4F9");
             } else if ("fire".equalsIgnoreCase(item.category)) {
-                iconRes = R.drawable.ic_category_fire;
-                tintColor = Color.parseColor("#FB8C00");
-                bgTint = Color.parseColor("#1AFB8C00");
+                iconRes = R.drawable.logo_bomba;
+                bgTint = Color.parseColor("#FFF7ED");
             }
 
             if (navCategoryIcon != null) {
+                navCategoryIcon.setImageTintList(null);
                 navCategoryIcon.setImageResource(iconRes);
-                navCategoryIcon.setImageTintList(ColorStateList.valueOf(tintColor));
             }
             if (navIconCard != null) {
                 navIconCard.setCardBackgroundColor(bgTint);
@@ -1685,13 +1685,13 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         int iconRes;
         if ("police".equalsIgnoreCase(category)) {
             bgColor = Color.parseColor("#1565C0"); // Biru Polis
-            iconRes = R.drawable.ic_category_police;
+            iconRes = R.drawable.logo_pdrm;
         } else if ("fire".equalsIgnoreCase(category)) {
             bgColor = Color.parseColor("#E65100"); // Jingga Bomba
-            iconRes = R.drawable.ic_category_fire;
+            iconRes = R.drawable.logo_bomba;
         } else {
             bgColor = Color.parseColor("#E53935"); // Merah Hospital
-            iconRes = R.drawable.ic_category_hospital;
+            iconRes = R.drawable.logo_kkm;
         }
 
         // 1. Bayang tanah (Ground shadow) halus di bawah mata pin
@@ -1727,8 +1727,15 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         strokePaint.setStrokeCap(Paint.Cap.ROUND);
         canvas.drawPath(pinPath, strokePaint);
 
-        // 5. Ikon vektor putih di tengah kepala pin
-        int iconSize = dp(ctx, 20);
+        // 5. Bulatan putih di tengah kepala pin untuk mempamerkan logo rasmi secara berkualiti
+        float innerDiscRadius = radius * 0.72f;
+        Paint innerDiscPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        innerDiscPaint.setColor(Color.WHITE);
+        innerDiscPaint.setStyle(Paint.Style.FILL);
+        canvas.drawCircle(cx, cy, innerDiscRadius, innerDiscPaint);
+
+        // 6. Ikon logo rasmi di tengah kepala pin
+        int iconSize = dp(ctx, 22);
         Bitmap icon = bitmapFromDrawable(ctx, iconRes, iconSize, iconSize);
         if (icon != null) {
             float iconLeft = cx - (icon.getWidth() / 2f);
