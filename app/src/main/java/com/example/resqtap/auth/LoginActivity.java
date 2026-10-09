@@ -898,7 +898,7 @@ public class LoginActivity extends BaseActivity {
                 btnLogin.setEnabled(true);
                 checkRegisteredEmail(emailValue, registered -> {
                     if (registered) {
-                        Toast.makeText(this, "Kata laluan tidak tepat. Jika anda mendaftar menggunakan Google, sila tekan butang 'Sign in with Google'.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, R.string.toast_wrong_password_google_hint, Toast.LENGTH_LONG).show();
                     } else {
                         Toast.makeText(this, R.string.toast_account_not_exist, Toast.LENGTH_LONG).show();
                     }
@@ -915,7 +915,7 @@ public class LoginActivity extends BaseActivity {
             btnLogin.setEnabled(true);
             checkRegisteredEmail(emailValue, registered -> {
                 if (registered) {
-                    Toast.makeText(this, "Kata laluan tidak tepat. Jika anda mendaftar menggunakan Google, sila tekan butang 'Sign in with Google'.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, R.string.toast_wrong_password_google_hint, Toast.LENGTH_LONG).show();
                 } else {
                     Toast.makeText(this, R.string.toast_account_not_exist, Toast.LENGTH_LONG).show();
                 }

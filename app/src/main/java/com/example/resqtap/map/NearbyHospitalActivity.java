@@ -246,7 +246,7 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
                 try {
                     vh.count.setText(getString(R.string.emergency_location_count, item.count));
                 } catch (Exception e) {
-                    vh.count.setText(item.count + " lokasi");
+                    vh.count.setText(String.valueOf(item.count));
                 }
 
                 if ("fire".equalsIgnoreCase(item.category)) {
@@ -886,7 +886,8 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         if (results != null) {
             for (int i = 0; i < results.length() && i < 15; i++) {
                 JSONObject r = results.getJSONObject(i);
-                String defaultName = "hospital".equals(itemCategory) ? "Hospital" : ("police".equals(itemCategory) ? "Polis" : "Bomba");
+                String defaultName = "hospital".equals(itemCategory) ? getString(R.string.filter_hospital)
+                        : ("police".equals(itemCategory) ? getString(R.string.filter_police) : getString(R.string.filter_fire));
                 String name = r.optString("name", defaultName);
                 String address = r.optString("vicinity", "");
                 JSONObject geometry = r.optJSONObject("geometry");
@@ -1079,7 +1080,7 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
             cardNavigationInfo.setVisibility(View.VISIBLE);
             if (navDestinationName != null) navDestinationName.setText(item.name);
             if (navAddress != null) navAddress.setText(item.address == null ? "" : item.address);
-            if (navEtaDistance != null) navEtaDistance.setText("Menghitung laluan pantas...");
+            if (navEtaDistance != null) navEtaDistance.setText(R.string.nav_calculating_route);
 
             int iconRes = R.drawable.ic_category_hospital;
             int tintColor = ContextCompat.getColor(this, R.color.brand_primary);
@@ -1110,7 +1111,7 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
             if (map != null) {
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(target, 16f));
             }
-            Toast.makeText(this, "Mendapatkan GPS semasa...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.nav_getting_gps, Toast.LENGTH_SHORT).show();
             requestLocationIfNeeded(true);
             return;
         }
@@ -1271,10 +1272,10 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         if (btnToggle3d == null) return;
         if (isNavigating3D) {
             btnToggle3d.setIconResource(R.drawable.ic_route_overview);
-            btnToggle3d.setContentDescription("Tukar ke pandangan penuh 2D");
+            btnToggle3d.setContentDescription(getString(R.string.nav_view_2d));
         } else {
             btnToggle3d.setIconResource(R.drawable.ic_navigation_3d);
-            btnToggle3d.setContentDescription("Tukar ke pandangan navigasi 3D");
+            btnToggle3d.setContentDescription(getString(R.string.nav_view_3d));
         }
     }
 

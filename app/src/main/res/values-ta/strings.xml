@@ -586,5 +586,12 @@
     <string name="sos_progress_latest_note">சமீபத்திய நிலை குறிப்பு</string>
     <string name="sos_progress_cannot_exit">SOS செயலில் உள்ளது. வெளியேற SOS எச்சரிக்கையை ரத்துசெய்யவும்.</string>
     <string name="report_progress_stepper_title">முன்னேற்ற நிலை</string>
+    <string name="nav_calculating_route">பாதை கணக்கிடப்படுகிறது…</string>
+    <string name="nav_toggle_3d">3D பார்வையை மாற்றவும்</string>
+    <string name="nav_view_2d">2D பார்வைக்கு மாற்றவும்</string>
+    <string name="nav_view_3d">3D வழிசெலுத்தலுக்கு மாற்றவும்</string>
+    <string name="nav_getting_gps">தற்போதைய GPS இருப்பிடத்தைப் பெறுகிறது…</string>
+    <string name="report_summary">அறிக்கை சுருக்கம்</string>
+    <string name="toast_wrong_password_google_hint">கடவுச்சொல் தவறானது. நீங்கள் Google மூலம் பதிவுசெய்திருந்தால், \'Sign in with Google\' என்பதைத் தட்டவும்.</string>
 </resources>
 

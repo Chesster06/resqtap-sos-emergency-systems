@@ -587,5 +587,12 @@
     <string name="sos_progress_latest_note">最新状态说明</string>
     <string name="sos_progress_cannot_exit">SOS 当前处于活跃状态。请取消 SOS 警报以退出。</string>
     <string name="report_progress_stepper_title">进展状态</string>
+    <string name="nav_calculating_route">正在计算路线…</string>
+    <string name="nav_toggle_3d">切换 3D 视图</string>
+    <string name="nav_view_2d">切换至 2D 概览</string>
+    <string name="nav_view_3d">切换至 3D 导航</string>
+    <string name="nav_getting_gps">正在获取当前 GPS 位置…</string>
+    <string name="report_summary">报告摘要</string>
+    <string name="toast_wrong_password_google_hint">密码不正确。如果您使用 Google 注册，请点击“Sign in with Google”。</string>
 </resources>
 
