@@ -20,6 +20,7 @@ import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
+import java.util.List;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -61,6 +62,11 @@ import android.graphics.Color;
 import android.graphics.Path;
 import android.widget.ImageView;
 import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.JointType;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.maps.model.RoundCap;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -95,10 +101,26 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
     private final ArrayList<Marker> hospitalMarkers = new ArrayList<>();
 
     private BottomSheetBehavior<?> sheetBehavior;
+    private View bottomSheetView;
     private boolean pendingSearch = false;
     private boolean gpsDialogShown = false;
     private boolean hasAutoCentered = false;
     private View mapControls;
+
+    private Polyline routePolyline;
+    private Polyline routeShadowPolyline;
+    private HospitalItem activeNavHospital;
+
+    private MaterialCardView cardNavigationInfo;
+    private TextView navDestinationName;
+    private TextView navEtaDistance;
+    private TextView navAddress;
+    private ImageView navCategoryIcon;
+    private MaterialCardView navIconCard;
+    private MaterialButton btnCloseNavigation;
+    private MaterialButton btnToggle3d;
+    private boolean isNavigating3D = true;
+    private final ArrayList<LatLng> currentRoutePoints = new ArrayList<>();
 
     private String myPhotoUri = "";
     private String myPhotoB64 = "";
@@ -323,7 +345,7 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         setContentView(R.layout.activity_nearby_hospital);
 
         View main = findViewById(R.id.main);
-        View bottomSheet = findViewById(R.id.bottom_sheet);
+        bottomSheetView = findViewById(R.id.bottom_sheet);
 
         ViewCompat.setOnApplyWindowInsetsListener(main, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -331,8 +353,8 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
             return insets;
         });
-        if (bottomSheet != null) {
-            ViewCompat.setOnApplyWindowInsetsListener(bottomSheet, (v, insets) -> {
+        if (bottomSheetView != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(bottomSheetView, (v, insets) -> {
                 Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
                 v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), systemBars.bottom);
                 return insets;
@@ -397,11 +419,27 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
             });
         }
 
-        if (bottomSheet != null) {
-            sheetBehavior = BottomSheetBehavior.from(bottomSheet);
+        if (bottomSheetView != null) {
+            sheetBehavior = BottomSheetBehavior.from(bottomSheetView);
             sheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
         }
         applyMapControlsBottomOffset();
+
+        cardNavigationInfo = findViewById(R.id.card_navigation_info);
+        navDestinationName = findViewById(R.id.nav_destination_name);
+        navEtaDistance = findViewById(R.id.nav_eta_distance);
+        navAddress = findViewById(R.id.nav_address);
+        navCategoryIcon = findViewById(R.id.nav_category_icon);
+        navIconCard = (MaterialCardView) findViewById(R.id.nav_icon_card);
+        btnCloseNavigation = findViewById(R.id.btn_close_navigation);
+        btnToggle3d = findViewById(R.id.btn_toggle_3d);
+
+        if (btnCloseNavigation != null) {
+            btnCloseNavigation.setOnClickListener(v -> stopNavigation());
+        }
+        if (btnToggle3d != null) {
+            btnToggle3d.setOnClickListener(v -> toggle3DNavigationMode());
+        }
 
         status = findViewById(R.id.status);
         recyclerView = findViewById(R.id.hospital_list);
@@ -462,6 +500,23 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
 
         LatLng fallback = new LatLng(1.3521, 103.8198);
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(fallback, 12f));
+
+        map.setOnMarkerClickListener(marker -> {
+            if (marker == null) return false;
+            if (marker.getTag() instanceof HospitalItem) {
+                openDirections((HospitalItem) marker.getTag());
+                return true;
+            }
+            if (marker.getPosition() == null) return false;
+            for (HospitalItem h : hospitals) {
+                if (Math.abs(h.lat - marker.getPosition().latitude) < 0.0005 &&
+                    Math.abs(h.lng - marker.getPosition().longitude) < 0.0005) {
+                    openDirections(h);
+                    return true;
+                }
+            }
+            return false;
+        });
 
         requestLocationIfNeeded(false);
     }
@@ -606,6 +661,12 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         displayItems.clear();
         if (listAdapter != null) listAdapter.notifyDataSetChanged();
         clearHospitalMarkers();
+
+        if (currentLatLng != null) {
+            upsertMyLocationMarker(currentLatLng);
+            doNearbySearch(currentLatLng);
+            return;
+        }
 
         try {
             fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
@@ -917,7 +978,10 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
                         .snippet(h.address)
                         .icon(iconDesc)
                         .anchor(0.5f, 0.94f));
-                if (m != null) hospitalMarkers.add(m);
+                if (m != null) {
+                    m.setTag(h);
+                    hospitalMarkers.add(m);
+                }
             }
             if (currentLatLng != null) {
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 14f));
@@ -926,8 +990,303 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         pendingSearch = false;
     }
 
-    /** Fungsi untuk openDirections. */
+    /**
+     * In-App Direction Navigation.
+     * Melukis laluan terus di atas peta Google Map dalam aplikasi ResQTap tanpa melencong ke Google Maps luar.
+     */
     private void openDirections(HospitalItem item) {
+        if (item == null) return;
+        activeNavHospital = item;
+
+        // 1. Sorokkan terus bottom sheet senarai supaya peta luas sepenuhnya dan tidak terlindung
+        if (sheetBehavior != null) {
+            sheetBehavior.setHideable(true);
+            sheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+        }
+        if (bottomSheetView != null) {
+            bottomSheetView.setVisibility(View.GONE);
+        }
+        updateMapControlsForNavigation(true);
+
+        // 2. Paparkan kad maklumat navigasi di bawah skrin
+        if (cardNavigationInfo != null) {
+            cardNavigationInfo.setVisibility(View.VISIBLE);
+            if (navDestinationName != null) navDestinationName.setText(item.name);
+            if (navAddress != null) navAddress.setText(item.address == null ? "" : item.address);
+            if (navEtaDistance != null) navEtaDistance.setText("Menghitung laluan pantas...");
+
+            int iconRes = R.drawable.ic_category_hospital;
+            int tintColor = ContextCompat.getColor(this, R.color.brand_primary);
+            int bgTint = Color.parseColor("#1AE91E63");
+
+            if ("police".equalsIgnoreCase(item.category)) {
+                iconRes = R.drawable.ic_category_police;
+                tintColor = Color.parseColor("#1E88E5");
+                bgTint = Color.parseColor("#1A1E88E5");
+            } else if ("fire".equalsIgnoreCase(item.category)) {
+                iconRes = R.drawable.ic_category_fire;
+                tintColor = Color.parseColor("#FB8C00");
+                bgTint = Color.parseColor("#1AFB8C00");
+            }
+
+            if (navCategoryIcon != null) {
+                navCategoryIcon.setImageResource(iconRes);
+                navCategoryIcon.setImageTintList(ColorStateList.valueOf(tintColor));
+            }
+            if (navIconCard != null) {
+                navIconCard.setCardBackgroundColor(bgTint);
+            }
+        }
+
+        // 3. Pastikan koordinat pengguna tersedia
+        LatLng target = new LatLng(item.lat, item.lng);
+        if (currentLatLng == null) {
+            if (map != null) {
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(target, 16f));
+            }
+            Toast.makeText(this, "Mendapatkan GPS semasa...", Toast.LENGTH_SHORT).show();
+            requestLocationIfNeeded(true);
+            return;
+        }
+
+        // 4. Lukis laluan navigasi polyline secara in-app
+        fetchAndDrawInAppRoute(currentLatLng, target, item);
+    }
+
+    private void fetchAndDrawInAppRoute(LatLng origin, LatLng dest, HospitalItem item) {
+        executor.execute(() -> {
+            RouteResult result = tryFetchOsrmRoute(origin, dest);
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed() || map == null) return;
+
+                clearNavigationRoute();
+
+                ArrayList<LatLng> pts = new ArrayList<>();
+                int routeColor = ContextCompat.getColor(NearbyHospitalActivity.this, R.color.brand_primary);
+                if ("police".equalsIgnoreCase(item.category)) {
+                    routeColor = Color.parseColor("#1E88E5");
+                } else if ("fire".equalsIgnoreCase(item.category)) {
+                    routeColor = Color.parseColor("#FB8C00");
+                }
+
+                if (result != null && result.points != null && result.points.size() >= 2) {
+                    pts.addAll(result.points);
+                    if (navEtaDistance != null) {
+                        int min = (int) Math.round(result.durationSeconds / 60.0);
+                        if (min < 1) min = 1;
+                        double km = result.distanceMeters / 1000.0;
+                        String distStr = km < 1.0 ? String.format(Locale.US, "%d m", Math.round(result.distanceMeters)) : String.format(Locale.US, "%.1f km", km);
+                        navEtaDistance.setText(min + " min • " + distStr);
+                    }
+                } else {
+                    pts.add(origin);
+                    pts.add(dest);
+                    if (navEtaDistance != null) {
+                        double dist = distanceMeters(origin, dest.latitude, dest.longitude);
+                        int min = (int) Math.max(1, Math.round((dist / 1000.0) / 40.0 * 60.0));
+                        String distStr = dist < 1000 ? String.format(Locale.US, "%d m", Math.round(dist)) : String.format(Locale.US, "%.1f km", dist / 1000.0);
+                        navEtaDistance.setText(min + " min • " + distStr);
+                    }
+                }
+
+                // Shadow line
+                PolylineOptions shadowOptions = new PolylineOptions()
+                        .addAll(pts)
+                        .width(dp(NearbyHospitalActivity.this, 8))
+                        .color(Color.argb(80, 0, 0, 0))
+                        .startCap(new RoundCap())
+                        .endCap(new RoundCap())
+                        .jointType(JointType.ROUND)
+                        .zIndex(20f);
+                routeShadowPolyline = map.addPolyline(shadowOptions);
+
+                // Main route line
+                PolylineOptions routeOptions = new PolylineOptions()
+                        .addAll(pts)
+                        .width(dp(NearbyHospitalActivity.this, 6))
+                        .color(routeColor)
+                        .startCap(new RoundCap())
+                        .endCap(new RoundCap())
+                        .jointType(JointType.ROUND)
+                        .zIndex(21f);
+                routePolyline = map.addPolyline(routeOptions);
+
+                // Save current points for toggle and updates
+                currentRoutePoints.clear();
+                currentRoutePoints.addAll(pts);
+
+                // Default to 3D Navigation mode
+                isNavigating3D = true;
+                updateToggle3DIcon();
+                animateTo3DNavigation(origin, pts);
+            });
+        });
+    }
+
+    private void animateTo3DNavigation(LatLng userPos, List<LatLng> points) {
+        if (map == null || userPos == null) return;
+        try {
+            float bearing = 0f;
+            LatLng startPt = userPos;
+            LatLng nextPt = (points != null && !points.isEmpty()) ? points.get(0) : null;
+
+            if (points != null && points.size() > 1 && nextPt != null) {
+                if (Math.abs(startPt.latitude - nextPt.latitude) < 0.00001 &&
+                    Math.abs(startPt.longitude - nextPt.longitude) < 0.00001) {
+                    nextPt = points.get(1);
+                }
+            }
+
+            if (nextPt != null) {
+                bearing = calculateBearing(startPt, nextPt);
+            }
+
+            // Pad camera so route ahead is nicely visible above bottom sheet
+            int padBottom = dp(this, 140);
+            map.setPadding(0, 0, 0, padBottom);
+
+            com.google.android.gms.maps.model.CameraPosition cameraPosition = new com.google.android.gms.maps.model.CameraPosition.Builder()
+                    .target(userPos)
+                    .zoom(18.5f)
+                    .bearing(bearing)
+                    .tilt(60f)
+                    .build();
+
+            map.stopAnimation();
+            map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 1200, null);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void zoomToFullRoute() {
+        if (map == null || currentRoutePoints.isEmpty()) return;
+        try {
+            LatLngBounds.Builder b = new LatLngBounds.Builder();
+            for (LatLng p : currentRoutePoints) {
+                b.include(p);
+            }
+            int padLeft = dp(this, 40);
+            int padTop = dp(this, 120);
+            int padRight = dp(this, 40);
+            int padBottom = dp(this, 160);
+            map.setPadding(padLeft, padTop, padRight, padBottom);
+            int padding = dp(this, 40);
+
+            com.google.android.gms.maps.model.CameraPosition overviewPos = new com.google.android.gms.maps.model.CameraPosition.Builder()
+                    .target(b.build().getCenter())
+                    .zoom(map.getCameraPosition().zoom)
+                    .bearing(0f)
+                    .tilt(0f)
+                    .build();
+            map.stopAnimation();
+            map.animateCamera(CameraUpdateFactory.newLatLngBounds(b.build(), padding));
+        } catch (Exception e) {
+            if (activeNavHospital != null) {
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(activeNavHospital.lat, activeNavHospital.lng), 15f));
+            }
+        }
+    }
+
+    private void toggle3DNavigationMode() {
+        if (map == null) return;
+        isNavigating3D = !isNavigating3D;
+        updateToggle3DIcon();
+        if (isNavigating3D) {
+            LatLng origin = currentLatLng != null ? currentLatLng : (!currentRoutePoints.isEmpty() ? currentRoutePoints.get(0) : null);
+            if (origin != null) {
+                animateTo3DNavigation(origin, currentRoutePoints);
+            }
+        } else {
+            zoomToFullRoute();
+        }
+    }
+
+    private void updateToggle3DIcon() {
+        if (btnToggle3d == null) return;
+        if (isNavigating3D) {
+            btnToggle3d.setIconResource(R.drawable.ic_route_overview);
+            btnToggle3d.setContentDescription("Tukar ke pandangan penuh 2D");
+        } else {
+            btnToggle3d.setIconResource(R.drawable.ic_navigation_3d);
+            btnToggle3d.setContentDescription("Tukar ke pandangan navigasi 3D");
+        }
+    }
+
+    private float calculateBearing(LatLng start, LatLng end) {
+        double lat1 = Math.toRadians(start.latitude);
+        double lng1 = Math.toRadians(start.longitude);
+        double lat2 = Math.toRadians(end.latitude);
+        double lng2 = Math.toRadians(end.longitude);
+
+        double dLng = lng2 - lng1;
+
+        double y = Math.sin(dLng) * Math.cos(lat2);
+        double x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+
+        double bearing = Math.toDegrees(Math.atan2(y, x));
+        return (float) ((bearing + 360) % 360);
+    }
+
+    private void stopNavigation() {
+        clearNavigationRoute();
+        currentRoutePoints.clear();
+        activeNavHospital = null;
+        isNavigating3D = false;
+        if (cardNavigationInfo != null) {
+            cardNavigationInfo.setVisibility(View.GONE);
+        }
+        if (bottomSheetView != null) {
+            bottomSheetView.setVisibility(View.VISIBLE);
+            if (sheetBehavior != null) {
+                sheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+            }
+        }
+        updateMapControlsForNavigation(false);
+        if (map != null) {
+            map.setPadding(0, 0, 0, 0);
+            if (currentLatLng != null) {
+                com.google.android.gms.maps.model.CameraPosition resetPos = new com.google.android.gms.maps.model.CameraPosition.Builder()
+                        .target(currentLatLng)
+                        .zoom(15f)
+                        .bearing(0f)
+                        .tilt(0f)
+                        .build();
+                map.animateCamera(CameraUpdateFactory.newCameraPosition(resetPos));
+            }
+        }
+    }
+
+    private void updateMapControlsForNavigation(boolean isNavigating) {
+        if (mapControls == null) return;
+        ViewGroup.LayoutParams lp = mapControls.getLayoutParams();
+        if (lp instanceof androidx.constraintlayout.widget.ConstraintLayout.LayoutParams) {
+            androidx.constraintlayout.widget.ConstraintLayout.LayoutParams clp = (androidx.constraintlayout.widget.ConstraintLayout.LayoutParams) lp;
+            if (isNavigating) {
+                clp.bottomMargin = dp(this, 115);
+            } else {
+                int peek = 0;
+                try {
+                    if (sheetBehavior != null) peek = sheetBehavior.getPeekHeight();
+                } catch (Exception ignored) {}
+                if (peek <= 0) peek = dp(this, 200);
+                clp.bottomMargin = dp(this, 16) + peek;
+            }
+            mapControls.setLayoutParams(clp);
+        }
+    }
+
+    private void clearNavigationRoute() {
+        if (routePolyline != null) {
+            try { routePolyline.remove(); } catch (Exception ignored) {}
+            routePolyline = null;
+        }
+        if (routeShadowPolyline != null) {
+            try { routeShadowPolyline.remove(); } catch (Exception ignored) {}
+            routeShadowPolyline = null;
+        }
+    }
+
+    private void launchExternalGoogleMaps(HospitalItem item) {
         if (item == null) return;
         Uri uri = Uri.parse("google.navigation:q=" + item.lat + "," + item.lng + "&mode=d");
         Intent intent = new Intent(Intent.ACTION_VIEW, uri);
@@ -937,6 +1296,61 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
         } catch (Exception e) {
             startActivity(new Intent(Intent.ACTION_VIEW, uri));
         }
+    }
+
+    private static final class RouteResult {
+        double distanceMeters = 0;
+        double durationSeconds = 0;
+        final ArrayList<LatLng> points = new ArrayList<>();
+    }
+
+    private RouteResult tryFetchOsrmRoute(LatLng origin, LatLng dest) {
+        String urlStr = "https://router.project-osrm.org/route/v1/driving/"
+                + origin.longitude + "," + origin.latitude + ";"
+                + dest.longitude + "," + dest.latitude
+                + "?overview=full&geometries=geojson";
+        try {
+            HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("User-Agent", "ResQTap/1.0 (Android)");
+            if (conn.getResponseCode() == 200) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) sb.append(line);
+                    return parseOsrmResponse(sb.toString());
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private RouteResult parseOsrmResponse(String jsonStr) {
+        RouteResult res = new RouteResult();
+        try {
+            JSONObject root = new JSONObject(jsonStr);
+            if ("Ok".equalsIgnoreCase(root.optString("code"))) {
+                JSONArray routes = root.optJSONArray("routes");
+                if (routes != null && routes.length() > 0) {
+                    JSONObject r = routes.getJSONObject(0);
+                    res.distanceMeters = r.optDouble("distance", 0);
+                    res.durationSeconds = r.optDouble("duration", 0);
+                    JSONObject geom = r.optJSONObject("geometry");
+                    if (geom != null) {
+                        JSONArray coords = geom.optJSONArray("coordinates");
+                        if (coords != null) {
+                            for (int i = 0; i < coords.length(); i++) {
+                                JSONArray pt = coords.getJSONArray(i);
+                                res.points.add(new LatLng(pt.getDouble(1), pt.getDouble(0)));
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return res;
     }
 
     /** Padam atau bersihkan HospitalMarkers. */
