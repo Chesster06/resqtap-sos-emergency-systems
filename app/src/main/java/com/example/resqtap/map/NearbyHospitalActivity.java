@@ -1258,20 +1258,21 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
 
     private void updateMapControlsForNavigation(boolean isNavigating) {
         if (mapControls == null) return;
-        ViewGroup.LayoutParams lp = mapControls.getLayoutParams();
-        if (lp instanceof androidx.constraintlayout.widget.ConstraintLayout.LayoutParams) {
-            androidx.constraintlayout.widget.ConstraintLayout.LayoutParams clp = (androidx.constraintlayout.widget.ConstraintLayout.LayoutParams) lp;
-            if (isNavigating) {
-                clp.bottomMargin = dp(this, 115);
-            } else {
+        if (isNavigating) {
+            mapControls.setVisibility(View.GONE);
+        } else {
+            mapControls.setVisibility(View.VISIBLE);
+            ViewGroup.LayoutParams lp = mapControls.getLayoutParams();
+            if (lp instanceof androidx.constraintlayout.widget.ConstraintLayout.LayoutParams) {
+                androidx.constraintlayout.widget.ConstraintLayout.LayoutParams clp = (androidx.constraintlayout.widget.ConstraintLayout.LayoutParams) lp;
                 int peek = 0;
                 try {
                     if (sheetBehavior != null) peek = sheetBehavior.getPeekHeight();
                 } catch (Exception ignored) {}
                 if (peek <= 0) peek = dp(this, 200);
                 clp.bottomMargin = dp(this, 16) + peek;
+                mapControls.setLayoutParams(clp);
             }
-            mapControls.setLayoutParams(clp);
         }
     }
 
