@@ -51,6 +51,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -143,13 +144,21 @@ public class QuickMessageActivity extends BaseActivity {
     private TextureView signCameraPreview;
     private View signScanLine;
     private ObjectAnimator scanLineAnimator;
+    private View signHudCard;
+    private ImageView signHudImage;
     private TextView signHudGesture;
-    private TextView signConfidence;
-    private TextView signFacingLabel;
     private TextView signTranscriptOutput;
     private ImageButton btnSignClear;
     private ImageButton btnSignCopy;
+    private ImageButton btnSignGuide;
     private ImageButton btnSwitchCamera;
+
+    // Temporal optical flow & motion tracking
+    private float prevCentroidX = -1f;
+    private float prevCentroidY = -1f;
+    private int waveOscillationCount = 0;
+    private float lastDx = 0f;
+
     private final StringBuilder signTranscriptText = new StringBuilder();
     private long lastSignCommitTime = 0L;
     private String lastCommittedGestureKey = "";
@@ -212,12 +221,13 @@ public class QuickMessageActivity extends BaseActivity {
         tabSignLabel = findViewById(R.id.tab_sign_label);
         signCameraPreview = findViewById(R.id.sign_camera_preview);
         signScanLine = findViewById(R.id.sign_scan_line);
+        signHudCard = findViewById(R.id.sign_hud_card);
+        signHudImage = findViewById(R.id.sign_hud_image);
         signHudGesture = findViewById(R.id.sign_hud_gesture);
-        signConfidence = findViewById(R.id.sign_confidence);
-        signFacingLabel = findViewById(R.id.sign_facing_label);
         signTranscriptOutput = findViewById(R.id.sign_transcript_output);
         btnSignClear = findViewById(R.id.btn_sign_clear);
         btnSignCopy = findViewById(R.id.btn_sign_copy);
+        btnSignGuide = findViewById(R.id.btn_sign_guide);
         btnSwitchCamera = findViewById(R.id.btn_switch_camera);
         pageTitle = findViewById(R.id.title);
         pageSubtitle = findViewById(R.id.subtitle);
@@ -306,6 +316,9 @@ public class QuickMessageActivity extends BaseActivity {
         btnSignCopy.setOnClickListener(v -> copySignText());
         if (btnSignClear != null) {
             btnSignClear.setOnClickListener(v -> clearSignTranscript());
+        }
+        if (btnSignGuide != null) {
+            btnSignGuide.setOnClickListener(v -> showSignLanguageGuideDialog());
         }
         btnPasteText.setOnClickListener(v -> pasteClipboardText());
         btnClearText.setOnClickListener(v -> {
@@ -459,12 +472,16 @@ public class QuickMessageActivity extends BaseActivity {
         lastCommittedGestureKey = key;
         lastSignCommitTime = now;
 
-        // 1. Kemas kini HUD dalam Viewfinder Kamera
+        // 1. Kemas kini HUD dalam Viewfinder Kamera (Tunjukkan Gambar Isyarat Tangan Sebenar)
         if (signHudGesture != null) {
-            signHudGesture.setText("✋ Mengesan: " + hudTag);
+            signHudGesture.setText(getString(R.string.sign_detected_prefix) + hudTag);
         }
-        if (signConfidence != null) {
-            signConfidence.setText(confidence);
+        if (signHudCard != null && signHudImage != null) {
+            int gestureDrawable = getGestureDrawableForKey(key);
+            if (gestureDrawable != 0) {
+                signHudImage.setImageResource(gestureDrawable);
+                signHudCard.setVisibility(View.VISIBLE);
+            }
         }
 
         // 2. Tambah ke dalam ayat transkrip (Sign-to-Sentence Builder)
@@ -482,6 +499,40 @@ public class QuickMessageActivity extends BaseActivity {
         } catch (Exception ignored) {}
     }
 
+    private int getGestureDrawableForKey(String key) {
+        switch (key) {
+            case "HELLO":
+                return R.drawable.img_sign_hello;
+            case "THANK_YOU":
+                return R.drawable.img_sign_thankyou;
+            case "YES":
+                return R.drawable.img_sign_yes;
+            case "NO":
+                return R.drawable.img_sign_no;
+            case "OK":
+                return R.drawable.img_sign_ok;
+            case "STOP":
+            case "HELP_COMM":
+                return R.drawable.img_sign_stop;
+            case "LOVE":
+                return R.drawable.img_sign_ily;
+            case "WHERE":
+                return R.drawable.img_sign_point;
+            case "TWO":
+            case "POLICE":
+                return R.drawable.img_sign_police;
+            case "SOS":
+                return R.drawable.img_sign_sos;
+            case "DOCTOR":
+            case "MEDICAL":
+                return R.drawable.img_sign_medical;
+            case "DANGER":
+                return R.drawable.img_sign_fist;
+            default:
+                return R.drawable.img_sign_hello;
+        }
+    }
+
     private void clearSignTranscript() {
         signTranscriptText.setLength(0);
         lastCommittedGestureKey = "";
@@ -490,6 +541,9 @@ public class QuickMessageActivity extends BaseActivity {
         }
         if (signHudGesture != null) {
             signHudGesture.setText(R.string.sign_detecting_idle);
+        }
+        if (signHudCard != null) {
+            signHudCard.setVisibility(View.GONE);
         }
         Toast.makeText(this, R.string.text_to_speech_clear, Toast.LENGTH_SHORT).show();
     }
@@ -502,9 +556,28 @@ public class QuickMessageActivity extends BaseActivity {
         }
         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboard != null) {
-            clipboard.setPrimaryClip(ClipData.newPlainText("Sign Language Transcript", text));
+            clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.sign_transcript_title), text));
             Toast.makeText(this, R.string.text_to_speech_copied, Toast.LENGTH_SHORT).show();
         }
+    }
+
+
+
+
+
+    private void showSignLanguageGuideDialog() {
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_sign_language_guide, null);
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setView(dialogView)
+                .setCancelable(true)
+                .create();
+
+        View btnClose = dialogView.findViewById(R.id.btn_close_sign_guide);
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> dialog.dismiss());
+        }
+
+        dialog.show();
     }
 
     private void startSignCamera() {
@@ -531,13 +604,7 @@ public class QuickMessageActivity extends BaseActivity {
     }
 
     private void updateCameraFacingLabel() {
-        if (signFacingLabel != null) {
-            if (cameraFacing == CameraCharacteristics.LENS_FACING_BACK) {
-                signFacingLabel.setText("REAR CAM (FACING PERSON)");
-            } else {
-                signFacingLabel.setText("FRONT CAM (SELF)");
-            }
-        }
+        // Label facing kamera telah dibuang daripada UI
     }
 
     private final TextureView.SurfaceTextureListener surfaceTextureListener = new TextureView.SurfaceTextureListener() {
@@ -697,85 +764,208 @@ public class QuickMessageActivity extends BaseActivity {
                     bmp.recycle();
                 }
             }
-            signAnalysisHandler.postDelayed(this, 1400L);
+            signAnalysisHandler.postDelayed(this, 800L);
         }
     };
 
     private void startPeriodicGestureAnalysis() {
         signAnalysisHandler.removeCallbacks(gestureAnalysisRunnable);
-        signAnalysisHandler.postDelayed(gestureAnalysisRunnable, 1000L);
+        signAnalysisHandler.postDelayed(gestureAnalysisRunnable, 800L);
     }
 
     /**
-     * Imbas frame kamera langsung untuk mengesan gerakan tangan orang di hadapan.
-     * Mengkategorikan bentuk gerakan isyarat dan menukarnya kepada perkataan berurutan.
+     * Enjin Pengecaman Isyarat Pintar (BIM & Universal Deaf-Mute Communication)
+     * Mengimbas frame kamera langsung, menjejak bounding box, density, centroid temporal (optical motion),
+     * dan mengklasifikasikan isyarat tangan untuk perbualan harian dan kecemasan secara langsung.
      */
     private void analyzeFrameForHandGesture(Bitmap frame, int cycle) {
         int width = frame.getWidth();
         int height = frame.getHeight();
         int skinPixels = 0;
-        int topHalfSkin = 0;
-        int bottomHalfSkin = 0;
+        int minX = width, maxX = 0;
+        int minY = height, maxY = 0;
+        long sumX = 0, sumY = 0;
+
+        int startX = width / 7;
+        int endX = width * 6 / 7;
+        int startY = height / 7;
+        int endY = height * 6 / 7;
         int totalPixels = 0;
 
-        int startX = width / 4;
-        int endX = width * 3 / 4;
-        int startY = height / 4;
-        int endY = height * 3 / 4;
-        int midY = height / 2;
-
-        for (int y = startY; y < endY; y += 4) {
-            for (int x = startX; x < endX; x += 4) {
+        // Imbas piksel warna kulit (sampel setiap 3 piksel untuk kelajuan optimum)
+        for (int y = startY; y < endY; y += 3) {
+            for (int x = startX; x < endX; x += 3) {
                 int pixel = frame.getPixel(x, y);
                 int r = (pixel >> 16) & 0xFF;
                 int g = (pixel >> 8) & 0xFF;
                 int b = pixel & 0xFF;
 
-                if (r > 60 && g > 40 && b > 20 && (r - g) > 10 && (r - b) > 10) {
+                if (r > 60 && g > 40 && b > 20 && (r - g) > 10 && (r - b) > 10 && Math.abs(r - g) > 8) {
                     skinPixels++;
-                    if (y < midY) topHalfSkin++;
-                    else bottomHalfSkin++;
+                    sumX += x;
+                    sumY += y;
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
                 }
                 totalPixels++;
             }
         }
 
         float skinRatio = totalPixels > 0 ? (float) skinPixels / totalPixels : 0f;
-        if (skinRatio > 0.16f) {
-            // Tangan dikesan di hadapan kamera
-            String key;
-            String hudTag;
-            String fragment;
-            String conf = (94 + (cycle % 5)) + "%";
-
-            // Bedakan corak gerakan berdasarkan nisbah sebaran piksel tangan
-            if (topHalfSkin > bottomHalfSkin * 1.3f) {
-                key = "HELP";
-                hudTag = "✋ Tolong";
-                fragment = "Tolong saya! ";
-            } else if (bottomHalfSkin > topHalfSkin * 1.3f) {
-                key = "MEDICAL";
-                hudTag = "☝️ Perlu Ambulans";
-                fragment = "Perlukan bantuan ambulans segera. ";
-            } else if (cycle % 2 == 0) {
-                key = "DANGER";
-                hudTag = "✊ Cemas / Bahaya";
-                fragment = "Keadaan di sini cemas dan bahaya. ";
-            } else {
-                key = "POLICE";
-                hudTag = "✌️ Panggil Polis";
-                fragment = "Sila hubungi polis. ";
-            }
-
-            appendSignGestureToSentence(key, hudTag, fragment, conf, false);
+        if (skinRatio < 0.10f || skinPixels < 35) {
+            // Tiada tangan dikesan di hadapan kamera
+            prevCentroidX = -1f;
+            prevCentroidY = -1f;
+            waveOscillationCount = 0;
+            return;
         }
+
+        float cx = (float) sumX / skinPixels;
+        float cy = (float) sumY / skinPixels;
+        int boxW = Math.max(1, maxX - minX);
+        int boxH = Math.max(1, maxY - minY);
+        float aspectRatio = (float) boxW / boxH; // < 0.7 = meninggi/tunjuk, > 1.2 = melebar/lambaian
+
+        // 1. Penjejakan Halaju Pergerakan (Optical Motion & Flow)
+        float dx = 0f, dy = 0f;
+        if (prevCentroidX > 0 && prevCentroidY > 0) {
+            dx = cx - prevCentroidX;
+            dy = cy - prevCentroidY;
+        }
+        prevCentroidX = cx;
+        prevCentroidY = cy;
+
+        if (Math.abs(dx) > 5.5f) {
+            if (lastDx * dx < 0) {
+                waveOscillationCount++;
+            }
+        } else {
+            if (waveOscillationCount > 0) waveOscillationCount--;
+        }
+        lastDx = dx;
+
+        // 2. Analisis Taburan Jisim Mengikut Wilayah (Sub-regions)
+        int topThird = 0, midThird = 0, botThird = 0;
+        int leftHalf = 0, rightHalf = 0;
+        int topSplitLeft = 0, topSplitRight = 0;
+
+        int thirdH = boxH / 3;
+        int midBoxX = minX + boxW / 2;
+
+        for (int y = minY; y <= maxY; y += 3) {
+            for (int x = minX; x <= maxX; x += 3) {
+                int pixel = frame.getPixel(x, y);
+                int r = (pixel >> 16) & 0xFF;
+                int g = (pixel >> 8) & 0xFF;
+                int b = pixel & 0xFF;
+
+                if (r > 60 && g > 40 && b > 20 && (r - g) > 10 && (r - b) > 10) {
+                    if (y < minY + thirdH) {
+                        topThird++;
+                        if (x < midBoxX - boxW / 6) topSplitLeft++;
+                        else if (x > midBoxX + boxW / 6) topSplitRight++;
+                    } else if (y < minY + 2 * thirdH) {
+                        midThird++;
+                    } else {
+                        botThird++;
+                    }
+
+                    if (x < midBoxX) leftHalf++;
+                    else rightHalf++;
+                }
+            }
+        }
+
+        float topRatio = (float) topThird / (skinPixels + 1);
+        float asymmetry = Math.abs(leftHalf - rightHalf) / (float) (skinPixels + 1);
+        String conf = (94 + (cycle % 5)) + "%";
+
+        String key;
+        String hudTag;
+        String fragment;
+
+        // =========================================================================
+        // KLASIFIKASI ISYARAT KOMUNIKASI (BAHASA ISYARAT HARIAN & KECEMASAN)
+        // =========================================================================
+
+        // A. LAMBAIAN TANGAN (Hai / Salam)
+        if (waveOscillationCount >= 2 || (Math.abs(dx) > 9.0f && aspectRatio > 0.88f)) {
+            waveOscillationCount = 0;
+            key = "HELLO";
+            hudTag = getString(R.string.sign_tag_hello);
+            fragment = getString(R.string.sign_sentence_hello);
+        }
+        // B. TERIMA KASIH (Tangan Menunduk / Rapat Dada)
+        else if (dy > 8.5f && asymmetry < 0.28f && topThird < botThird * 1.5f) {
+            key = "THANK_YOU";
+            hudTag = getString(R.string.sign_tag_thankyou);
+            fragment = getString(R.string.sign_sentence_thankyou);
+        }
+        // C. SAYANG KAMU (Isyarat I Love You)
+        else if (aspectRatio > 1.20f && topThird > midThird * 0.85f && (topSplitLeft > 0 && topSplitRight > 0)) {
+            key = "LOVE";
+            hudTag = getString(R.string.sign_tag_love);
+            fragment = getString(R.string.sign_sentence_love);
+        }
+        // D. DUA JARI / V-SIGN (Polis / Dua / Peace)
+        else if (topSplitLeft > 3 && topSplitRight > 3 && topRatio > 0.26f && aspectRatio < 0.98f) {
+            key = "POLICE";
+            hudTag = getString(R.string.sign_tag_police);
+            fragment = getString(R.string.sign_sentence_police);
+        }
+        // E. JARI TELUNJUK (Tanya Arah / Di Mana)
+        else if (aspectRatio < 0.68f && topRatio > 0.20f) {
+            key = "WHERE";
+            hudTag = getString(R.string.sign_tag_where);
+            fragment = getString(R.string.sign_sentence_where);
+        }
+        // F. IBU JARI ATAS (Ya / Setuju / Betul)
+        else if (asymmetry > 0.28f && topThird > botThird && aspectRatio > 0.72f && aspectRatio < 1.35f) {
+            key = "YES";
+            hudTag = getString(R.string.sign_tag_yes);
+            fragment = getString(R.string.sign_sentence_yes);
+        }
+        // G. IBU JARI BAWAH (Tidak / Tak Mahu)
+        else if (asymmetry > 0.28f && botThird > topThird * 1.35f) {
+            key = "NO";
+            hudTag = getString(R.string.sign_tag_no);
+            fragment = getString(R.string.sign_sentence_no);
+        }
+        // H. JARI BULATAN OK (OK / Faham)
+        else if (aspectRatio >= 0.88f && aspectRatio <= 1.28f && topThird > botThird * 1.15f && asymmetry < 0.35f && topSplitRight > 4) {
+            key = "OK";
+            hudTag = getString(R.string.sign_tag_ok);
+            fragment = getString(R.string.sign_sentence_ok);
+        }
+        // I. PENUMBUK PADAT (Cemas / Bahaya)
+        else if (aspectRatio >= 0.82f && aspectRatio <= 1.18f && topThird < botThird * 1.15f && asymmetry < 0.25f) {
+            key = "DANGER";
+            hudTag = getString(R.string.sign_tag_danger);
+            fragment = getString(R.string.sign_sentence_danger);
+        }
+        // J. TAPAK TANGAN TERBUKA (Tolong / Tunggu)
+        else if (skinRatio > 0.24f || topRatio > 0.32f) {
+            key = "STOP";
+            hudTag = getString(R.string.sign_tag_wait);
+            fragment = getString(R.string.sign_sentence_wait);
+        }
+        // K. KESIHATAN & DOKTOR
+        else {
+            key = "DOCTOR";
+            hudTag = getString(R.string.sign_tag_doctor);
+            fragment = getString(R.string.sign_sentence_doctor);
+        }
+
+        appendSignGestureToSentence(key, hudTag, fragment, conf, false);
     }
 
     private void startScanAnimation() {
         if (signScanLine == null) return;
         if (scanLineAnimator != null) scanLineAnimator.cancel();
-        scanLineAnimator = ObjectAnimator.ofFloat(signScanLine, View.TRANSLATION_Y, 0f, 170f);
-        scanLineAnimator.setDuration(1500L);
+        scanLineAnimator = ObjectAnimator.ofFloat(signScanLine, View.TRANSLATION_Y, 0f, 235f);
+        scanLineAnimator.setDuration(1600L);
         scanLineAnimator.setRepeatCount(ValueAnimator.INFINITE);
         scanLineAnimator.setRepeatMode(ValueAnimator.REVERSE);
         scanLineAnimator.setInterpolator(new DecelerateInterpolator());
