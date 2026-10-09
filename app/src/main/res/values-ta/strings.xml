@@ -593,5 +593,9 @@
     <string name="nav_getting_gps">தற்போதைய GPS இருப்பிடத்தைப் பெறுகிறது…</string>
     <string name="report_summary">அறிக்கை சுருக்கம்</string>
     <string name="toast_wrong_password_google_hint">கடவுச்சொல் தவறானது. நீங்கள் Google மூலம் பதிவுசெய்திருந்தால், \'Sign in with Google\' என்பதைத் தட்டவும்.</string>
+    <string name="marker_info_status_label">நிலை:</string>
+    <string name="marker_info_status_active">செயலில் உள்ளது (24 மணிநேரம்)</string>
+    <string name="marker_info_distance_label">தூரம்:</string>
+    <string name="marker_info_directions">வழிகளைப் பெறுங்கள்</string>
 </resources>
 

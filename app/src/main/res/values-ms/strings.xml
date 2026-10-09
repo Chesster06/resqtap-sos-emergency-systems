@@ -1088,5 +1088,9 @@
     <string name="nav_getting_gps">Mendapatkan koordinat GPS semasa…</string>
     <string name="report_summary">Ringkasan Laporan</string>
     <string name="toast_wrong_password_google_hint">Kata laluan tidak tepat. Jika anda mendaftar menggunakan Google, sila tekan \'Sign in with Google\'.</string>
+    <string name="marker_info_status_label">Status:</string>
+    <string name="marker_info_status_active">Beroperasi (24 Jam)</string>
+    <string name="marker_info_distance_label">Jarak:</string>
+    <string name="marker_info_directions">Dapatkan Arah</string>
 </resources>
 

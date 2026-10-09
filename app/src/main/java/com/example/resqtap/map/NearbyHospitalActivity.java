@@ -125,6 +125,19 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
     private String myPhotoUri = "";
     private String myPhotoB64 = "";
 
+    // Marker Callout Views (Admin Dashboard / Popup Info Style)
+    private View markerCalloutLayout;
+    private MaterialCardView calloutLogoRing;
+    private ImageView calloutLogo;
+    private TextView calloutTitle;
+    private ImageView calloutBtnClose;
+    private TextView calloutStatus;
+    private TextView calloutDistance;
+    private TextView calloutAddress;
+    private MaterialButton calloutBtnDirections;
+    private LatLng selectedCalloutLatLng;
+    private HospitalItem selectedCalloutHospital;
+
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final ArrayList<HospitalItem> hospitals = new ArrayList<>();
     private final ArrayList<DisplayItem> displayItems = new ArrayList<>();
@@ -267,7 +280,12 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
                 if (vh.distance != null) vh.distance.setText(formatDistance(hospital.distanceMeters));
                 if (vh.address != null) vh.address.setText(hospital.address == null ? "" : hospital.address);
                 if (vh.direction != null) vh.direction.setOnClickListener(v -> openDirections(hospital));
-                vh.itemView.setOnClickListener(v -> openDirections(hospital));
+                vh.itemView.setOnClickListener(v -> {
+                    if (sheetBehavior != null) {
+                        sheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+                    }
+                    showMarkerCallout(hospital, new LatLng(hospital.lat, hospital.lng));
+                });
 
                 if (vh.imgCategory != null) {
                     vh.imgCategory.setImageTintList(null);
@@ -446,6 +464,30 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
             btnToggle3d.setOnClickListener(v -> toggle3DNavigationMode());
         }
 
+        // Setup Marker Callout Views
+        markerCalloutLayout = findViewById(R.id.marker_callout_layout);
+        calloutLogoRing = (MaterialCardView) findViewById(R.id.callout_logo_ring);
+        calloutLogo = findViewById(R.id.callout_logo);
+        calloutTitle = findViewById(R.id.callout_title);
+        calloutBtnClose = findViewById(R.id.callout_btn_close);
+        calloutStatus = findViewById(R.id.callout_status);
+        calloutDistance = findViewById(R.id.callout_distance);
+        calloutAddress = findViewById(R.id.callout_address);
+        calloutBtnDirections = findViewById(R.id.callout_btn_directions);
+
+        if (calloutBtnClose != null) {
+            calloutBtnClose.setOnClickListener(v -> hideMarkerCallout());
+        }
+        if (calloutBtnDirections != null) {
+            calloutBtnDirections.setOnClickListener(v -> {
+                if (selectedCalloutHospital != null) {
+                    HospitalItem target = selectedCalloutHospital;
+                    hideMarkerCallout();
+                    openDirections(target);
+                }
+            });
+        }
+
         status = findViewById(R.id.status);
         recyclerView = findViewById(R.id.hospital_list);
         listAdapter = new HospitalAdapter();
@@ -508,20 +550,32 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
 
         map.setOnMarkerClickListener(marker -> {
             if (marker == null) return false;
+            // Ignore click on self "You" location marker
+            if (marker.equals(myLocationMarker)) return false;
+
+            HospitalItem item = null;
             if (marker.getTag() instanceof HospitalItem) {
-                openDirections((HospitalItem) marker.getTag());
-                return true;
-            }
-            if (marker.getPosition() == null) return false;
-            for (HospitalItem h : hospitals) {
-                if (Math.abs(h.lat - marker.getPosition().latitude) < 0.0005 &&
-                    Math.abs(h.lng - marker.getPosition().longitude) < 0.0005) {
-                    openDirections(h);
-                    return true;
+                item = (HospitalItem) marker.getTag();
+            } else if (marker.getPosition() != null) {
+                for (HospitalItem h : hospitals) {
+                    if (Math.abs(h.lat - marker.getPosition().latitude) < 0.0005 &&
+                        Math.abs(h.lng - marker.getPosition().longitude) < 0.0005) {
+                        item = h;
+                        break;
+                    }
                 }
+            }
+
+            if (item != null) {
+                showMarkerCallout(item, marker.getPosition());
+                return true;
             }
             return false;
         });
+
+        map.setOnCameraMoveListener(this::updateCalloutPosition);
+
+        map.setOnMapClickListener(latLng -> hideMarkerCallout());
 
         requestLocationIfNeeded(false);
     }
@@ -1057,7 +1111,117 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f));
             }
         }
+        if (sheetBehavior != null) {
+            sheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+        }
         pendingSearch = false;
+    }
+
+    /**
+     * Paparkan kad maklumat timbul (Callout Popup) di atas pin penanda mengikut gaya admin dashboard
+     * apabila marker ditekan, dan bukannya terus membuka navigasi arah.
+     */
+    private void showMarkerCallout(HospitalItem item, LatLng pos) {
+        if (item == null || pos == null || markerCalloutLayout == null) return;
+        selectedCalloutHospital = item;
+        selectedCalloutLatLng = pos;
+
+        if (calloutTitle != null) {
+            calloutTitle.setText(item.name != null ? item.name : "");
+        }
+        if (calloutAddress != null) {
+            if (item.address != null && !item.address.trim().isEmpty()) {
+                calloutAddress.setText(item.address.trim());
+                calloutAddress.setVisibility(View.VISIBLE);
+            } else {
+                calloutAddress.setVisibility(View.GONE);
+            }
+        }
+
+        if (calloutDistance != null) {
+            if (item.distanceMeters >= 0) {
+                calloutDistance.setText(formatDistance(item.distanceMeters));
+            } else if (currentLatLng != null) {
+                double d = distanceMeters(currentLatLng, item.lat, item.lng);
+                calloutDistance.setText(formatDistance(d));
+            } else {
+                calloutDistance.setText("—");
+            }
+        }
+
+        int logoRes = R.drawable.logo_kkm;
+        int strokeColor = Color.parseColor("#E53935");
+        int bgColor = Color.parseColor("#FFF0F2");
+
+        if ("police".equalsIgnoreCase(item.category)) {
+            logoRes = R.drawable.logo_pdrm;
+            strokeColor = Color.parseColor("#1565C0");
+            bgColor = Color.parseColor("#F0F4F9");
+        } else if ("fire".equalsIgnoreCase(item.category)) {
+            logoRes = R.drawable.logo_bomba;
+            strokeColor = Color.parseColor("#E65100");
+            bgColor = Color.parseColor("#FFF7ED");
+        }
+
+        if (calloutLogo != null) {
+            calloutLogo.setImageTintList(null);
+            calloutLogo.setImageResource(logoRes);
+        }
+        if (calloutLogoRing != null) {
+            calloutLogoRing.setStrokeColor(strokeColor);
+            calloutLogoRing.setCardBackgroundColor(bgColor);
+        }
+
+        markerCalloutLayout.setVisibility(View.VISIBLE);
+        markerCalloutLayout.setAlpha(0f);
+        markerCalloutLayout.animate().alpha(1f).setDuration(180).start();
+
+        updateCalloutPosition();
+
+        if (map != null) {
+            map.animateCamera(CameraUpdateFactory.newLatLng(pos));
+        }
+    }
+
+    private void hideMarkerCallout() {
+        if (markerCalloutLayout != null && markerCalloutLayout.getVisibility() == View.VISIBLE) {
+            markerCalloutLayout.animate().alpha(0f).setDuration(120).withEndAction(() -> {
+                markerCalloutLayout.setVisibility(View.GONE);
+                selectedCalloutLatLng = null;
+                selectedCalloutHospital = null;
+            }).start();
+        }
+    }
+
+    private void updateCalloutPosition() {
+        if (map == null || markerCalloutLayout == null || selectedCalloutLatLng == null) return;
+        if (markerCalloutLayout.getVisibility() != View.VISIBLE) return;
+
+        try {
+            android.graphics.Point screenPt = map.getProjection().toScreenLocation(selectedCalloutLatLng);
+            if (screenPt == null) return;
+
+            int w = markerCalloutLayout.getWidth();
+            int h = markerCalloutLayout.getHeight();
+            if (w == 0 || h == 0) {
+                markerCalloutLayout.measure(
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+                );
+                w = markerCalloutLayout.getMeasuredWidth();
+                h = markerCalloutLayout.getMeasuredHeight();
+            }
+
+            // Pin marker adalah 50dp tinggi + 3dp bayang, tip anchor di (0.5f, 0.94f).
+            // Segitiga penunjuk callout berada tepat di atas kepala pin marker.
+            float pinTopOffset = dp(this, 54);
+            float targetX = screenPt.x - (w / 2f);
+            float targetY = screenPt.y - pinTopOffset - h;
+
+            markerCalloutLayout.setX(targetX);
+            markerCalloutLayout.setY(targetY);
+        } catch (Exception ignored) {
+        }
     }
 
     /**
@@ -1066,6 +1230,7 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
      */
     private void openDirections(HospitalItem item) {
         if (item == null) return;
+        hideMarkerCallout();
         activeNavHospital = item;
 
         // 1. Sorokkan terus bottom sheet senarai supaya peta luas sepenuhnya dan tidak terlindung
@@ -1423,6 +1588,7 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
 
     /** Padam atau bersihkan HospitalMarkers. */
     private void clearHospitalMarkers() {
+        hideMarkerCallout();
         for (Marker m : hospitalMarkers) {
             try {
                 if (m != null) m.remove();

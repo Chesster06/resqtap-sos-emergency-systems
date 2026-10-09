@@ -1244,4 +1244,8 @@ Terms Version: 1.0</string>
     <string name="nav_getting_gps">Obtaining current GPS location…</string>
     <string name="report_summary">Report Summary</string>
     <string name="toast_wrong_password_google_hint">Incorrect password. If you registered using Google, please tap \'Sign in with Google\'.</string>
+    <string name="marker_info_status_label">Status:</string>
+    <string name="marker_info_status_active">Available (24h)</string>
+    <string name="marker_info_distance_label">Distance:</string>
+    <string name="marker_info_directions">Get Directions</string>
 </resources>

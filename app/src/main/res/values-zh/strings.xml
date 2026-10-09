@@ -594,5 +594,9 @@
     <string name="nav_getting_gps">正在获取当前 GPS 位置…</string>
     <string name="report_summary">报告摘要</string>
     <string name="toast_wrong_password_google_hint">密码不正确。如果您使用 Google 注册，请点击“Sign in with Google”。</string>
+    <string name="marker_info_status_label">状态：</string>
+    <string name="marker_info_status_active">正常开放（24小时）</string>
+    <string name="marker_info_distance_label">距离：</string>
+    <string name="marker_info_directions">获取路线</string>
 </resources>
 
