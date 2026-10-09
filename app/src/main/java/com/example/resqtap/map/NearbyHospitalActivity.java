@@ -133,7 +133,9 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
     private TextView status;
     private String currentCategory = "all";
 
-    private static final int SEARCH_RADIUS_METERS = 20000;
+    private static final int SEARCH_RADIUS_METERS = 5000;
+    private static final int MAX_RESULTS_ALL_PER_CAT = 3;
+    private static final int MAX_RESULTS_SINGLE_CAT = 5;
 
     private static final class HospitalItem {
         final String name;
@@ -722,8 +724,8 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
                             if (lat != 0.0 && lng != 0.0) {
                                 HospitalItem item = new HospitalItem(name, address, lat, lng, cat);
                                 item.distanceMeters = distanceMeters(center, lat, lng);
-                                // Hanya masukkan rekod Supabase jika ia berada dalam jarak liputan munasabah (<= 50km)
-                                if (item.distanceMeters >= 0 && item.distanceMeters <= 50000) {
+                                // Hanya masukkan rekod Supabase jika ia berada dalam jarak liputan munasabah (<= 10km)
+                                if (item.distanceMeters >= 0 && item.distanceMeters <= 10000) {
                                     sList.add(item);
                                 }
                             }
@@ -920,41 +922,105 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
     private void applyHospitals(ArrayList<HospitalItem> found) {
         hospitals.clear();
         displayItems.clear();
-        ArrayList<HospitalItem> nearbyOnly = new ArrayList<>();
-        java.util.HashSet<String> seenKeys = new java.util.HashSet<>();
-        if (currentLatLng != null && found != null) {
-            for (HospitalItem h : found) {
-                h.distanceMeters = distanceMeters(currentLatLng, h.lat, h.lng);
-                // Hanya terima lokasi dalam jarak munasabah (maksimum 50km) untuk elak isu Places API cari di negara lain
-                if (h.distanceMeters >= 0 && h.distanceMeters <= 50000) {
-                    String key = (h.name == null ? "" : h.name.trim().toLowerCase()) + "_" + Math.round(h.lat * 1000) + "_" + Math.round(h.lng * 1000);
-                    if (seenKeys.add(key)) {
-                        nearbyOnly.add(h);
-                    }
-                }
+        if (found == null || found.isEmpty()) {
+            if (status != null) {
+                status.setText(R.string.nearby_hospital_no_results);
+                status.setVisibility(View.VISIBLE);
             }
-        } else if (found != null) {
-            for (HospitalItem h : found) {
-                String key = (h.name == null ? "" : h.name.trim().toLowerCase()) + "_" + Math.round(h.lat * 1000) + "_" + Math.round(h.lng * 1000);
-                if (seenKeys.add(key)) {
-                    nearbyOnly.add(h);
-                }
+            if (listAdapter != null) listAdapter.notifyDataSetChanged();
+            clearHospitalMarkers();
+            pendingSearch = false;
+            return;
+        }
+
+        // 1. Kira jarak & buang duplikasi
+        ArrayList<HospitalItem> allCandidates = new ArrayList<>();
+        java.util.HashSet<String> seenKeys = new java.util.HashSet<>();
+        for (HospitalItem h : found) {
+            if (currentLatLng != null) {
+                h.distanceMeters = distanceMeters(currentLatLng, h.lat, h.lng);
+            }
+            String key = (h.name == null ? "" : h.name.trim().toLowerCase()) + "_" + Math.round(h.lat * 1000) + "_" + Math.round(h.lng * 1000);
+            if (seenKeys.add(key)) {
+                allCandidates.add(h);
             }
         }
 
-        // Susun mengikut keutamaan: Bomba (1) -> Medic / Hospital (2) -> Polis (3), dan dalam setiap kategori susun mengikut jarak terdekat
-        Collections.sort(nearbyOnly, (a, b) -> {
-            int pA = getCategoryPriority(a.category);
-            int pB = getCategoryPriority(b.category);
-            if (pA != pB) {
-                return Integer.compare(pA, pB);
+        // 2. Susun SEMUA calon mengikut jarak paling dekat dahulu
+        Collections.sort(allCandidates, (a, b) -> {
+            double distA = a.distanceMeters < 0 ? Double.MAX_VALUE : a.distanceMeters;
+            double distB = b.distanceMeters < 0 ? Double.MAX_VALUE : b.distanceMeters;
+            return Double.compare(distA, distB);
+        });
+
+        // 3. Tapis radius pintar: utamakan 5 km, jika sedikit kembangkan ke 10 km
+        ArrayList<HospitalItem> radiusFiltered = new ArrayList<>();
+        for (HospitalItem h : allCandidates) {
+            if (h.distanceMeters >= 0 && h.distanceMeters <= 5000) {
+                radiusFiltered.add(h);
+            }
+        }
+        if (radiusFiltered.size() < 3) {
+            radiusFiltered.clear();
+            for (HospitalItem h : allCandidates) {
+                if (h.distanceMeters >= 0 && h.distanceMeters <= 10000) {
+                    radiusFiltered.add(h);
+                }
+            }
+        }
+        if (radiusFiltered.isEmpty()) {
+            int take = Math.min(3, allCandidates.size());
+            for (int i = 0; i < take; i++) {
+                radiusFiltered.add(allCandidates.get(i));
+            }
+        }
+
+        // 4. Hadkan kepada senarai terdekat sahaja (Top nearest)
+        ArrayList<HospitalItem> topNearest = new ArrayList<>();
+        if ("all".equalsIgnoreCase(currentCategory)) {
+            int fireCount = 0;
+            int hospitalCount = 0;
+            int policeCount = 0;
+            for (HospitalItem h : radiusFiltered) {
+                if ("fire".equalsIgnoreCase(h.category)) {
+                    if (fireCount < MAX_RESULTS_ALL_PER_CAT) {
+                        topNearest.add(h);
+                        fireCount++;
+                    }
+                } else if ("police".equalsIgnoreCase(h.category)) {
+                    if (policeCount < MAX_RESULTS_ALL_PER_CAT) {
+                        topNearest.add(h);
+                        policeCount++;
+                    }
+                } else {
+                    if (hospitalCount < MAX_RESULTS_ALL_PER_CAT) {
+                        topNearest.add(h);
+                        hospitalCount++;
+                    }
+                }
+            }
+        } else {
+            int count = 0;
+            for (HospitalItem h : radiusFiltered) {
+                topNearest.add(h);
+                count++;
+                if (count >= MAX_RESULTS_SINGLE_CAT) break;
+            }
+        }
+
+        // Susun mengikut keutamaan kategori (Bomba -> Hospital -> Polis) jika mod "all", dan jarak terdekat
+        Collections.sort(topNearest, (a, b) -> {
+            if ("all".equalsIgnoreCase(currentCategory)) {
+                int pA = getCategoryPriority(a.category);
+                int pB = getCategoryPriority(b.category);
+                if (pA != pB) return Integer.compare(pA, pB);
             }
             double distA = a.distanceMeters < 0 ? Double.MAX_VALUE : a.distanceMeters;
             double distB = b.distanceMeters < 0 ? Double.MAX_VALUE : b.distanceMeters;
             return Double.compare(distA, distB);
         });
 
-        hospitals.addAll(nearbyOnly);
+        hospitals.addAll(topNearest);
         rebuildDisplayItems();
         if (listAdapter != null) listAdapter.notifyDataSetChanged();
 
@@ -984,7 +1050,7 @@ public class NearbyHospitalActivity extends BaseActivity implements OnMapReadyCa
                 }
             }
             if (currentLatLng != null) {
-                map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 14f));
+                map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f));
             }
         }
         pendingSearch = false;
