@@ -521,8 +521,6 @@ public final class FirebaseRoomClient {
             String u = String.valueOf(uid == null ? "" : uid).trim();
             if (u.isEmpty()) return;
 
-            // Lokasi bilik dikemaskini dalam bilik kecemasan sahaja (tiada lagi data peribadi di nod users RTDB)
-
             String code = normalizeCode(roomCode);
             if (code.length() < 4) return;
 
@@ -595,10 +593,11 @@ public final class FirebaseRoomClient {
     /** Fungsi untuk upsertMemberPresenceQueued. */
     public static void upsertMemberPresenceQueued(String roomCode, String uid, String name, String photoUrl, String photoB64, int batteryPct) {
         try {
-            String code = normalizeCode(roomCode);
             String u = String.valueOf(uid == null ? "" : uid).trim();
-            if (code.length() < 4) return;
             if (u.isEmpty()) return;
+
+            String code = normalizeCode(roomCode);
+            if (code.length() < 4) return;
 
             db().child("userRooms").child(u).child(code).get().addOnSuccessListener(userRoomSnap -> {
                 if (userRoomSnap == null || !userRoomSnap.exists()) return;

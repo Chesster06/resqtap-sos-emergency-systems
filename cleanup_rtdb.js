@@ -153,12 +153,12 @@ async function getValidAccessToken() {
 let appInitialized = false;
 async function getAdmin() {
   if (!appInitialized) {
-    const saPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || path.join(__dirname, "resqtap-b9ff5-firebase-adminsdk-fbsvc-ea81d54f3d.json");
+    const saPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS;
     if (!admin.apps || admin.apps.length === 0) {
-      if (fs.existsSync(saPath)) {
-        console.log(`[ADMIN-INIT] Using service account JSON: ${saPath}`);
+      if (saPath && fs.existsSync(saPath)) {
+        console.log(`[ADMIN-INIT] Using service account JSON from environment: ${saPath}`);
         admin.initializeApp({
-          credential: admin.credential.cert(require(saPath)),
+          credential: admin.credential.cert(require(path.resolve(saPath))),
           databaseURL: "https://resqtap-b9ff5-default-rtdb.firebaseio.com"
         });
       } else {

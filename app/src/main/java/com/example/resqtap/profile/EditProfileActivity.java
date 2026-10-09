@@ -79,6 +79,9 @@ public class EditProfileActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         ThemeUtils.applySavedNightMode(this);
         super.onCreate(savedInstanceState);
+        // SEC-08 FIX: Prevent screenshots and screen recording on sensitive PII (IC, address, emergency info)
+        getWindow().setFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                android.view.WindowManager.LayoutParams.FLAG_SECURE);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_edit_profile);
 

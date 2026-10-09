@@ -63,6 +63,9 @@ public class AppLockActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         ThemeUtils.applySavedNightMode(this);
         super.onCreate(savedInstanceState);
+        // SEC-08 FIX: Prevent PIN theft via screenshots, recording, or app switcher preview
+        getWindow().setFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                android.view.WindowManager.LayoutParams.FLAG_SECURE);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_app_lock);
 

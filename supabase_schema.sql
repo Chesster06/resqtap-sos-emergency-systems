@@ -17,9 +17,21 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     phone TEXT,
     photo_url TEXT,
     role TEXT DEFAULT 'user',
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    is_online BOOLEAN DEFAULT false,
+    battery_pct INTEGER,
+    last_seen TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migrasi sekiranya jadual profiles sudah wujud:
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT false;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS battery_pct INTEGER;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ DEFAULT NOW();
 
 -- ==============================================================================
 -- 3. JADUAL: medical_cards (Kad Perubatan Pengguna)

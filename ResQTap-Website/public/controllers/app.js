@@ -1212,6 +1212,9 @@ async function syncFromSupabase() {
         if (pUrl && !pUrl.startsWith("http://") && !pUrl.startsWith("https://") && !pUrl.startsWith("data:")) {
           pUrl = `data:image/jpeg;base64,${pUrl}`;
         }
+        const lat = Number(p.latitude !== undefined && p.latitude !== null ? p.latitude : p.lat) || 0;
+        const lng = Number(p.longitude !== undefined && p.longitude !== null ? p.longitude : p.lng) || 0;
+        const uTime = p.last_seen ? new Date(p.last_seen).getTime() : (p.updated_at ? new Date(p.updated_at).getTime() : Date.now());
         uMap[p.id] = {
           name: p.full_name || "User",
           email: p.email || "",
@@ -1219,8 +1222,16 @@ async function syncFromSupabase() {
           photoUrl: pUrl,
           photo_url: pUrl,
           role: p.role || "user",
+          lat,
+          lng,
+          latitude: lat,
+          longitude: lng,
+          isOnline: Boolean(p.is_online),
+          batteryPct: Number.isFinite(Number(p.battery_pct)) ? Number(p.battery_pct) : null,
           source: "supabase",
-          updatedAt: p.updated_at ? new Date(p.updated_at).getTime() : Date.now()
+          updatedAt: uTime,
+          locationUpdatedAt: uTime,
+          lastSeen: uTime
         };
         if (p.role === "admin" || p.role === "ADMIN") {
           aMap[p.id] = {
@@ -7923,6 +7934,17 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
   function updateStats() {
     const rooms=getRooms(); let oc=0; const seen=new Set();
     rooms.forEach((r)=>{ r.members.forEach((m)=>{ if(seen.has(m.uid)) return; seen.add(m.uid); if(Date.now()-millis(m.updatedAt)<=ONLINE_MS) oc++; }); });
+    if (state.users) {
+      entries(state.users).forEach(([uid, uVal]) => {
+        if (seen.has(uid)) return;
+        const u = asRecord(uVal);
+        const uTime = millis(u.updatedAt || u.locationUpdatedAt);
+        if (Date.now() - uTime <= ONLINE_MS) {
+          seen.add(uid);
+          oc++;
+        }
+      });
+    }
     const ac=getSosAlerts().filter((a)=>a.active&&!a.stale).length;
     const rc=getIncidentReports().length;
     const uce=document.getElementById("livemapUserCount");
@@ -8049,6 +8071,7 @@ elsVc.sendMessageBtn.addEventListener("click", (e) => {
           if (ms.leaflet) ms.leaflet.invalidateSize();
           updateStats();
           refreshMarkers();
+          fitAll();
         });
       }
     });

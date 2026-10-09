@@ -50,6 +50,9 @@ public class ProfileActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         ThemeUtils.applySavedNightMode(this);
         super.onCreate(savedInstanceState);
+        // SEC-08 FIX: Prevent screenshots and recent-apps preview leakage of personal & medical information
+        getWindow().setFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                android.view.WindowManager.LayoutParams.FLAG_SECURE);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_profile);
         android.view.View root = findViewById(R.id.main);

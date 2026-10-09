@@ -57,6 +57,9 @@ public class SetPinActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         ThemeUtils.applySavedNightMode(this);
         super.onCreate(savedInstanceState);
+        // SEC-08 FIX: Prevent PIN theft via screenshots, recording, or app switcher preview
+        getWindow().setFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE,
+                android.view.WindowManager.LayoutParams.FLAG_SECURE);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_set_pin);
 
@@ -70,11 +73,16 @@ public class SetPinActivity extends AppCompatActivity {
         isChanging = getIntent().getBooleanExtra(EXTRA_IS_CHANGING, false);
         isForBiometric = getIntent().getBooleanExtra(EXTRA_IS_FOR_BIOMETRIC, false);
         boolean hasExisting = isForBiometric ? UserPrefs.hasBiometricPin(this) : UserPrefs.hasAppLockPin(this);
-        if (isChanging && hasExisting) {
+        // SEC-02 FIX: Always require current PIN verification when one exists,
+        // regardless of EXTRA_IS_CHANGING flag. Ignoring the flag closes the bypass
+        // where launching this Activity directly (without the extra) would skip old-PIN
+        // verification and allow any holder of the device to overwrite the PIN.
+        if (hasExisting) {
             currentState = STATE_ENTER_CURRENT;
         } else {
             currentState = STATE_ENTER_NEW;
         }
+
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override

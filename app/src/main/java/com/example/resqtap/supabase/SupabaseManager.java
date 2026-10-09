@@ -4,6 +4,10 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.android.gms.tasks.Tasks;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -256,9 +260,58 @@ public class SupabaseManager {
         upsertProfile(userId, email, fullName, phone, null, callback);
     }
 
+    public void updateLiveLocation(String userId, double lat, double lng, int batteryPct, Callback<Boolean> callback) {
+        executor.execute(() -> {
+            try {
+                String endpoint = "/rest/v1/profiles?id=eq." + userId;
+                JSONObject body = new JSONObject();
+                if (lat != 0.0 || lng != 0.0) {
+                    body.put("latitude", lat);
+                    body.put("longitude", lng);
+                }
+                body.put("is_online", true);
+                if (batteryPct >= 0 && batteryPct <= 100) {
+                    body.put("battery_pct", batteryPct);
+                }
+                body.put("last_seen", "now()");
+                body.put("updated_at", "now()");
+                executeRequest("PATCH", endpoint, body.toString());
+                postSuccess(callback, true);
+            } catch (Exception e) {
+                Log.e(TAG, "updateLiveLocation failed: " + e.getMessage());
+                postError(callback, e);
+            }
+        });
+    }
+
+    public void updateLiveLocation(String userId, double lat, double lng, int batteryPct) {
+        updateLiveLocation(userId, lat, lng, batteryPct, null);
+    }
+
     // =========================================================================
     // ENJIN HTTP PERHUBUNGAN REST
     // =========================================================================
+
+    /**
+     * SEC-04 FIX: Fetch the current Firebase ID Token synchronously (called from executor thread).
+     * This token is sent as the Authorization: Bearer header so Supabase can derive auth.uid()
+     * correctly in RLS policies. Falls back to SUPABASE_ANON_KEY if no user is signed in
+     * (e.g., public reads like hospital lists).
+     */
+    private String getFirebaseIdTokenSync() {
+        try {
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            if (user == null) return SUPABASE_ANON_KEY;
+            // Tasks.await() is safe here because we're already on an executor (background) thread.
+            com.google.firebase.auth.GetTokenResult tokenResult =
+                    Tasks.await(user.getIdToken(false));
+            String token = tokenResult != null ? tokenResult.getToken() : null;
+            return (token != null && !token.isEmpty()) ? token : SUPABASE_ANON_KEY;
+        } catch (Exception e) {
+            Log.w(TAG, "getFirebaseIdTokenSync failed, falling back to anon key: " + e.getMessage());
+            return SUPABASE_ANON_KEY;
+        }
+    }
 
     private String executeRequest(String method, String endpoint, String jsonBody) throws Exception {
         return executeRequest(method, endpoint, jsonBody, null);

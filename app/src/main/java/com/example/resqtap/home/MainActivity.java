@@ -604,7 +604,29 @@ public class MainActivity extends BaseActivity {
                     lastKnownLat = loc.getLatitude();
                     lastKnownLng = loc.getLongitude();
                     FirebaseRoomClient.publishLocationQueued("", uid, name, photoUrl, photoB64, lastKnownLat, lastKnownLng, bat);
+                    com.example.resqtap.supabase.SupabaseManager.getInstance().updateLiveLocation(uid, lastKnownLat, lastKnownLng, bat);
+                } else {
+                    try {
+                        fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null)
+                                .addOnSuccessListener(curLoc -> {
+                                    if (curLoc != null) {
+                                        lastKnownLat = curLoc.getLatitude();
+                                        lastKnownLng = curLoc.getLongitude();
+                                        FirebaseRoomClient.publishLocationQueued("", uid, name, photoUrl, photoB64, lastKnownLat, lastKnownLng, bat);
+                                        com.example.resqtap.supabase.SupabaseManager.getInstance().updateLiveLocation(uid, lastKnownLat, lastKnownLng, bat);
+                                    } else {
+                                        FirebaseRoomClient.publishLocationQueued("", uid, name, photoUrl, photoB64, 0.0, 0.0, bat);
+                                        com.example.resqtap.supabase.SupabaseManager.getInstance().updateLiveLocation(uid, 0.0, 0.0, bat);
+                                    }
+                                });
+                    } catch (SecurityException ignored) {
+                        FirebaseRoomClient.publishLocationQueued("", uid, name, photoUrl, photoB64, 0.0, 0.0, bat);
+                        com.example.resqtap.supabase.SupabaseManager.getInstance().updateLiveLocation(uid, 0.0, 0.0, bat);
+                    }
                 }
+            }).addOnFailureListener(e -> {
+                FirebaseRoomClient.publishLocationQueued("", uid, name, photoUrl, photoB64, 0.0, 0.0, bat);
+                com.example.resqtap.supabase.SupabaseManager.getInstance().updateLiveLocation(uid, 0.0, 0.0, bat);
             });
         } catch (SecurityException ignored) {}
     }

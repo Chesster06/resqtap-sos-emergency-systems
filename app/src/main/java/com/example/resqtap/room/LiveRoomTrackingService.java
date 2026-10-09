@@ -391,7 +391,9 @@ public class LiveRoomTrackingService extends Service {
                     android.location.Location loc = result.getLastLocation();
                     if (loc == null) return;
                     LatLng me = new LatLng(loc.getLatitude(), loc.getLongitude());
-                    FirebaseRoomClient.publishLocationQueued(roomCode, uid, name, photoUrl, photoB64, me.latitude, me.longitude, BatteryUtils.getBatteryPct(LiveRoomTrackingService.this));
+                    int bat = BatteryUtils.getBatteryPct(LiveRoomTrackingService.this);
+                    FirebaseRoomClient.publishLocationQueued(roomCode, uid, name, photoUrl, photoB64, me.latitude, me.longitude, bat);
+                    com.example.resqtap.supabase.SupabaseManager.getInstance().updateLiveLocation(uid, me.latitude, me.longitude, bat);
                 }
             };
         }
