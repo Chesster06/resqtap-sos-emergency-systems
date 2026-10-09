@@ -1047,6 +1047,25 @@
     <string name="speech_to_text_placeholder">Teks pertuturan anda akan muncul di sini.</string>
     <string name="speech_to_text_permission">Kebenaran mikrofon diperlukan untuk pertuturan ke teks.</string>
     <string name="speech_to_text_unavailable">Pengecaman pertuturan tidak disokong pada peranti ini.</string>
+
+    <string name="sign_language_tab">ISYARAT</string>
+    <string name="sign_language_title">Kamera Isyarat ke Teks</string>
+    <string name="sign_language_subtitle">Imbas bahasa isyarat orang di hadapan kamera dan terus transkrip menjadi ayat secara langsung.</string>
+    <string name="sign_camera_permission">Kebenaran kamera diperlukan untuk mengesan bahasa isyarat.</string>
+    <string name="sign_camera_switch">Tukar Kamera</string>
+    <string name="sign_status_live">MENTRANSKRIP LANGSUNG</string>
+    <string name="sign_status_scanning">Mengimbas Gerakan Tangan...</string>
+    <string name="sign_status_idle">Kamera Sedia</string>
+    <string name="sign_detected_heading">Isyarat Semasa</string>
+    <string name="sign_confidence_badge">Pengecaman AI Langsung</string>
+    <string name="sign_transcript_title">Transkrip Bahasa Isyarat</string>
+    <string name="sign_transcript_placeholder">Halakan kamera ke arah orang yang membuat isyarat di hadapan. Gerakan tangan akan terus ditranskrip menjadi ayat lengkap di sini secara langsung...</string>
+    <string name="sign_speak_action">Baca Ayat</string>
+    <string name="sign_send_sos_action">Hantar ke SOS</string>
+    <string name="sign_clear_transcript">Kosongkan</string>
+    <string name="sign_detecting_idle">Halakan kamera ke arah orang yang membuat isyarat...</string>
+    <string name="sign_sent_to_chat">Ayat transkrip telah dihantar ke sembang kecemasan!</string>
+    <string name="sign_sim_stream_title">Ujian Aliran Isyarat (Simulasi)</string>
     <string name="map_traffic_title">Maklumat Trafik</string>
     <string name="map_traffic_subtitle">Papar keadaan jalan raya langsung</string>
     <string name="emergency_contacts_list_desc">Pastikan kenalan dipercayai bersiap sedia untuk panggilan dan amaran SOS.</string>

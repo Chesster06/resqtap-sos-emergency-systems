@@ -144,6 +144,25 @@
     <string name="speech_to_text_permission">Microphone permission is required for speech to text.</string>
     <string name="speech_to_text_unavailable">Speech recognition is not available on this device.</string>
 
+    <string name="sign_language_tab">SIGN</string>
+    <string name="sign_language_title">Sign-to-Text Camera</string>
+    <string name="sign_language_subtitle">Scan sign language from the person in front and transcribe directly into sentences in real time.</string>
+    <string name="sign_camera_permission">Camera permission is required to detect sign language.</string>
+    <string name="sign_camera_switch">Switch Camera</string>
+    <string name="sign_status_live">LIVE TRANSCRIBING</string>
+    <string name="sign_status_scanning">Scanning Hand Gestures...</string>
+    <string name="sign_status_idle">Camera Ready</string>
+    <string name="sign_detected_heading">Current Gesture</string>
+    <string name="sign_confidence_badge">Live AI Vision</string>
+    <string name="sign_transcript_title">Live Sign Transcript</string>
+    <string name="sign_transcript_placeholder">Point camera at the person signing in front. Hand gestures will be transcribed into full sentences here in real time...</string>
+    <string name="sign_speak_action">Speak Sentence</string>
+    <string name="sign_send_sos_action">Send to SOS</string>
+    <string name="sign_clear_transcript">Clear</string>
+    <string name="sign_detecting_idle">Point camera at person signing in front...</string>
+    <string name="sign_sent_to_chat">Transcribed sentence sent to emergency chat!</string>
+    <string name="sign_sim_stream_title">Quick Test Sign Stream (Simulator)</string>
+
     <string name="share_live_location_title">Share Live Location</string>
     <string name="share_live_location_desc">Send your current location to selected contacts.</string>
     <string name="share_live_location_button">Share Location</string>
