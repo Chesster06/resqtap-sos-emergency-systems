@@ -72,6 +72,7 @@
 
     <!-- Source Badge -->
     <TextView
+        android:id="@+id/tv_detail_category_badge"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
@@ -80,12 +81,12 @@
         android:paddingTop="3dp"
         android:paddingEnd="8dp"
         android:paddingBottom="3dp"
-        android:text="Bahasa Isyarat Malaysia (BIM) • Kehidupan: Ekspresi"
+        android:text="Bahasa Isyarat Malaysia (BIM)"
         android:textColor="#2563EB"
         android:textSize="11sp"
         android:textStyle="bold" />
 
-    <!-- Example Sentences (Contoh Ayat) -->
+    <!-- Example Sentences (Contoh Ayat & Makna) -->
     <LinearLayout
         android:id="@+id/layout_example_sentences"
         android:layout_width="match_parent"
@@ -99,7 +100,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Contoh Ayat:"
+            android:text="Contoh Ayat &amp; Penggunaan:"
             android:textColor="@color/text_secondary"
             android:textSize="11sp"
             android:textStyle="bold" />
@@ -129,38 +130,20 @@
         android:layout_marginTop="16dp"
         android:orientation="vertical">
 
-        <!-- Button: Insert into sentence transcript -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_insert_to_transcript"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:backgroundTint="@color/brand_primary"
-            android:text="@string/bim_btn_insert_transcript"
-            android:textColor="@color/white"
-            android:textStyle="bold"
-            app:cornerRadius="12dp"
-            app:icon="@drawable/ic_send_24"
-            app:iconGravity="textStart"
-            app:iconPadding="8dp"
-            app:iconTint="@color/white" />
-
         <!-- Button: Watch BIM Video on YouTube -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_watch_bim_video"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="50dp"
-            android:layout_marginTop="8dp"
+            android:backgroundTint="@color/brand_primary"
             android:text="@string/bim_watch_video"
-            android:textColor="@color/brand_primary"
+            android:textColor="@color/white"
             android:textStyle="bold"
             app:cornerRadius="12dp"
             app:icon="@drawable/ic_videocam_24"
             app:iconGravity="textStart"
             app:iconPadding="8dp"
-            app:iconTint="@color/brand_primary"
-            app:strokeColor="@color/brand_primary"
-            app:strokeWidth="1.5dp" />
+            app:iconTint="@color/white" />
     </LinearLayout>
 
 </LinearLayout>

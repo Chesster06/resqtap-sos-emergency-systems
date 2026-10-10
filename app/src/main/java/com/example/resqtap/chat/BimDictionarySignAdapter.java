@@ -23,17 +23,14 @@ public class BimDictionarySignAdapter extends RecyclerView.Adapter<BimDictionary
 
     public interface OnDictionarySignClickListener {
         void onSignClick(@NonNull BimSignItem item);
-        void onSignDetailClick(@NonNull BimSignItem item);
     }
 
     private final Context context;
     private final List<BimSignItem> items = new ArrayList<>();
     private final OnDictionarySignClickListener listener;
-    private final boolean isPickMode;
 
-    public BimDictionarySignAdapter(@NonNull Context context, boolean isPickMode, @NonNull OnDictionarySignClickListener listener) {
+    public BimDictionarySignAdapter(@NonNull Context context, @NonNull OnDictionarySignClickListener listener) {
         this.context = context;
-        this.isPickMode = isPickMode;
         this.listener = listener;
     }
 
@@ -63,11 +60,7 @@ public class BimDictionarySignAdapter extends RecyclerView.Adapter<BimDictionary
             holder.ivThumbnail.setImageResource(R.drawable.img_sign_ily);
         }
 
-        if (isPickMode) {
-            holder.tvActionLabel.setText("Ketik untuk guna");
-        } else {
-            holder.tvActionLabel.setText("Lihat butiran");
-        }
+        holder.tvActionLabel.setText("Lihat Makna & Butiran");
 
         View.OnClickListener cardClickListener = v -> {
             if (listener != null) {
@@ -76,12 +69,7 @@ public class BimDictionarySignAdapter extends RecyclerView.Adapter<BimDictionary
         };
         holder.itemView.setOnClickListener(cardClickListener);
         holder.ivThumbnail.setOnClickListener(cardClickListener);
-
-        holder.btnPlayVideo.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onSignDetailClick(item);
-            }
-        });
+        holder.btnPlayVideo.setOnClickListener(cardClickListener);
     }
 
     @Override

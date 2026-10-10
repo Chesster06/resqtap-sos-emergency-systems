@@ -33,10 +33,6 @@ import java.util.List;
  */
 public class BimSignDictionaryActivity extends BaseActivity {
 
-    public static final String EXTRA_PICK_MODE = "extra_pick_mode";
-    public static final String EXTRA_SELECTED_SIGN = "extra_selected_sign";
-
-    private boolean isPickMode = false;
     private BimSignRepository repository;
     private BimCategoryAdapter categoryAdapter;
     private BimDictionarySignAdapter signAdapter;
@@ -54,7 +50,6 @@ public class BimSignDictionaryActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_bim_sign_dictionary);
 
-        isPickMode = getIntent().getBooleanExtra(EXTRA_PICK_MODE, false);
         repository = BimSignRepository.getInstance();
 
         initViews();
@@ -119,21 +114,7 @@ public class BimSignDictionaryActivity extends BaseActivity {
         RecyclerView rvSigns = findViewById(R.id.rv_dictionary_signs);
         if (rvSigns == null) return;
 
-        signAdapter = new BimDictionarySignAdapter(this, isPickMode, new BimDictionarySignAdapter.OnDictionarySignClickListener() {
-            @Override
-            public void onSignClick(@NonNull BimSignItem item) {
-                if (isPickMode) {
-                    selectSignAndReturn(item);
-                } else {
-                    showBimSignDetailDialog(item);
-                }
-            }
-
-            @Override
-            public void onSignDetailClick(@NonNull BimSignItem item) {
-                showBimSignDetailDialog(item);
-            }
-        });
+        signAdapter = new BimDictionarySignAdapter(this, item -> showBimSignDetailDialog(item));
 
         rvSigns.setLayoutManager(new GridLayoutManager(this, 2));
         rvSigns.setAdapter(signAdapter);
@@ -153,8 +134,6 @@ public class BimSignDictionaryActivity extends BaseActivity {
             layoutEmpty.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
         }
 
-
-
         if (tvHeaderSubtitle != null) {
             if ("Semua".equalsIgnoreCase(currentCategory)) {
                 tvHeaderSubtitle.setText(filtered.size() + " Isyarat Rasmi SignBank • Berkategori");
@@ -164,15 +143,8 @@ public class BimSignDictionaryActivity extends BaseActivity {
         }
     }
 
-    private void selectSignAndReturn(@NonNull BimSignItem item) {
-        Intent result = new Intent();
-        result.putExtra(EXTRA_SELECTED_SIGN, item);
-        setResult(RESULT_OK, result);
-        finish();
-    }
-
     /**
-     * Memaparkan dialog butiran penuh isyarat BIM termasuk contoh ayat dan pautan video rasmi.
+     * Memaparkan dialog butiran penuh isyarat BIM termasuk contoh ayat, makna, dan pautan video demonstrasi rasmi.
      */
     private void showBimSignDetailDialog(@NonNull BimSignItem item) {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_bim_sign_detail, null);
@@ -184,18 +156,25 @@ public class BimSignDictionaryActivity extends BaseActivity {
         ImageView ivThumbnail = dialogView.findViewById(R.id.iv_detail_thumbnail);
         TextView tvPerkataan = dialogView.findViewById(R.id.tv_detail_perkataan);
         TextView tvWord = dialogView.findViewById(R.id.tv_detail_word);
+        TextView tvCategoryBadge = dialogView.findViewById(R.id.tv_detail_category_badge);
         View layoutExamples = dialogView.findViewById(R.id.layout_example_sentences);
         TextView tvContohAyat = dialogView.findViewById(R.id.tv_detail_contoh_ayat);
         TextView tvExampleSentence = dialogView.findViewById(R.id.tv_detail_example_sentence);
         View btnClose = dialogView.findViewById(R.id.btn_close_detail);
-        View btnInsert = dialogView.findViewById(R.id.btn_insert_to_transcript);
         View btnWatchVideo = dialogView.findViewById(R.id.btn_watch_bim_video);
 
         tvPerkataan.setText(item.getPerkataan());
         tvWord.setText(item.getWord());
 
+        if (tvCategoryBadge != null) {
+            String cat = (item.getCategory() != null && !item.getCategory().isEmpty()) ? item.getCategory() : "Umum";
+            tvCategoryBadge.setText("Kategori: " + cat);
+        }
+
         if (item.getDrawableResId() != 0) {
             ivThumbnail.setImageResource(item.getDrawableResId());
+        } else {
+            ivThumbnail.setImageResource(R.drawable.img_sign_ily);
         }
 
         boolean hasExamples = (!item.getContohAyat().isEmpty()) || (!item.getExampleSentence().isEmpty());
@@ -209,18 +188,6 @@ public class BimSignDictionaryActivity extends BaseActivity {
 
         if (btnClose != null) {
             btnClose.setOnClickListener(v -> dialog.dismiss());
-        }
-
-        if (btnInsert != null) {
-            if (isPickMode) {
-                btnInsert.setVisibility(View.VISIBLE);
-                btnInsert.setOnClickListener(v -> {
-                    dialog.dismiss();
-                    selectSignAndReturn(item);
-                });
-            } else {
-                btnInsert.setVisibility(View.GONE);
-            }
         }
 
         if (btnWatchVideo != null) {

@@ -134,7 +134,6 @@ public class QuickMessageActivity extends BaseActivity {
     private static final int MODE_SIGN = 2;
     private int currentMode = MODE_TTS;
     private static final int REQUEST_CAMERA_PERMISSION = 4402;
-    private static final int REQUEST_PICK_SIGN = 4403;
 
     private final StringBuilder sttFinalText = new StringBuilder();
     private boolean showingStt = false;
@@ -576,25 +575,11 @@ public class QuickMessageActivity extends BaseActivity {
     }
 
     /**
-     * Memulakan katalog isyarat BIM SignBank (Kumpulan Kehidupan / Ekspresi - 112 Isyarat).
-    /**
-     * Membuka Kamus Isyarat BIM (465 Isyarat Berkategori) untuk rujukan atau pilihan perkataan.
+     * Membuka Kamus Isyarat BIM (465 Isyarat Berkategori) untuk rujukan dan semakan makna isyarat yang disokong.
      */
     private void openBimSignDictionary() {
         Intent intent = new Intent(this, BimSignDictionaryActivity.class);
-        intent.putExtra(BimSignDictionaryActivity.EXTRA_PICK_MODE, true);
-        startActivityForResult(intent, REQUEST_PICK_SIGN);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_PICK_SIGN && resultCode == RESULT_OK && data != null) {
-            BimSignItem item = (BimSignItem) data.getSerializableExtra(BimSignDictionaryActivity.EXTRA_SELECTED_SIGN);
-            if (item != null) {
-                appendBimSignToSentence(item);
-            }
-        }
+        startActivity(intent);
     }
 
     /**
@@ -638,7 +623,7 @@ public class QuickMessageActivity extends BaseActivity {
     }
 
     /**
-     * Memaparkan dialog butiran penuh isyarat BIM termasuk contoh ayat dan pautan video rasmi.
+     * Memaparkan dialog butiran penuh isyarat BIM termasuk contoh ayat, makna, dan pautan video rasmi.
      */
     private void showBimSignDetailDialog(@NonNull BimSignItem item) {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_bim_sign_detail, null);
@@ -650,15 +635,20 @@ public class QuickMessageActivity extends BaseActivity {
         ImageView ivThumbnail = dialogView.findViewById(R.id.iv_detail_thumbnail);
         TextView tvPerkataan = dialogView.findViewById(R.id.tv_detail_perkataan);
         TextView tvWord = dialogView.findViewById(R.id.tv_detail_word);
+        TextView tvCategoryBadge = dialogView.findViewById(R.id.tv_detail_category_badge);
         View layoutExamples = dialogView.findViewById(R.id.layout_example_sentences);
         TextView tvContohAyat = dialogView.findViewById(R.id.tv_detail_contoh_ayat);
         TextView tvExampleSentence = dialogView.findViewById(R.id.tv_detail_example_sentence);
         View btnClose = dialogView.findViewById(R.id.btn_close_detail);
-        View btnInsert = dialogView.findViewById(R.id.btn_insert_to_transcript);
         View btnWatchVideo = dialogView.findViewById(R.id.btn_watch_bim_video);
 
         tvPerkataan.setText(item.getPerkataan());
         tvWord.setText(item.getWord());
+
+        if (tvCategoryBadge != null) {
+            String cat = (item.getCategory() != null && !item.getCategory().isEmpty()) ? item.getCategory() : "Umum";
+            tvCategoryBadge.setText("Kategori: " + cat);
+        }
 
         if (item.getDrawableResId() != 0) {
             ivThumbnail.setImageResource(item.getDrawableResId());
@@ -677,12 +667,6 @@ public class QuickMessageActivity extends BaseActivity {
 
         if (btnClose != null) {
             btnClose.setOnClickListener(v -> dialog.dismiss());
-        }
-        if (btnInsert != null) {
-            btnInsert.setOnClickListener(v -> {
-                appendBimSignToSentence(item);
-                dialog.dismiss();
-            });
         }
         if (btnWatchVideo != null) {
             btnWatchVideo.setOnClickListener(v -> openBimVideoUrl(item.getVideoUrl()));
