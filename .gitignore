@@ -19,3 +19,7 @@ __pycache__/
 test_*.*
 verify_*.*
 *adminsdk*.json
+backup_sign_images_archive/
+bim_mfd_references/
+
+
