@@ -69,11 +69,13 @@ public class BimDictionarySignAdapter extends RecyclerView.Adapter<BimDictionary
             holder.tvActionLabel.setText("Lihat butiran");
         }
 
-        holder.itemView.setOnClickListener(v -> {
+        View.OnClickListener cardClickListener = v -> {
             if (listener != null) {
                 listener.onSignClick(item);
             }
-        });
+        };
+        holder.itemView.setOnClickListener(cardClickListener);
+        holder.ivThumbnail.setOnClickListener(cardClickListener);
 
         holder.btnPlayVideo.setOnClickListener(v -> {
             if (listener != null) {

@@ -46,7 +46,6 @@ public class BimSignDictionaryActivity extends BaseActivity {
 
     private EditText etSearch;
     private ImageButton btnClearSearch;
-    private TextView tvTotalCountBadge;
     private TextView tvHeaderSubtitle;
     private View layoutEmpty;
 
@@ -71,7 +70,6 @@ public class BimSignDictionaryActivity extends BaseActivity {
         }
 
         tvHeaderSubtitle = findViewById(R.id.tv_header_subtitle);
-        tvTotalCountBadge = findViewById(R.id.tv_total_count_badge);
         layoutEmpty = findViewById(R.id.layout_empty_dictionary);
 
         etSearch = findViewById(R.id.et_dictionary_search);
@@ -155,9 +153,7 @@ public class BimSignDictionaryActivity extends BaseActivity {
             layoutEmpty.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
         }
 
-        if (tvTotalCountBadge != null) {
-            tvTotalCountBadge.setText(filtered.size() + " Isyarat");
-        }
+
 
         if (tvHeaderSubtitle != null) {
             if ("Semua".equalsIgnoreCase(currentCategory)) {

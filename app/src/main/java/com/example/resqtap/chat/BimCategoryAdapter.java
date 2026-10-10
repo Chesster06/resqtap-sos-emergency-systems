@@ -67,13 +67,15 @@ public class BimCategoryAdapter extends RecyclerView.Adapter<BimCategoryAdapter.
             holder.tvCategoryName.setTextColor(ContextCompat.getColor(context, R.color.text_primary));
         }
 
-        holder.itemView.setOnClickListener(v -> {
+        View.OnClickListener clickListener = v -> {
             selectedCategory = category;
             notifyDataSetChanged();
             if (listener != null) {
                 listener.onCategorySelected(category);
             }
-        });
+        };
+        holder.itemView.setOnClickListener(clickListener);
+        holder.tvCategoryName.setOnClickListener(clickListener);
     }
 
     @Override
