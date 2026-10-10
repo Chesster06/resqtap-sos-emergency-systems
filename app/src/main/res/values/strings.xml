@@ -169,6 +169,18 @@
     <string name="sign_section_emergency">EMERGENCY, MEDICAL &amp; SOS</string>
     <string name="sign_guide_btn_close">Understood &amp; Start Scanning</string>
 
+    <!-- BIM SignBank Expressive Signs -->
+    <string name="bim_expressive_title">BIM SignBank • Expressive Signs</string>
+    <string name="bim_expressive_subtitle">Daily Life / Expressive Group • 112 Official Signs</string>
+    <string name="bim_search_hint">Search BIM signs (e.g. clear, home, miss)...</string>
+    <string name="bim_empty_search">No signs matched your search.</string>
+    <string name="bim_catalog_hint">Tap sign to add to sentence • Long-press or tap video icon for details &amp; BIM video</string>
+    <string name="bim_tap_to_insert">Tap to add</string>
+    <string name="bim_detail_title">Sign Details</string>
+    <string name="bim_btn_insert_transcript">Add to Sentence Transcript</string>
+    <string name="bim_watch_video">Watch Official BIM Video</string>
+    <string name="bim_video_error">Unable to open video URL</string>
+
     <string name="sign_tag_hello">Hello / Greeting</string>
     <string name="sign_guide_hello_desc">Hello / Greeting (Hand Wave)</string>
     <string name="sign_phrase_hello">Sentence: \'Hello, how are you?\'</string>

@@ -1073,6 +1073,18 @@
     <string name="sign_section_emergency">KECEMASAN, PERUBATAN &amp; SOS</string>
     <string name="sign_guide_btn_close">Faham &amp; Mula Imbas</string>
 
+    <!-- BIM SignBank Expressive Signs -->
+    <string name="bim_expressive_title">BIM SignBank • Isyarat Ekspresi</string>
+    <string name="bim_expressive_subtitle">Kumpulan Kehidupan / Ekspresi • 112 Isyarat Rasmi</string>
+    <string name="bim_search_hint">Cari isyarat BIM (cth: jelas, rindu, tahu)...</string>
+    <string name="bim_empty_search">Tiada isyarat sepadan dengan carian anda.</string>
+    <string name="bim_catalog_hint">Ketik isyarat untuk tambah ke ayat • Tekan lama atau ketik ikon video untuk butiran &amp; video BIM</string>
+    <string name="bim_tap_to_insert">Ketik tambah</string>
+    <string name="bim_detail_title">Butiran Isyarat</string>
+    <string name="bim_btn_insert_transcript">Masukkan ke Transkrip Ayat</string>
+    <string name="bim_watch_video">Tonton Video Rasmi BIM</string>
+    <string name="bim_video_error">Tidak dapat membuka pautan video</string>
+
     <string name="sign_tag_hello">Hai / Salam</string>
     <string name="sign_guide_hello_desc">Hai / Salam (Lambaian Tangan)</string>
     <string name="sign_phrase_hello">Ayat: \'Hai, apa khabar?\'</string>

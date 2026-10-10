@@ -617,5 +617,17 @@
     <string name="sign_detecting_idle">请将摄像头对准前方正在打手语的人...</string>
     <string name="sign_sent_to_chat">转录句子已发送至紧急聊天室！</string>
     <string name="sign_sim_stream_title">手势流测试（模拟）</string>
+
+    <!-- BIM SignBank Expressive Signs -->
+    <string name="bim_expressive_title">BIM手语库 • 表达手语</string>
+    <string name="bim_expressive_subtitle">日常生活/表达分类 • 112个官方手语</string>
+    <string name="bim_search_hint">搜索BIM手语（例如：清楚、想念、回家）...</string>
+    <string name="bim_empty_search">未找到匹配的手语词汇。</string>
+    <string name="bim_catalog_hint">轻触手语添加到句子 • 长按或点击视频图标查看详情与BIM官方视频</string>
+    <string name="bim_tap_to_insert">点击添加</string>
+    <string name="bim_detail_title">手语详情</string>
+    <string name="bim_btn_insert_transcript">添加到句子转录</string>
+    <string name="bim_watch_video">观看BIM官方视频</string>
+    <string name="bim_video_error">无法打开视频链接</string>
 </resources>
 

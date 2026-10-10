@@ -43,6 +43,7 @@ import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.content.ContextCompat;
@@ -52,6 +53,10 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import android.net.Uri;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -153,6 +158,15 @@ public class QuickMessageActivity extends BaseActivity {
     private ImageButton btnSignGuide;
     private ImageButton btnSwitchCamera;
 
+    // BIM SignBank Catalog (Expressive Signs)
+    private RecyclerView rvBimExpressiveSigns;
+    private EditText etBimSearch;
+    private ImageButton btnClearBimSearch;
+    private TextView tvBimCountBadge;
+    private TextView tvBimEmptySearch;
+    private BimSignAdapter bimSignAdapter;
+    private BimSignRepository bimSignRepository;
+
     // Temporal optical flow & motion tracking
     private float prevCentroidX = -1f;
     private float prevCentroidY = -1f;
@@ -229,6 +243,11 @@ public class QuickMessageActivity extends BaseActivity {
         btnSignCopy = findViewById(R.id.btn_sign_copy);
         btnSignGuide = findViewById(R.id.btn_sign_guide);
         btnSwitchCamera = findViewById(R.id.btn_switch_camera);
+        rvBimExpressiveSigns = findViewById(R.id.rv_bim_expressive_signs);
+        etBimSearch = findViewById(R.id.et_bim_search);
+        btnClearBimSearch = findViewById(R.id.btn_clear_bim_search);
+        tvBimCountBadge = findViewById(R.id.tv_bim_count_badge);
+        tvBimEmptySearch = findViewById(R.id.tv_bim_empty_search);
         pageTitle = findViewById(R.id.title);
         pageSubtitle = findViewById(R.id.subtitle);
         sttState = findViewById(R.id.stt_state);
@@ -343,6 +362,7 @@ public class QuickMessageActivity extends BaseActivity {
 
         renderHistory();
         setupSpeechRecognizer();
+        setupBimExpressiveCatalog();
 
         tts = new TextToSpeech(this, status -> {
             ttsReady = (status == TextToSpeech.SUCCESS);
@@ -558,6 +578,194 @@ public class QuickMessageActivity extends BaseActivity {
         if (clipboard != null) {
             clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.sign_transcript_title), text));
             Toast.makeText(this, R.string.text_to_speech_copied, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Memulakan katalog isyarat BIM SignBank (Kumpulan Kehidupan / Ekspresi - 112 Isyarat).
+     * Sumber data rasmi MFD &amp; Guidewire daripada bimsignbank.org.
+     */
+    private void setupBimExpressiveCatalog() {
+        if (rvBimExpressiveSigns == null) return;
+
+        bimSignRepository = BimSignRepository.getInstance();
+        bimSignAdapter = new BimSignAdapter(this, new BimSignAdapter.OnBimSignClickListener() {
+            @Override
+            public void onSignClick(@NonNull BimSignItem item) {
+                appendBimSignToSentence(item);
+            }
+
+            @Override
+            public void onSignDetailClick(@NonNull BimSignItem item) {
+                showBimSignDetailDialog(item);
+            }
+        });
+
+        rvBimExpressiveSigns.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        rvBimExpressiveSigns.setAdapter(bimSignAdapter);
+
+        // Muat data isyarat dari assets secara latar belakang
+        new Thread(() -> {
+            List<BimSignItem> signs = bimSignRepository.getSigns(QuickMessageActivity.this);
+            runOnUiThread(() -> {
+                if (bimSignAdapter != null) {
+                    bimSignAdapter.updateList(signs);
+                }
+                if (tvBimCountBadge != null) {
+                    tvBimCountBadge.setText(signs.size() + " Isyarat");
+                }
+            });
+        }).start();
+
+        if (etBimSearch != null) {
+            etBimSearch.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    filterBimSigns(s != null ? s.toString() : "");
+                }
+                @Override public void afterTextChanged(Editable s) {}
+            });
+        }
+
+        if (btnClearBimSearch != null) {
+            btnClearBimSearch.setOnClickListener(v -> {
+                if (etBimSearch != null) {
+                    etBimSearch.setText("");
+                }
+            });
+        }
+    }
+
+    private void filterBimSigns(String query) {
+        if (bimSignRepository == null || bimSignAdapter == null) return;
+        List<BimSignItem> filtered = bimSignRepository.searchSigns(this, query);
+        bimSignAdapter.updateList(filtered);
+
+        if (btnClearBimSearch != null) {
+            btnClearBimSearch.setVisibility(query.isEmpty() ? View.GONE : View.VISIBLE);
+        }
+        if (tvBimCountBadge != null) {
+            tvBimCountBadge.setText(filtered.size() + " Isyarat");
+        }
+        if (tvBimEmptySearch != null) {
+            tvBimEmptySearch.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    /**
+     * Memasukkan isyarat ekspresi BIM SignBank yang dipilih terus ke dalam transkrip ayat kamera.
+     */
+    private void appendBimSignToSentence(@NonNull BimSignItem item) {
+        String fragment = item.getPerkataan() + " ";
+        String hudTag = item.getPerkataan() + " (" + item.getWord() + ")";
+
+        lastCommittedGestureKey = "BIM_" + item.getId();
+        lastSignCommitTime = System.currentTimeMillis();
+
+        // 1. Tunjukkan pada Viewfinder HUD Camera (Imej Isyarat BIM & Teks)
+        if (signHudGesture != null) {
+            signHudGesture.setText(getString(R.string.sign_detected_prefix) + hudTag);
+        }
+        if (signHudCard != null && signHudImage != null) {
+            signHudCard.setVisibility(View.VISIBLE);
+            if (item.getDrawableResId() != 0) {
+                signHudImage.setImageResource(item.getDrawableResId());
+            } else {
+                bimSignRepository.loadImage(this, item, signHudImage);
+            }
+        }
+
+        // 2. Tambah terus ke dalam aliran ayat
+        signTranscriptText.append(fragment);
+        if (signTranscriptOutput != null) {
+            signTranscriptOutput.setText(signTranscriptText.toString());
+        }
+
+        // 3. Getaran Haptic
+        try {
+            android.os.Vibrator vib = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vib != null && vib.hasVibrator()) {
+                vib.vibrate(35);
+            }
+        } catch (Exception ignored) {}
+
+        Toast.makeText(this, item.getPerkataan() + " • " + item.getWord(), Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Memaparkan dialog butiran penuh isyarat BIM termasuk contoh ayat dan pautan video rasmi.
+     */
+    private void showBimSignDetailDialog(@NonNull BimSignItem item) {
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_bim_sign_detail, null);
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setView(dialogView)
+                .setCancelable(true)
+                .create();
+
+        ImageView ivThumbnail = dialogView.findViewById(R.id.iv_detail_thumbnail);
+        TextView tvPerkataan = dialogView.findViewById(R.id.tv_detail_perkataan);
+        TextView tvWord = dialogView.findViewById(R.id.tv_detail_word);
+        View layoutExamples = dialogView.findViewById(R.id.layout_example_sentences);
+        TextView tvContohAyat = dialogView.findViewById(R.id.tv_detail_contoh_ayat);
+        TextView tvExampleSentence = dialogView.findViewById(R.id.tv_detail_example_sentence);
+        View btnClose = dialogView.findViewById(R.id.btn_close_detail);
+        View btnInsert = dialogView.findViewById(R.id.btn_insert_to_transcript);
+        View btnWatchVideo = dialogView.findViewById(R.id.btn_watch_bim_video);
+
+        tvPerkataan.setText(item.getPerkataan());
+        tvWord.setText(item.getWord());
+
+        if (item.getDrawableResId() != 0) {
+            ivThumbnail.setImageResource(item.getDrawableResId());
+        } else {
+            bimSignRepository.loadImage(this, item, ivThumbnail);
+        }
+
+        if ((item.getContohAyat() != null && !item.getContohAyat().isEmpty()) ||
+                (item.getExampleSentence() != null && !item.getExampleSentence().isEmpty())) {
+            layoutExamples.setVisibility(View.VISIBLE);
+            tvContohAyat.setText(item.getContohAyat());
+            tvExampleSentence.setText(item.getExampleSentence());
+        } else {
+            layoutExamples.setVisibility(View.GONE);
+        }
+
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> dialog.dismiss());
+        }
+        if (btnInsert != null) {
+            btnInsert.setOnClickListener(v -> {
+                appendBimSignToSentence(item);
+                dialog.dismiss();
+            });
+        }
+        if (btnWatchVideo != null) {
+            btnWatchVideo.setOnClickListener(v -> openBimVideoUrl(item.getVideoUrl()));
+        }
+
+        dialog.show();
+    }
+
+    /**
+     * Membuka pautan video rasmi YouTube BIM SignBank.
+     */
+    private void openBimVideoUrl(@Nullable String videoUrl) {
+        if (videoUrl == null || videoUrl.trim().isEmpty()) {
+            Toast.makeText(this, R.string.bim_video_error, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(videoUrl.trim()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            try {
+                androidx.browser.customtabs.CustomTabsIntent customTabs = new androidx.browser.customtabs.CustomTabsIntent.Builder().build();
+                customTabs.launchUrl(this, Uri.parse(videoUrl.trim()));
+            } catch (Exception ex) {
+                Toast.makeText(this, R.string.bim_video_error, Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
