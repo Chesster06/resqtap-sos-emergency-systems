@@ -75,13 +75,41 @@ public class BimSignRepository {
      * Mencari isyarat berdasarkan kata kunci carian (BM atau BI).
      */
     public List<BimSignItem> searchSigns(@NonNull Context context, @Nullable String query) {
+        return filterSigns(context, null, query);
+    }
+
+    /**
+     * Mengambil senarai kategori unik yang disusun rapi berserta kiraan item.
+     */
+    public List<String> getCategories(@NonNull Context context) {
         List<BimSignItem> list = getSigns(context);
-        if (query == null || query.trim().isEmpty()) {
+        java.util.LinkedHashSet<String> cats = new java.util.LinkedHashSet<>();
+        cats.add("Semua");
+        for (BimSignItem item : list) {
+            if (item.getCategory() != null && !item.getCategory().isEmpty()) {
+                cats.add(item.getCategory());
+            }
+        }
+        return new ArrayList<>(cats);
+    }
+
+    /**
+     * Menapis isyarat mengikut kategori dan kata kunci carian secara serentak.
+     */
+    public List<BimSignItem> filterSigns(@NonNull Context context, @Nullable String category, @Nullable String query) {
+        List<BimSignItem> list = getSigns(context);
+        boolean filterCat = category != null && !category.isEmpty() && !category.equalsIgnoreCase("Semua");
+        boolean filterQuery = query != null && !query.trim().isEmpty();
+
+        if (!filterCat && !filterQuery) {
             return list;
         }
+
         List<BimSignItem> result = new ArrayList<>();
         for (BimSignItem item : list) {
-            if (item.matchesQuery(query)) {
+            boolean catMatch = !filterCat || item.getCategory().equalsIgnoreCase(category);
+            boolean queryMatch = !filterQuery || item.matchesQuery(query);
+            if (catMatch && queryMatch) {
                 result.add(item);
             }
         }

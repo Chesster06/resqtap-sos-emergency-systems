@@ -134,6 +134,7 @@ public class QuickMessageActivity extends BaseActivity {
     private static final int MODE_SIGN = 2;
     private int currentMode = MODE_TTS;
     private static final int REQUEST_CAMERA_PERMISSION = 4402;
+    private static final int REQUEST_PICK_SIGN = 4403;
 
     private final StringBuilder sttFinalText = new StringBuilder();
     private boolean showingStt = false;
@@ -158,13 +159,7 @@ public class QuickMessageActivity extends BaseActivity {
     private ImageButton btnSignGuide;
     private ImageButton btnSwitchCamera;
 
-    // BIM SignBank Catalog (Expressive Signs)
-    private RecyclerView rvBimExpressiveSigns;
-    private EditText etBimSearch;
-    private ImageButton btnClearBimSearch;
-    private TextView tvBimCountBadge;
-    private TextView tvBimEmptySearch;
-    private BimSignAdapter bimSignAdapter;
+    // BIM SignBank Dictionary & Repository
     private BimSignRepository bimSignRepository;
 
     // Temporal optical flow & motion tracking
@@ -243,11 +238,10 @@ public class QuickMessageActivity extends BaseActivity {
         btnSignCopy = findViewById(R.id.btn_sign_copy);
         btnSignGuide = findViewById(R.id.btn_sign_guide);
         btnSwitchCamera = findViewById(R.id.btn_switch_camera);
-        rvBimExpressiveSigns = findViewById(R.id.rv_bim_expressive_signs);
-        etBimSearch = findViewById(R.id.et_bim_search);
-        btnClearBimSearch = findViewById(R.id.btn_clear_bim_search);
-        tvBimCountBadge = findViewById(R.id.tv_bim_count_badge);
-        tvBimEmptySearch = findViewById(R.id.tv_bim_empty_search);
+        View btnOpenDictionary = findViewById(R.id.btn_open_bim_dictionary);
+        if (btnOpenDictionary != null) {
+            btnOpenDictionary.setOnClickListener(v -> openBimSignDictionary());
+        }
         pageTitle = findViewById(R.id.title);
         pageSubtitle = findViewById(R.id.subtitle);
         sttState = findViewById(R.id.stt_state);
@@ -337,7 +331,7 @@ public class QuickMessageActivity extends BaseActivity {
             btnSignClear.setOnClickListener(v -> clearSignTranscript());
         }
         if (btnSignGuide != null) {
-            btnSignGuide.setOnClickListener(v -> showSignLanguageGuideDialog());
+            btnSignGuide.setOnClickListener(v -> openBimSignDictionary());
         }
         btnPasteText.setOnClickListener(v -> pasteClipboardText());
         btnClearText.setOnClickListener(v -> {
@@ -362,7 +356,7 @@ public class QuickMessageActivity extends BaseActivity {
 
         renderHistory();
         setupSpeechRecognizer();
-        setupBimExpressiveCatalog();
+        bimSignRepository = BimSignRepository.getInstance();
 
         tts = new TextToSpeech(this, status -> {
             ttsReady = (status == TextToSpeech.SUCCESS);
@@ -583,73 +577,23 @@ public class QuickMessageActivity extends BaseActivity {
 
     /**
      * Memulakan katalog isyarat BIM SignBank (Kumpulan Kehidupan / Ekspresi - 112 Isyarat).
-     * Sumber data rasmi MFD &amp; Guidewire daripada bimsignbank.org.
+    /**
+     * Membuka Kamus Isyarat BIM (465 Isyarat Berkategori) untuk rujukan atau pilihan perkataan.
      */
-    private void setupBimExpressiveCatalog() {
-        if (rvBimExpressiveSigns == null) return;
-
-        bimSignRepository = BimSignRepository.getInstance();
-        bimSignAdapter = new BimSignAdapter(this, new BimSignAdapter.OnBimSignClickListener() {
-            @Override
-            public void onSignClick(@NonNull BimSignItem item) {
-                appendBimSignToSentence(item);
-            }
-
-            @Override
-            public void onSignDetailClick(@NonNull BimSignItem item) {
-                showBimSignDetailDialog(item);
-            }
-        });
-
-        rvBimExpressiveSigns.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
-        rvBimExpressiveSigns.setAdapter(bimSignAdapter);
-
-        // Muat data isyarat dari assets secara latar belakang
-        new Thread(() -> {
-            List<BimSignItem> signs = bimSignRepository.getSigns(QuickMessageActivity.this);
-            runOnUiThread(() -> {
-                if (bimSignAdapter != null) {
-                    bimSignAdapter.updateList(signs);
-                }
-                if (tvBimCountBadge != null) {
-                    tvBimCountBadge.setText(signs.size() + " Isyarat");
-                }
-            });
-        }).start();
-
-        if (etBimSearch != null) {
-            etBimSearch.addTextChangedListener(new TextWatcher() {
-                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-                @Override
-                public void onTextChanged(CharSequence s, int start, int before, int count) {
-                    filterBimSigns(s != null ? s.toString() : "");
-                }
-                @Override public void afterTextChanged(Editable s) {}
-            });
-        }
-
-        if (btnClearBimSearch != null) {
-            btnClearBimSearch.setOnClickListener(v -> {
-                if (etBimSearch != null) {
-                    etBimSearch.setText("");
-                }
-            });
-        }
+    private void openBimSignDictionary() {
+        Intent intent = new Intent(this, BimSignDictionaryActivity.class);
+        intent.putExtra(BimSignDictionaryActivity.EXTRA_PICK_MODE, true);
+        startActivityForResult(intent, REQUEST_PICK_SIGN);
     }
 
-    private void filterBimSigns(String query) {
-        if (bimSignRepository == null || bimSignAdapter == null) return;
-        List<BimSignItem> filtered = bimSignRepository.searchSigns(this, query);
-        bimSignAdapter.updateList(filtered);
-
-        if (btnClearBimSearch != null) {
-            btnClearBimSearch.setVisibility(query.isEmpty() ? View.GONE : View.VISIBLE);
-        }
-        if (tvBimCountBadge != null) {
-            tvBimCountBadge.setText(filtered.size() + " Isyarat");
-        }
-        if (tvBimEmptySearch != null) {
-            tvBimEmptySearch.setVisibility(filtered.isEmpty() ? View.VISIBLE : View.GONE);
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_PICK_SIGN && resultCode == RESULT_OK && data != null) {
+            BimSignItem item = (BimSignItem) data.getSerializableExtra(BimSignDictionaryActivity.EXTRA_SELECTED_SIGN);
+            if (item != null) {
+                appendBimSignToSentence(item);
+            }
         }
     }
 
@@ -773,20 +717,7 @@ public class QuickMessageActivity extends BaseActivity {
 
 
 
-    private void showSignLanguageGuideDialog() {
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_sign_language_guide, null);
-        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
-                .setView(dialogView)
-                .setCancelable(true)
-                .create();
 
-        View btnClose = dialogView.findViewById(R.id.btn_close_sign_guide);
-        if (btnClose != null) {
-            btnClose.setOnClickListener(v -> dialog.dismiss());
-        }
-
-        dialog.show();
-    }
 
     private void startSignCamera() {
         if (isSignCameraRunning) return;

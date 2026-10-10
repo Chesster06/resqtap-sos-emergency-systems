@@ -26,6 +26,7 @@ public class BimSignItem implements Serializable {
                        @NonNull String perkataan,
                        @NonNull String word,
                        int drawableResId,
+                       @Nullable String category,
                        @Nullable String videoUrl,
                        @Nullable String contohAyat,
                        @Nullable String exampleSentence) {
@@ -34,12 +35,22 @@ public class BimSignItem implements Serializable {
         this.perkataan = perkataan.trim();
         this.word = word.trim();
         this.drawableResId = drawableResId;
+        this.category = (category != null && !category.trim().isEmpty()) ? category.trim() : "Umum";
         this.videoUrl = videoUrl != null ? videoUrl : "";
         this.contohAyat = contohAyat != null ? contohAyat.trim() : "";
         this.exampleSentence = exampleSentence != null ? exampleSentence.trim() : "";
         this.assetPath = "";
         this.webpUrl = "";
-        this.category = "Ekspresi";
+    }
+
+    public BimSignItem(int id,
+                       @NonNull String perkataan,
+                       @NonNull String word,
+                       int drawableResId,
+                       @Nullable String videoUrl,
+                       @Nullable String contohAyat,
+                       @Nullable String exampleSentence) {
+        this(id, perkataan, word, drawableResId, "Umum", videoUrl, contohAyat, exampleSentence);
     }
 
     public BimSignItem(int id,

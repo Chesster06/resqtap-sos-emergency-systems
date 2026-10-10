@@ -117,6 +117,12 @@
             android:exported="false"
             android:windowSoftInputMode="adjustNothing" />
 
+        <!-- 2.2.1 BIM Sign Dictionary: 465 categorized signs dictionary & search -->
+        <activity
+            android:name=".chat.BimSignDictionaryActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustNothing" />
+
         <!-- 2.3 Nearby Hospitals: GPS-driven medical care & emergency room locator -->
         <activity
             android:name=".map.NearbyHospitalActivity"
